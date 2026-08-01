@@ -8,6 +8,7 @@
       name="description"
       content="Dépose le STEP d'une machine, mesure son emprise, génère la caisse autour et dit dans quel gabarit de transport elle rentre — avant que la caisse soit commandée."
     />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
     <script type="importmap">
       {
@@ -130,10 +131,12 @@
         <section class="panneau" id="panneau-vue" hidden>
           <div class="vue-entete">
             <h2 class="panneau-titre">La machine dans sa caisse</h2>
-            <p class="vue-etat" id="vue-etat"></p>
           </div>
           <div class="vue-scene">
             <canvas id="scene"></canvas>
+            <!-- L'état est en surimpression sur le rendu : c'est là qu'il est
+                 lu, et `.vue-etat` est positionné par rapport à `.vue-scene`. -->
+            <p class="vue-etat" id="vue-etat"></p>
           </div>
           <p class="legende" id="legende"></p>
         </section>

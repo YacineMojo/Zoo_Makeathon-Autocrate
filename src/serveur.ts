@@ -43,6 +43,7 @@ const MIME: Record<string, string> = {
   '.obj': 'text/plain; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
   '.step': 'application/step',
 };
 

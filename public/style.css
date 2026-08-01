@@ -633,6 +633,13 @@ summary:focus-visible {
 .tableau-poses .nombre {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  /* Un montant coupé sur deux lignes se lit mal et se compare encore plus mal :
+     la colonne des coûts est celle que l'œil balaie en premier. */
+  white-space: nowrap;
+}
+
+.tableau-poses td:first-child {
+  min-width: 15rem;
 }
 
 .tableau-poses tbody tr:hover td {
