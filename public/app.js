@@ -382,8 +382,10 @@ $('fichier').addEventListener('change', async (e) => {
 async function remplirMaillages(selection) {
   const { meshes } = await fetch('/api/maillages').then((r) => r.json());
   $('mesh').innerHTML = meshes.map((f) => `<option value="${f}">${f}</option>`).join('');
+  // Par défaut, la machine de démonstration : c'est la seule dont la licence
+  // est nôtre, et la seule qui joue la démonstration du §16 en entier.
   if (selection && meshes.includes(selection)) $('mesh').value = selection;
-  else if (meshes.some((f) => f.includes('kr600'))) $('mesh').value = meshes.find((f) => f.includes('kr600'));
+  else if (meshes.some((f) => f.includes('machine-demo'))) $('mesh').value = meshes.find((f) => f.includes('machine-demo'));
 }
 
 await remplirMaillages();

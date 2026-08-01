@@ -425,3 +425,36 @@ qui est pourtant le cas d'emploi évident d'un convertisseur maillage → mailla
 sortie la supporte.
 
 ---
+
+## #12 — 🟡 Text-to-CAD tient les cotes au millimètre, mais l'attente n'est pas observable
+
+**Date :** 2026-08-01
+**Surface :** ML API, `POST /ai/text-to-cad/{output_format}`
+
+Utilisé pour produire la machine de démonstration, faute de modèle constructeur
+librement licencié assez grand pour franchir un seuil de gabarit.
+
+**Ce qui marche remarquablement bien.** Les cotes demandées en langage naturel
+sont respectées **exactement** : « 2.0 m wide, 1.9 m deep and 3.1 m tall » rend
+un solide de 2000 × 1900 × 3100 mm mesuré sur le maillage converti. Le KCL est
+rendu avec le modèle, ce qui documente le résultat bien mieux qu'une capture.
+
+Deux frictions, mineures mais réelles :
+
+1. **Aucun avancement.** 278 s en `in_progress`, sans progression, sans
+   estimation, sans étape. Sur une opération de plusieurs minutes, la seule
+   information disponible est « ce n'est pas fini ». Le même reproche que pour
+   l'import moteur (#5) : l'écart entre « ça travaille » et « c'est mort » n'est
+   pas observable.
+2. **Le temps varie du simple au double sans que rien ne le laisse prévoir** —
+   176 s pour un premier prompt, 278 s pour un second à peine plus détaillé.
+
+**Une observation de rendu, pour finir.** Une machine importée en b-rep est
+rendue du même gris que les solides que l'on vient de créer par `extrude` : dans
+une scène qui montre une machine à l'intérieur d'une caisse, plus rien ne se
+distingue. Un maillage importé, lui, reçoit une couleur différente. L'écart
+n'est documenté nulle part et se découvre en regardant l'image.
+`object_set_material_params_pbr` le corrige en une commande, mais encore
+faut-il savoir qu'il faut la passer.
+
+---

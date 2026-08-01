@@ -4,7 +4,10 @@ dist/
 *.log
 out/
 
-# Modèles STEP de test : lourds, et licence à vérifier avant redistribution.
+# Modèles STEP tiers : lourds, et sans licence de redistribution établie.
 # Voir fixtures/README.md pour les récupérer.
 fixtures/*.stp
 fixtures/*.step
+# Exception : la machine de démonstration est générée par nous, avec Zoo
+# Text-to-CAD. Elle est versionnée pour que la démo soit reproductible.
+!fixtures/machine-demo.step

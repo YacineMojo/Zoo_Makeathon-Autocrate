@@ -190,6 +190,20 @@ try {
           },
         ],
       });
+      // La machine en jaune machine-outil. Sans cela, une machine entrée en
+      // b-rep est rendue du même gris que la caisse générée, et l'image la plus
+      // importante du projet ne montre plus rien (§13). Un maillage importé,
+      // lui, est colorié différemment par le moteur — l'écart n'est pas
+      // documenté, il se découvre en regardant.
+      await session.send({
+        type: 'object_set_material_params_pbr',
+        object_id: machineId,
+        color: { r: 0.78, g: 0.72, b: 0.05, a: 1 },
+        metalness: 0.15,
+        roughness: 0.5,
+        ambient_occlusion: 0.4,
+      });
+
       console.log(`  machine posée dans la pose`);
       entityIds.push(machineId);
     } catch (err) {
