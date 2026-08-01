@@ -108,18 +108,66 @@ export function minimalAreaRectangle(
     const area = a * b;
 
     if (area < best.areaMm2) {
-      // Par convention la longueur est la plus grande des deux : la caisse n'a
-      // pas d'orientation privilégiée, seul le couple de dimensions compte.
-      best = {
-        lengthMm: Math.max(a, b),
-        widthMm: Math.min(a, b),
-        yawDeg: deg,
-        areaMm2: area,
-      };
+      // La longueur est la plus grande des deux, **et elle doit finir sur X** :
+      // `crateBoxes` construit la caisse avec sa longueur suivant X. Si le grand
+      // côté tombait sur Y, la machine serait posée en travers de sa propre
+      // caisse — un quart de tour d'écart, invisible dans les chiffres et
+      // catastrophique dans le viewer.
+      //
+      // Un quart de tour de plus échange les deux axes : à `deg + 90`, le `u`
+      // du balayage vaut l'ancien `v`.
+      best =
+        a >= b
+          ? { lengthMm: a, widthMm: b, yawDeg: deg, areaMm2: area }
+          : { lengthMm: b, widthMm: a, yawDeg: deg + 90, areaMm2: area };
     }
   }
 
   return best;
+}
+
+/**
+ * Nuage réorienté pour qu'un axe machine pointe sur le +Z du monde.
+ *
+ * Sans cette étape, le balayage travaille dans un plan de projection — (X, Z)
+ * pour une pose Y en haut, par exemple — dont la relation au plan XY du monde
+ * n'est pas toujours une rotation : pour l'axe Y, c'est une **réflexion**, et le
+ * signe du lacet s'inverse en silence. La machine tourne alors du mauvais côté
+ * et déborde de sa caisse sans qu'aucun calcul ne s'en plaigne.
+ *
+ * On aligne donc d'abord, et tout le reste se fait dans le repère du monde, où
+ * il n'y a plus qu'un seul cas à raisonner.
+ */
+export function alignedCloud(cloud: VertexCloud, up: Axis, scale = 1): VertexCloud {
+  const xyz = new Float64Array(cloud.xyz.length);
+
+  for (let i = 0; i < cloud.xyz.length; i += 3) {
+    const x = (cloud.xyz[i] as number) * scale;
+    const y = (cloud.xyz[i + 1] as number) * scale;
+    const z = (cloud.xyz[i + 2] as number) * scale;
+
+    switch (up) {
+      case 'z':
+        xyz[i] = x;
+        xyz[i + 1] = y;
+        xyz[i + 2] = z;
+        break;
+      case 'x':
+        // Rotation de -90° autour de Y : +X part sur +Z.
+        xyz[i] = -z;
+        xyz[i + 1] = y;
+        xyz[i + 2] = x;
+        break;
+      case 'y':
+        // Rotation de +90° autour de X : +Y part sur +Z.
+        xyz[i] = x;
+        xyz[i + 1] = -z;
+        xyz[i + 2] = y;
+        break;
+    }
+  }
+
+  return { count: cloud.count, xyz };
 }
 
 /** Étendue du nuage le long de l'axe vertical. La hauteur est gratuite : le lacet ne la change pas. */
@@ -168,20 +216,23 @@ export function orientedFootprint(
 ): OrientedFootprint {
   if (cloud.count === 0) throw new Error('Nuage de sommets vide : aucune emprise calculable.');
 
-  const [a, b] = planeAxes(up);
-  const projected: Array<[number, number]> = new Array(cloud.count);
-  for (let i = 0, j = 0; i < cloud.xyz.length; i += 3, j++) {
-    projected[j] = [cloud.xyz[i + a] as number, cloud.xyz[i + b] as number];
+  // Aligner d'abord, balayer ensuite : le lacet rendu est alors une rotation
+  // autour du Z du monde, directement utilisable pour placer la machine.
+  const aligned = alignedCloud(cloud, up, scale);
+
+  const projected: Array<[number, number]> = new Array(aligned.count);
+  for (let i = 0, j = 0; i < aligned.xyz.length; i += 3, j++) {
+    projected[j] = [aligned.xyz[i] as number, aligned.xyz[i + 1] as number];
   }
 
   const hull = convexHull2d(projected);
   const rect = minimalAreaRectangle(hull.length >= 3 ? hull : projected, stepDeg);
 
   return {
-    lengthMm: rect.lengthMm * scale,
-    widthMm: rect.widthMm * scale,
-    heightMm: verticalExtent(cloud, up) * scale,
+    lengthMm: rect.lengthMm,
+    widthMm: rect.widthMm,
+    heightMm: verticalExtent(aligned, 'z'),
     yawDeg: rect.yawDeg,
-    areaMm2: rect.areaMm2 * scale * scale,
+    areaMm2: rect.areaMm2,
   };
 }

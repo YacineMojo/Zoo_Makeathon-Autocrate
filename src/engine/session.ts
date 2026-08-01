@@ -193,6 +193,21 @@ export class EngineSession {
     this.ws.send(JSON.stringify(request));
   }
 
+  /**
+   * Réserve les `n` prochains identifiants, dans l'ordre où ils seront attribués.
+   *
+   * **Ajout du projet Caisse** — ce module est par ailleurs repris tel quel du
+   * configurateur BESS, voir le README.
+   *
+   * Nécessaire pour construire un lot dont les commandes se référencent entre
+   * elles : `extend_path` doit citer le `start_path` du même lot, donc son
+   * identifiant doit être connu avant l'envoi. Les identifiants étant attribués
+   * séquentiellement, les réserver revient à les connaître d'avance.
+   */
+  reserveIds(count: number): string[] {
+    return Array.from({ length: count }, () => this.nextId());
+  }
+
   /** Identifiants déterministes : un même modèle produit les mêmes ids, donc des logs comparables. */
   private nextId(): string {
     this.seq += 1;
@@ -236,7 +251,18 @@ export class EngineSession {
       });
     });
 
-    this.ws.send(modeling.modeling_commands_ws.toBSON(request));
+    // Si la sérialisation ou l'envoi échoue, l'attente enregistrée plus haut ne
+    // sera jamais résolue : elle rejetterait à la fermeture de session, bien
+    // après que l'appelant a traité son erreur, en rejet non capturé. On la
+    // retire donc tout de suite. Ajout du projet Caisse — le cas se produit dès
+    // qu'une charge dépasse la limite de document de BSON, voir FEEDBACK.md #6.
+    try {
+      this.ws.send(modeling.modeling_commands_ws.toBSON(request));
+    } catch (err) {
+      this.pending.delete(cmdId);
+      throw new Error(`${cmd.type} : envoi impossible — ${err instanceof Error ? err.message : err}`);
+    }
+
     const resp = await response;
 
     // ENGINE_DEBUG=1 pour tracer les réponses du moteur. Indispensable : les
@@ -258,10 +284,15 @@ export class EngineSession {
    *
    * Retourne les ids attribués, dans l'ordre des commandes soumises.
    */
-  async sendBatch(cmds: ModelingCmd[], timeoutMs = 180_000): Promise<string[]> {
+  async sendBatch(cmds: ModelingCmd[], timeoutMs = 180_000, reserved?: string[]): Promise<string[]> {
     if (cmds.length === 0) return [];
 
-    const ids = cmds.map(() => this.nextId());
+    // `reserved` : identifiants déjà obtenus par `reserveIds`, quand les
+    // commandes du lot se citent entre elles. Ajout du projet Caisse.
+    const ids = reserved ?? cmds.map(() => this.nextId());
+    if (ids.length !== cmds.length) {
+      throw new Error(`${ids.length} identifiants réservés pour ${cmds.length} commandes.`);
+    }
     const batchId = this.nextId();
 
     const request: WebSocketRequest = {

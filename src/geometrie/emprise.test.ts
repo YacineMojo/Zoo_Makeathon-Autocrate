@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { convexHull2d, minimalAreaRectangle, naiveFootprint, orientedFootprint } from './emprise.js';
 import { resolveUnit } from './unites.js';
 import { buildPoses } from './poses.js';
+import { placeForPose, rotate } from './placement.js';
 import type { VertexCloud } from '../mesh/obj.js';
 
 /** Construit un nuage à partir de triplets, pour lire les cas en clair. */
@@ -20,6 +21,31 @@ function rotatedBox(l: number, w: number, h: number, deg: number): VertexCloud {
     for (const y of [-w / 2, w / 2]) {
       for (const z of [0, h]) {
         pts.push([x * cos - y * sin, x * sin + y * cos, z]);
+      }
+    }
+  }
+  return cloud(pts);
+}
+
+/**
+ * Une boîte tournée autour de Z **puis** basculée autour de X.
+ *
+ * Indispensable pour tester les poses : une boîte seulement tournée autour de Z
+ * se projette en rectangle aligné dans les plans (X, Z) et (Y, Z). Le lacet
+ * optimal y vaut zéro, et un signe faux passe inaperçu. C'est exactement le bug
+ * qui a produit une machine de 2986 × 2832 mm là où l'emprise annonçait
+ * 3168 × 2201 mm.
+ */
+function tiltedBox(l: number, w: number, h: number, degZ: number, degX: number): VertexCloud {
+  const rz = (degZ * Math.PI) / 180;
+  const rx = (degX * Math.PI) / 180;
+  const pts: Array<[number, number, number]> = [];
+  for (const x of [-l / 2, l / 2]) {
+    for (const y of [-w / 2, w / 2]) {
+      for (const z of [0, h]) {
+        const x1 = x * Math.cos(rz) - y * Math.sin(rz);
+        const y1 = x * Math.sin(rz) + y * Math.cos(rz);
+        pts.push([x1, y1 * Math.cos(rx) - z * Math.sin(rx), y1 * Math.sin(rx) + z * Math.cos(rx)]);
       }
     }
   }
@@ -167,4 +193,80 @@ test('le gain d’emprise au sol est mesuré et positif sur une machine de trave
 test('une machine alignée ne prétend pas gagner quelque chose', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 0), 'z');
   assert.ok(Math.abs(result.areaGainPct) < 1);
+});
+
+/* ----------------------------------------------------------------- placement */
+
+test('le placement reproduit exactement l’emprise annoncée', () => {
+  // C'est la vérification qui compte : si le signe du lacet était faux, la
+  // machine tournerait dans le mauvais sens et déborderait de sa caisse sans
+  // qu'aucun calcul ne s'en plaigne. La boîte est basculée pour qu'aucune des
+  // trois projections ne soit dégénérée.
+  const box = tiltedBox(2000, 800, 1200, 37, 23);
+
+  for (const up of ['x', 'y', 'z'] as const) {
+    const footprint = orientedFootprint(box, up);
+    const placement = placeForPose(box, up, footprint.yawDeg, 1, 0);
+
+    assert.ok(
+      Math.abs(placement.size[2] - footprint.heightMm) < 1,
+      `hauteur ${up} : ${placement.size[2]} contre ${footprint.heightMm}`
+    );
+
+    // La longueur doit tomber sur X et la largeur sur Y, pas seulement « l'une
+    // des deux » : la caisse est construite avec sa longueur suivant X, et une
+    // machine posée en travers de sa caisse serait un quart de tour d'écart.
+    assert.ok(
+      Math.abs(placement.size[0] - footprint.lengthMm) < 1,
+      `longueur sur X pour ${up} : ${placement.size[0]} contre ${footprint.lengthMm}`
+    );
+    assert.ok(
+      Math.abs(placement.size[1] - footprint.widthMm) < 1,
+      `largeur sur Y pour ${up} : ${placement.size[1]} contre ${footprint.widthMm}`
+    );
+  }
+});
+
+test('la machine repose sur le plancher, centrée, jamais flottante', () => {
+  const box = rotatedBox(2000, 800, 1200, 20);
+  const footprint = orientedFootprint(box, 'z');
+  const floorTop = 122;
+  const placement = placeForPose(box, 'z', footprint.yawDeg, 1, floorTop);
+
+  // Après translation, la base doit être exactement à la cote du plancher.
+  // (la boîte de test est modélisée de z=0 à z=h, mais rien ne l'impose)
+  assert.ok(Math.abs(placement.translateMm[2] - floorTop) < 1e-6);
+});
+
+test('la rotation composée est équivalente aux deux rotations successives', () => {
+  // On envoie une seule rotation à Zoo plutôt que deux, pour ne pas dépendre
+  // de la sémantique d'empilement de `set_object_transform`. Encore faut-il
+  // que la composition soit juste.
+  const box = tiltedBox(2000, 800, 1200, 37, 23);
+
+  for (const up of ['x', 'y', 'z'] as const) {
+    const footprint = orientedFootprint(box, up);
+    const placement = placeForPose(box, up, footprint.yawDeg, 1, 0);
+
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < box.xyz.length; i += 3) {
+      const p = rotate(
+        [box.xyz[i]!, box.xyz[i + 1]!, box.xyz[i + 2]!],
+        placement.rotationAxis,
+        placement.rotationAngleDeg
+      );
+      for (let a = 0; a < 3; a++) {
+        min[a] = Math.min(min[a]!, p[a]!);
+        max[a] = Math.max(max[a]!, p[a]!);
+      }
+    }
+
+    for (let a = 0; a < 3; a++) {
+      assert.ok(
+        Math.abs(max[a]! - min[a]! - placement.size[a]!) < 1e-6,
+        `axe ${a} pour ${up} : ${max[a]! - min[a]!} contre ${placement.size[a]}`
+      );
+    }
+  }
 });

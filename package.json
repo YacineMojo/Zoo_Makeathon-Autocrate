@@ -5,13 +5,14 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "test": "node --import tsx --test src/mesh/obj.test.ts src/moteur/moteur.test.ts src/geometrie/emprise.test.ts",
+    "test": "node --import tsx --test src/mesh/obj.test.ts src/moteur/moteur.test.ts src/geometrie/emprise.test.ts src/engine/caisse.test.ts",
     "etude": "tsx src/etude-cli.ts",
     "emprise": "tsx src/emprise-cli.ts",
     "spike": "tsx src/spike.ts",
     "ladder": "tsx src/ladder.ts",
     "convert": "tsx src/async-conversion.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "scene": "tsx src/scene-cli.ts"
   },
   "dependencies": {
     "@kittycad/lib": "^4.3.15",

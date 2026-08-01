@@ -17,7 +17,11 @@ import { parseObjVertices, axisAlignedBounds } from './mesh/obj.js';
  * `create_file_conversion_options` (`POST /file/conversion`) démarre un job et
  * rend un id d'opération. C'est la même conversion, sans horloge de passerelle.
  *
- * Usage : tsx src/async-conversion.ts <chemin.stp>
+ * Usage : tsx src/async-conversion.ts <chemin> [--from=step] [--to=obj]
+ *
+ * `--to=glb` sert à compacter un maillage : l'OBJ est du texte, et un maillage
+ * de 174 000 sommets y pèse 23 Mo — au-delà de ce qu'une trame BSON peut
+ * transporter vers l'Engine API (FEEDBACK.md #6).
  */
 
 const ZOO_COORDS: System = {
@@ -26,7 +30,12 @@ const ZOO_COORDS: System = {
 };
 
 const client = createZooClient();
+const argOf = (name: string, fallback: string) =>
+  process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? fallback;
+
 const path = process.argv[2] ?? 'fixtures/kuka_kr600_r2830.stp';
+const srcFormat = argOf('from', 'step') as 'step' | 'obj';
+const outFormat = argOf('to', 'obj') as 'obj' | 'glb' | 'ply' | 'gltf';
 const bytes = await readFile(path);
 
 console.log(`${path} — ${(bytes.length / 1024 / 1024).toFixed(2)} Mo\n`);
@@ -36,8 +45,14 @@ const started = await file.create_file_conversion_options({
   client,
   files: [{ name: basename(path), data: new Blob([new Uint8Array(bytes)]) }],
   body: {
-    src_format: { type: 'step', split_closed_faces: false },
-    output_format: { type: 'obj', coords: ZOO_COORDS, units: 'mm' },
+    src_format:
+      srcFormat === 'step' ? { type: 'step', split_closed_faces: false } : { type: 'obj', coords: ZOO_COORDS, units: 'mm' },
+    output_format:
+      outFormat === 'obj'
+        ? { type: 'obj', coords: ZOO_COORDS, units: 'mm' }
+        : outFormat === 'ply'
+          ? { type: 'ply', coords: ZOO_COORDS, storage: 'binary_little_endian', units: 'mm', selection: { type: 'default_scene' } }
+          : { type: 'gltf', storage: outFormat === 'glb' ? 'binary' : 'embedded', presentation: 'compact' },
   },
 });
 
@@ -82,6 +97,11 @@ let vertices = 0;
 for (const [name, b64] of Object.entries(operation.outputs ?? {})) {
   const buf = Buffer.from(b64 as string, 'base64');
   await writeFile(`out/async-${name}`, buf);
+  if (outFormat !== 'obj') {
+    console.log(`✅ out/async-${name} — ${(buf.length / 1024 / 1024).toFixed(1)} Mo`);
+    vertices = 1; // pas de comptage hors OBJ : ce n'est pas l'objet de la conversion
+    continue;
+  }
   const cloud = parseObjVertices(buf.toString('utf8'));
   vertices += cloud.count;
   const size = axisAlignedBounds(cloud).size.map((v) => Math.round(v));

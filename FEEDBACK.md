@@ -219,6 +219,11 @@ progresse : pas d'événement d'avancement, pas d'estimation. Pour un outil qui
 promet un résultat en trente secondes, l'écart entre « c'est en train de
 travailler » et « c'est mort » n'est pas observable.
 
+**Reproductible.** Second essai le même jour avec `split_closed_faces: true` au
+lieu de `false` : même message, après 479 s. Ce n'est donc ni un aléa ni un
+réglage d'import — le moteur ne sait pas lire ce fichier, que la File Format API
+convertit pourtant sans erreur en 365 s.
+
 **Suggestions :** un code d'erreur distinguant refus / dépassement / erreur
 interne ; un événement d'avancement pendant l'import ; et, si l'import moteur
 doit rester lent, le dire dans la documentation — le choix d'architecture en
@@ -228,5 +233,195 @@ dépend entièrement.
 Format API, pas par le moteur. L'Engine API reste utilisée pour ce qu'elle fait
 bien et qu'elle seule fait : construire la caisse en b-rep et réexporter un STEP
 qui contient machine et caisse dans la même scène.
+
+---
+
+## #6 — 🟠 Au-delà de 16 Mio, `import_files` échoue côté client sur « offset is out of bounds »
+
+**Date :** 2026-08-01
+**Surface :** Engine API, WebSocket, sérialisation BSON du SDK
+
+Le maillage du KUKA, rendu en OBJ par la File Format API, pèse 23,4 Mo.
+`session.send({type:'import_files', …})` échoue **avant tout aller-retour
+réseau**, sur :
+
+```
+offset is out of bounds
+```
+
+Aucune mention de BSON, de taille, ni de limite. Le message vient du
+sérialiseur : un document BSON est plafonné à 16 Mio, et la charge le dépasse.
+Rien dans la documentation de `import_files` ne mentionne cette borne, alors
+qu'elle est atteinte par n'importe quel maillage de machine réelle.
+
+Contournement, qui suffit ici : retirer du fichier OBJ les normales et les noms
+d'objets. Le moteur recalcule les normales à l'import, et les deux tiers du
+fichier disparaissent — les faces passant de `f 1//1 2//1 3//1` à `f 1 2 3`.
+
+```
+23,4 Mo  →  11,1 Mo    174 043 sommets, 350 484 faces, géométrie identique
+```
+
+**Suggestions :** vérifier la taille avant sérialisation et lever une erreur qui
+nomme la limite ; documenter la borne dans `import_files` ; ou découper les
+charges volumineuses en plusieurs trames côté SDK.
+
+Effet de bord observé au passage : lorsque la sérialisation échoue ainsi,
+l'attente enregistrée pour la commande n'est jamais résolue, et le rejet
+survient plus tard, à la fermeture de session, en rejet non capturé. Un appelant
+naïf voit donc son processus mourir bien après avoir traité l'erreur.
+
+---
+
+## #7 — 🟡 `set: true` est documenté puis refusé : « Absolute transforms are currently not supported »
+
+**Date :** 2026-08-01
+**Surface :** Engine API, `set_object_transform`
+
+Le champ est documenté sans réserve dans le type généré :
+
+> If true, overwrite the previous value with this. If false, the previous value
+> will be modified.
+
+Envoyé avec `set: true`, le moteur répond :
+
+```
+[bad_request] Absolute transforms are currently not supported
+```
+
+Le comportement documenté n'existe donc pas. Ce n'est pas grave — un objet qui
+part de l'identité se place aussi bien en relatif — mais cela se découvre en
+production, et « currently » suggère que la documentation décrit une intention
+plutôt que l'implémentation.
+
+**Suggestion :** marquer le champ comme non supporté dans le schéma, ou faire
+répondre l'erreur au moment du parsing plutôt que de l'exécution.
+
+---
+
+## #8 — 🔴 Un maillage importé ne peut pas être réexporté, dans aucun format
+
+**Date :** 2026-08-01
+**Surface :** Engine API, `export` et `export3d`
+
+Scène contenant deux choses : une machine importée en OBJ, et une caisse
+construite par des commandes `extrude`. L'export de l'ensemble échoue :
+
+```
+[internal_engine] Exception in graphics engine: No such Brep object exists
+```
+
+Vérifié dans les quatre combinaisons : `export` et `export3d`, sortie STEP et
+sortie glTF. L'échec est **total** — pas de sortie partielle, pas d'entité
+ignorée : une seule entité non-b-rep fait échouer l'export de toutes les autres.
+
+C'est cohérent pour un STEP, qui ne sait porter que du b-rep. Ça l'est beaucoup
+moins pour un glTF, qui est un format de maillage et pour lequel la scène
+complète serait exactement ce qu'on attend.
+
+**Conséquence pour ce projet.** L'artefact le plus intéressant que nous
+voulions produire — un STEP unique contenant la machine du client et la caisse
+générée autour — n'est atteignable que si la machine entre en b-rep, donc si le
+moteur sait importer son STEP. Sur un STEP de robot du commerce, il ne le sait
+pas (voir #5). Nous exportons donc la caisse seule en STEP, et le maillage de la
+machine est servi séparément au viewer.
+
+**Suggestions :** au minimum, faire échouer l'export avec le nom de l'entité
+fautive ; mieux, ignorer les entités non exportables en le signalant ; idéalement,
+autoriser les maillages dans les exports de type maillage.
+
+---
+
+## #9 — 🔴 La cote Z d'une esquisse est ignorée en silence, et l'extrusion part toujours de zéro
+
+**Date :** 2026-08-01
+**Surface :** Engine API, `move_path_pen`, `extend_path`, `extrude`
+
+`move_path_pen` prend un `Point3d`. En lui donnant `z = 1505`, puis en étendant
+le chemin et en extrudant, on attend un volume entre 1505 et 1515 mm. On obtient
+un volume entre **0 et 10 mm**. Les coordonnées X et Y, elles, sont respectées.
+
+Aucune erreur, aucun avertissement : le `z` est simplement absorbé.
+
+C'est la pire forme de défaut pour cet usage. Une caisse est un empilement —
+patins, plancher, parois, chapeau. Empilée à plat, elle produit une image qui
+reste **plausible** : les parois dominent, le rendu ressemble à une caisse. Il a
+fallu mesurer la hauteur des solides dans le glTF exporté pour s'en apercevoir :
+
+```
+avant correction      après correction
+0 → 0,010  chapeau    1,505 → 1,515  chapeau
+0 → 0,022  plancher   0,100 → 0,122  plancher
+0 → 0,100  patins ×3  0     → 0,100  patins ×3
+0 → 1,383  ×28        0,122 → 1,505  ×28
+hauteur 1,383 m       hauteur 1,515 m  ← la cote confrontée au gabarit
+```
+
+115 mm d'écart sur une caisse dont le verdict de transport se joue à 19 mm près.
+
+Contournement : esquisser à `z = 0`, extruder, puis remonter le solide avec
+`set_object_transform`. Une commande de plus par volume, sans coût réel dans un
+lot.
+
+**Suggestions**, par ordre d'utilité : honorer le `z` de l'esquisse ; à défaut,
+refuser un `z` non nul avec une erreur explicite ; à défaut encore, documenter
+que le point est projeté sur le plan courant et qu'il faut passer par
+`enable_sketch_mode` ou par une translation.
+
+---
+
+## #10 — 🟡 `entity_set_opacity` ne s'applique pas aux solides b-rep
+
+**Date :** 2026-08-01
+**Surface :** Engine API, `entity_set_opacity`
+
+```
+[bad_request] This object cannot be made semi-transparent
+```
+
+Sur les solides issus d'`extrude`. Rien dans le nom ni dans la documentation de
+la commande ne restreint son domaine — elle parle d'« entité », et les solides
+en sont. Montrer une machine à l'intérieur de sa caisse est pourtant un besoin
+courant, et la translucidité en est la réponse naturelle.
+
+Contournement : masquer les parois avec `object_visible`, ce qui donne une vue
+écorchée — de toute façon la convention de représentation en caisserie.
+
+**Suggestion :** préciser dans la documentation à quelles entités la commande
+s'applique, et faire dire à l'erreur ce qui est attendu.
+
+---
+
+## #11 — 🟡 La File Format API ignore `storage` en sortie PLY, et dé-indexe les maillages
+
+**Date :** 2026-08-01
+**Surface :** File Format API, conversions de maillage à maillage
+
+Cherchant à compacter un OBJ de 23 Mo avant de l'envoyer au moteur (#6), nous
+avons demandé une conversion OBJ → PLY avec
+`storage: 'binary_little_endian'`. Le fichier rendu commence par :
+
+```
+format ascii 1.0
+comment Generated by zoo.dev
+element vertex 1051452
+```
+
+Deux choses :
+
+1. **`storage` est ignoré** — le PLY sort en ASCII alors que le binaire était
+   demandé, et c'était précisément l'objet de la conversion ;
+2. **le maillage est dé-indexé** — 174 043 sommets en entrée, 1 051 452 en
+   sortie, soit exactement trois par face. La topologie est perdue et le fichier
+   grossit d'un facteur six, alors que le PLY sait parfaitement porter un
+   maillage indexé.
+
+Même dé-indexation constatée en sortie glTF, où le fichier passe de 23 à 32 Mo.
+
+Ces deux conversions n'ont donc pas d'usage pratique pour alléger un maillage,
+qui est pourtant le cas d'emploi évident d'un convertisseur maillage → maillage.
+
+**Suggestion :** honorer `storage`, et préserver l'indexation quand le format de
+sortie la supporte.
 
 ---
