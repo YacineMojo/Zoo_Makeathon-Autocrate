@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { basename } from 'node:path';
-import type { System } from '@kittycad/lib';
+import type { InputFormat3d, System } from '@kittycad/lib';
 import { EngineSession } from './engine/session.js';
 import { createBoxesBatched } from './engine/scene.js';
 import { crateBoxes, boxesEnvelope } from './engine/caisse.js';
@@ -24,7 +24,13 @@ import { study } from './moteur/etude.js';
  *
  * Usage : tsx src/scene-cli.ts <fichier.obj> <masse_kg> [--pose=A|B|C]
  *                              [--up=z] [--unit=auto] [--mode=maritime|route]
- *                              [--sans-machine]
+ *                              [--sans-machine] [--brep=<fichier.stp>]
+ *
+ * `--brep` fait entrer la machine par son **STEP** plutôt que par son maillage.
+ * C'est la seule voie vers le STEP commun machine + caisse du §7.3, puisqu'un
+ * maillage importé n'est pas réexportable (FEEDBACK.md #8). Le moteur ne sait
+ * pas lire tous les STEP — pas celui du KUKA (#5) — d'où l'option plutôt que le
+ * comportement par défaut.
  */
 
 const OUT_DIR = 'out';
@@ -45,6 +51,7 @@ const arg = (name: string, fallback: string) =>
 
 const massKg = Number(massArg);
 const withMachine = !process.argv.includes('--sans-machine');
+const brepPath = process.argv.find((a) => a.startsWith('--brep='))?.split('=')[1];
 const s = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 /* ------------------------------------------------------- calcul, hors Zoo */
@@ -110,25 +117,38 @@ try {
   if (withMachine) {
     const t = performance.now();
     try {
-      // L'OBJ brut dépasse la limite de document BSON : on retire les normales,
-      // que le moteur recalcule de toute façon. Voir mesh/compacter.ts.
-      const compact = compactObj(objText);
-      console.log(
-        `  maillage compacté          ${(compact.beforeBytes / 1024 / 1024).toFixed(1)} → ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo  (${compact.vertices.toLocaleString('fr-FR')} sommets, ${compact.faces.toLocaleString('fr-FR')} faces)`
-      );
-      if (compact.afterBytes > BSON_MAX_BYTES) {
-        throw new Error(
-          `maillage encore trop lourd pour une trame BSON : ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo pour ${(BSON_MAX_BYTES / 1024 / 1024).toFixed(0)} Mo autorisés`
+      let payload: Buffer;
+      let importFormat: InputFormat3d;
+
+      if (brepPath) {
+        // Voie b-rep : le STEP du client entre tel quel. C'est la seule qui
+        // permet de le réexporter avec la caisse dans un même fichier.
+        payload = await readFile(brepPath);
+        importFormat = { type: 'step', split_closed_faces: false };
+        console.log(`  STEP b-rep                 ${(payload.length / 1024 / 1024).toFixed(1)} Mo`);
+      } else {
+        // Voie maillage : l'OBJ brut dépasse la limite de document BSON, on
+        // retire les normales que le moteur recalcule. Voir mesh/compacter.ts.
+        const compact = compactObj(objText);
+        console.log(
+          `  maillage compacté          ${(compact.beforeBytes / 1024 / 1024).toFixed(1)} → ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo  (${compact.vertices.toLocaleString('fr-FR')} sommets, ${compact.faces.toLocaleString('fr-FR')} faces)`
         );
+        if (compact.afterBytes > BSON_MAX_BYTES) {
+          throw new Error(
+            `maillage encore trop lourd pour une trame BSON : ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo pour ${(BSON_MAX_BYTES / 1024 / 1024).toFixed(0)} Mo autorisés`
+          );
+        }
+        payload = Buffer.from(compact.obj);
+        // L'OBJ produit par la File Format API a été demandé en mm : on le
+        // redit à l'import, un maillage ne portant pas son unité.
+        importFormat = { type: 'obj', coords: ZOO_COORDS, units: 'mm' };
       }
 
       const { resp } = await session.send(
         {
           type: 'import_files',
-          files: [{ path: basename(path), data: Buffer.from(compact.obj) as unknown as number[] }],
-          // L'OBJ produit par la File Format API a été demandé en mm : on le
-          // redit à l'import, un maillage ne portant pas son unité.
-          format: { type: 'obj', coords: ZOO_COORDS, units: 'mm' },
+          files: [{ path: basename(brepPath ?? path), data: payload as unknown as number[] }],
+          format: importFormat,
         },
         900_000
       );

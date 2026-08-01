@@ -1,0 +1,674 @@
+/*
+  Direction : la plaque signalétique d'un équipement électrique.
+
+  Ce que regarde un ingénieur d'avant-projet, ce sont des nombres alignés et un
+  verdict. D'où l'inversion assumée : la police à chasse fixe n'est pas réservée
+  au code, c'est ici la police de titre *et* de donnée — comme sur une plaque
+  gravée ou un repère de bornier. Le texte courant, minoritaire, passe en
+  grotesque système. Aucune police distante : la page doit fonctionner hors ligne.
+
+  Le cuivre est l'unique accent, et il est rare : c'est la couleur du jeu de
+  barres, pas une couleur de marque. L'identité tient à l'aluminium anodisé et au
+  gris ardoise gravé.
+*/
+
+:root {
+  --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono",
+    "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --ardoise-900: #171c22;
+  --ardoise-700: #2b333d;
+  --ardoise-500: #56616e;
+  --ardoise-300: #8a949f;
+  --alu-300: #c2ccd5;
+  --alu-200: #dbe1e7;
+  --alu-100: #edf0f3;
+  --blanc: #fbfcfd;
+
+  --cuivre: #a8632a;
+  --ambre: #9a6c0c;
+  --rouge: #a12a20;
+  --vert: #26604e;
+
+  --rayon: 2px;
+  --trait: 1px solid var(--alu-300);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--alu-100);
+  color: var(--ardoise-900);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── Plaque d'en-tête ───────────────────────────────────────────────────── */
+
+.plaque {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px clamp(16px, 4vw, 44px) 18px;
+  background: var(--ardoise-900);
+  color: var(--alu-100);
+}
+
+.plaque-titre {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+
+.plaque h1 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(19px, 2.6vw, 27px);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.plaque-sous {
+  margin: 6px 0 0;
+  max-width: 52ch;
+  color: var(--alu-300);
+  font-size: 13.5px;
+}
+
+.plaque-meta {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 14px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.plaque-meta dt {
+  color: var(--ardoise-300);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.plaque-meta dd {
+  margin: 0;
+  color: var(--alu-200);
+}
+
+/* Le jeu de barres : l'unique trait de cuivre de la page. */
+.barre-omnibus {
+  height: 3px;
+  background: linear-gradient(90deg, var(--cuivre) 0%, var(--cuivre) 62%, var(--ardoise-700) 62%);
+}
+
+/* ── Atelier ────────────────────────────────────────────────────────────── */
+
+.atelier {
+  display: grid;
+  grid-template-columns: minmax(300px, 372px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 18px clamp(16px, 4vw, 44px) 56px;
+  max-width: 1560px;
+  margin: 0 auto;
+}
+
+.colonne-resultats {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.panneau {
+  background: var(--blanc);
+  border: var(--trait);
+  border-radius: var(--rayon);
+  padding: 16px 18px;
+}
+
+.panneau-titre {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ardoise-500);
+}
+
+/* ── Champs : lignes de plaque gravée ───────────────────────────────────── */
+
+.panneau-saisie {
+  position: sticky;
+  top: 18px;
+}
+
+.champ {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--alu-200);
+}
+
+.champ label {
+  font-size: 13.5px;
+  color: var(--ardoise-700);
+}
+
+.champ-saisie {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.champ-large {
+  display: block;
+}
+
+.champ-large .champ-saisie {
+  margin-top: 7px;
+  display: block;
+}
+
+.champ input[type="number"],
+.champ select {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--ardoise-900);
+  background: var(--alu-100);
+  border: 1px solid var(--alu-300);
+  border-radius: var(--rayon);
+  padding: 5px 7px;
+  /* Le léger enfoncement évoque la gravure, sans ombre décorative. */
+  box-shadow: inset 0 1px 0 rgb(23 28 34 / 8%);
+}
+
+.champ input[type="number"] {
+  width: 8ch;
+  text-align: right;
+}
+
+.champ-large select {
+  width: 100%;
+}
+
+.champ input:focus-visible,
+.champ select:focus-visible,
+.bouton:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--cuivre);
+  outline-offset: 2px;
+}
+
+.unite {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ardoise-500);
+  min-width: 3ch;
+}
+
+.champ-bascule {
+  display: flex;
+  border-bottom: none;
+}
+
+.champ-bascule input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--cuivre);
+}
+
+/* ── Actions ────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bouton {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 11px 14px;
+  border: 1px solid var(--ardoise-700);
+  border-radius: var(--rayon);
+  background: var(--blanc);
+  color: var(--ardoise-900);
+  cursor: pointer;
+}
+
+.bouton:hover:not(:disabled) {
+  background: var(--alu-100);
+}
+
+.bouton-primaire {
+  background: var(--cuivre);
+  border-color: var(--cuivre);
+  color: var(--blanc);
+}
+
+.bouton-primaire:hover:not(:disabled) {
+  background: #92551f;
+}
+
+.bouton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actions-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ardoise-500);
+}
+
+/* ── Vue 3D ─────────────────────────────────────────────────────────────── */
+
+.vue-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.source {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border: 1px solid var(--alu-300);
+  border-radius: var(--rayon);
+  color: var(--ardoise-500);
+}
+
+.source[data-source="zoo"] {
+  border-color: var(--cuivre);
+  color: var(--cuivre);
+}
+
+.vue-scene {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  min-height: 280px;
+  background: linear-gradient(180deg, var(--alu-100), var(--alu-200));
+  border: var(--trait);
+  border-radius: var(--rayon);
+  overflow: hidden;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vue-etat {
+  position: absolute;
+  inset: auto 10px 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 8px 10px;
+  background: rgb(23 28 34 / 88%);
+  color: var(--alu-100);
+  border-radius: var(--rayon);
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ardoise-500);
+}
+
+.legende li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pastille {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgb(23 28 34 / 30%);
+  border-radius: 1px;
+}
+
+.pastille-rack {
+  background: #2a5c9e;
+}
+.pastille-cooling {
+  background: #d98c30;
+}
+.pastille-pcs {
+  background: #6b4d8c;
+}
+.pastille-aisle {
+  background: #f2da59;
+}
+.pastille-enclosure {
+  background: rgb(194 204 213 / 45%);
+}
+
+/* ── Verdict et jauge d'occupation (élément signature) ──────────────────── */
+
+.panneau-verdict {
+  border-left: 3px solid var(--ardoise-300);
+}
+
+.panneau-verdict[data-etat="realisable"] {
+  border-left-color: var(--vert);
+}
+
+.panneau-verdict[data-etat="bloque"] {
+  border-left-color: var(--rouge);
+}
+
+.verdict {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: clamp(16px, 2.1vw, 21px);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.panneau-verdict[data-etat="realisable"] .verdict {
+  color: var(--vert);
+}
+
+.panneau-verdict[data-etat="bloque"] .verdict {
+  color: var(--rouge);
+}
+
+/*
+  Un cran par rack : plein = rack en place, creux = emplacement libre,
+  au-delà du trait = rack qui ne rentre pas. C'est l'alerte « 15 racks requis,
+  12 tiennent » rendue lisible d'un coup d'œil.
+*/
+.jauge {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  min-height: 34px;
+}
+
+.cran {
+  width: 11px;
+  height: 26px;
+  border: 1px solid var(--ardoise-500);
+  border-radius: 1px;
+  background: transparent;
+  transition: background-color 160ms ease, height 160ms ease;
+}
+
+.cran[data-etat="place"] {
+  background: var(--cuivre);
+  border-color: var(--cuivre);
+}
+
+.cran[data-etat="excedent"] {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--rouge) 0 3px,
+    transparent 3px 6px
+  );
+  border-color: var(--rouge);
+  height: 34px;
+}
+
+.separateur-gabarit {
+  width: 2px;
+  height: 34px;
+  margin: 0 5px;
+  background: var(--rouge);
+}
+
+.jauge-legende {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ardoise-500);
+}
+
+/* ── Alertes ────────────────────────────────────────────────────────────── */
+
+.alertes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.alerte {
+  border-left: 3px solid var(--ardoise-300);
+  padding: 2px 0 2px 12px;
+}
+
+.alerte[data-severite="blocking"] {
+  border-left-color: var(--rouge);
+}
+.alerte[data-severite="warning"] {
+  border-left-color: var(--ambre);
+}
+.alerte[data-severite="info"] {
+  border-left-color: var(--ardoise-300);
+}
+
+.alerte-code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ardoise-500);
+}
+
+.alerte[data-severite="blocking"] .alerte-code {
+  color: var(--rouge);
+}
+.alerte[data-severite="warning"] .alerte-code {
+  color: var(--ambre);
+}
+
+.alerte-message {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.alerte-options {
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--ardoise-700);
+}
+
+.alerte-options li::before {
+  content: "→ ";
+  font-family: var(--mono);
+  color: var(--cuivre);
+}
+
+/* ── Fiche récapitulative ───────────────────────────────────────────────── */
+
+.fiche {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.donnees {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0;
+  margin: 0;
+  font-size: 13px;
+}
+
+.donnees dt,
+.donnees dd {
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--alu-200);
+}
+
+.donnees dt {
+  color: var(--ardoise-500);
+  padding-right: 10px;
+}
+
+.donnees dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.donnees dd[data-hors-limite="true"] {
+  color: var(--rouge);
+}
+
+/* ── Hypothèses ─────────────────────────────────────────────────────────── */
+
+.panneau-hypotheses summary {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ardoise-500);
+  cursor: pointer;
+}
+
+.hypotheses {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ardoise-700);
+}
+
+.avertissement {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: var(--alu-100);
+  border-left: 3px solid var(--ambre);
+  font-size: 13px;
+}
+
+/* ── Adaptatif ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 940px) {
+  .atelier {
+    grid-template-columns: 1fr;
+  }
+
+  .panneau-saisie {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Tableau des poses ──────────────────────────────────────────────────────
+   Le seul écran qui compte avec la vue 3D (PROJECT.md §13). Une ligne rouge qui
+   devient verte quand on couche la machine : compréhensible sans commentaire. */
+
+.tableau-poses {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tableau-poses th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7684;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #dbe1e7;
+}
+
+.tableau-poses td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #eef1f4;
+  cursor: pointer;
+}
+
+.tableau-poses .nombre {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableau-poses tbody tr:hover td {
+  background: #f4f7fa;
+}
+
+/* La couleur porte le verdict, mais jamais seule : le texte du gabarit le dit
+   aussi, pour rester lisible en niveaux de gris et en vidéoprojection. */
+.ligne-verte td:first-child {
+  box-shadow: inset 3px 0 0 #2f8f5b;
+}
+
+.ligne-rouge td:first-child {
+  box-shadow: inset 3px 0 0 #c0392b;
+}
+
+.ligne-ecartee td {
+  color: #96a0ac;
+  text-decoration: line-through;
+}
+
+.ligne-ecartee td:first-child {
+  box-shadow: inset 3px 0 0 #96a0ac;
+  text-decoration: none;
+}
+
+.ligne-retenue td {
+  background: #eef7f1;
+  font-weight: 600;
+}
+
+.tableau-poses .cran {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2f8f5b;
+  margin-left: 0.4rem;
+}

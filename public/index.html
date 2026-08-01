@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Caisse — avant-projet de caisse d'expédition</title>
+    <meta
+      name="description"
+      content="Dépose le STEP d'une machine, mesure son emprise, génère la caisse autour et dit dans quel gabarit de transport elle rentre — avant que la caisse soit commandée."
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three/build/three.module.js",
+          "three/addons/": "/vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="plaque">
+      <div class="plaque-titre">
+        <h1>Caisse</h1>
+        <p class="plaque-sous">
+          Avant-projet de caisse d'expédition, à partir du STEP de la machine
+        </p>
+      </div>
+      <dl class="plaque-meta">
+        <dt>Lecture du STEP</dt>
+        <dd>Zoo File Format API</dd>
+        <dt>Emprise et verdicts</dt>
+        <dd>local, déterministe</dd>
+        <dt>Caisse</dt>
+        <dd>Zoo Engine API</dd>
+      </dl>
+    </header>
+
+    <div class="barre-omnibus" aria-hidden="true"></div>
+
+    <main class="atelier">
+      <!-- ── Entrées ─────────────────────────────────────────────────────── -->
+      <form class="panneau panneau-saisie" id="formulaire" novalidate>
+        <h2 class="panneau-titre">La machine</h2>
+
+        <div class="champ champ-large">
+          <label for="mesh">Maillage</label>
+          <div class="champ-saisie">
+            <select id="mesh" name="mesh"></select>
+          </div>
+        </div>
+
+        <div class="champ champ-large">
+          <label for="fichier">…ou déposer un STEP</label>
+          <div class="champ-saisie">
+            <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP" />
+          </div>
+        </div>
+        <p class="actions-note" id="note-conversion">
+          La conversion du STEP est faite par Zoo. Sur une cellule robotisée
+          réelle, elle prend plusieurs minutes — c'est le poste le plus lent de
+          la chaîne, et il n'est pas chez nous.
+        </p>
+
+        <div class="champ">
+          <label for="massKg">Masse réelle</label>
+          <div class="champ-saisie">
+            <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
+            <span class="unite">kg</span>
+          </div>
+        </div>
+        <p class="actions-note">Un STEP ne porte pas de matériau : la masse se saisit.</p>
+
+        <div class="champ">
+          <label for="up">Axe vertical</label>
+          <div class="champ-saisie">
+            <select id="up" name="up">
+              <option value="z" selected>Z</option>
+              <option value="y">Y</option>
+              <option value="x">X</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="unit">Unité du fichier</label>
+          <div class="champ-saisie">
+            <select id="unit" name="unit">
+              <option value="auto" selected>auto</option>
+              <option value="mm">mm</option>
+              <option value="m">m</option>
+              <option value="in">pouce</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="mode">Acheminement</label>
+          <div class="champ-saisie">
+            <select id="mode" name="mode">
+              <option value="maritime" selected>maritime (conteneur)</option>
+              <option value="route">route (semi-remorque)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="champ champ-bascule">
+          <label for="forbidLying">Couchage interdit</label>
+          <input id="forbidLying" name="forbidLying" type="checkbox" />
+        </div>
+        <p class="actions-note">Bain d'huile, axes précontraints, consigne constructeur.</p>
+
+        <div class="actions">
+          <button class="bouton bouton-primaire" id="calculer" type="submit">Étudier</button>
+          <button class="bouton" id="generer" type="button" disabled>Générer la caisse (Zoo)</button>
+        </div>
+        <p class="actions-note" id="etat-calcul"></p>
+      </form>
+
+      <!-- ── Résultats ───────────────────────────────────────────────────── -->
+      <section class="colonne-resultats">
+        <section class="panneau panneau-verdict" id="panneau-verdict" hidden>
+          <h2 class="panneau-titre">Le tableau des poses</h2>
+          <div class="verdict" id="verdict"></div>
+          <div class="donnees" id="tableau"></div>
+          <div class="alertes" id="detail"></div>
+        </section>
+
+        <section class="panneau" id="panneau-vue" hidden>
+          <div class="vue-entete">
+            <h2 class="panneau-titre">La machine dans sa caisse</h2>
+            <p class="vue-etat" id="vue-etat"></p>
+          </div>
+          <div class="vue-scene">
+            <canvas id="scene"></canvas>
+          </div>
+          <p class="legende" id="legende"></p>
+        </section>
+
+        <section class="panneau panneau-hypotheses" id="panneau-hypotheses" hidden>
+          <h2 class="panneau-titre">Hypothèses</h2>
+          <div class="hypotheses" id="hypotheses"></div>
+          <div class="avertissement" id="mentions"></div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
