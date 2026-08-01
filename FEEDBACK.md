@@ -1,34 +1,50 @@
 # FEEDBACK.md
 
-Retour d'expérience sur les APIs Zoo, tenu au fil de l'eau pendant le Zoo API
-Makeathon (22 juillet → 5 août 2026), sur le projet **Caisse**.
+Notes on the Zoo APIs, written **at the moment each friction was hit**, not
+reconstructed afterwards. Zoo API Makeathon, 22 July → 5 August 2026, project
+**Caisse**.
 
-Chaque entrée est écrite **au moment où la friction est rencontrée**, pas
-reconstituée après coup. Sévérité :
+Severity:
 
-- 🔴 **bloquant** — empêche d'avancer sans contournement
-- 🟠 **friction** — coûte du temps, contournable
-- 🟡 **doc** — l'API se comporte bien, la documentation ou le nommage induit en erreur
+- 🔴 **blocking** — cannot proceed without a workaround
+- 🟠 **friction** — costs time, has a workaround
+- 🟡 **docs** — the API behaves correctly, the documentation or naming misleads
 
-Environnement de référence : `@kittycad/lib@4.3.15`, `@msgpack/msgpack@3.1.3`,
+Reference environment: `@kittycad/lib@4.3.15`, `@msgpack/msgpack@3.1.3`,
 `ws@8.21.1`, Node 20.19.6, Linux (WSL2).
 
-**Périmètre.** Ce projet réutilise le transport WebSocket écrit pour un premier
-projet du même makeathon (configurateur BESS). Les frictions rencontrées lors de
-l'écriture de ce transport — battement de cœur non documenté, encodage MsgPack
-des exports, variable d'environnement du SDK — sont documentées dans le
-`FEEDBACK.md` de ce premier projet et ne sont pas répétées ici. Ce fichier ne
-couvre que ce qui est **nouveau pour Caisse** : l'import de STEP client, la
-mesure de géométrie importée, et la File Format API.
+**Scope.** This project reuses the WebSocket transport written for an earlier
+project of the same Makeathon (a BESS configurator). Frictions found while
+writing *that* transport — the undocumented heartbeat, MsgPack-encoded exports,
+the SDK's environment variable — are documented in that project's `FEEDBACK.md`
+and are not repeated here. This file covers only what is **new for Caisse**:
+importing customer STEP, measuring imported geometry, the File Format API, and
+Text-to-CAD.
+
+| # | Severity | Surface | One line |
+|---|---|---|---|
+| [1](#1) | 🟡 | Engine API, `import_files` | `ImportFile.data` typed `number[]` is untenable at real-STEP scale |
+| [2](#2) | 🟡 | Engine API, WebSocket | responses are wrapped, except `export`, and nothing says so |
+| [3](#3) | 🟠 | Engine API, session open | "connection interrupted" can land at handshake, before any command |
+| [4](#4) | 🔴 | File Format API | async switch keyed on file size, gateway times out on conversion time |
+| [5](#5) | 🟠 | Engine API, `import_files` | 20× slower than the File Format API, and fails without diagnosis on a real STEP |
+| [6](#6) | 🟠 | Engine API, BSON | past 16 MiB, "offset is out of bounds" client-side |
+| [7](#7) | 🟡 | `set_object_transform` | `set: true` is documented, then refused |
+| [8](#8) | 🔴 | Engine API, `export` | an imported mesh cannot be re-exported in any format |
+| [9](#9) | 🔴 | Engine API, sketching | a sketch's Z is silently ignored; extrusion always starts at zero |
+| [10](#10) | 🟡 | `entity_set_opacity` | does not apply to b-rep solids |
+| [11](#11) | 🟡 | File Format API | `storage` ignored for PLY output, and meshes get de-indexed |
+| [12](#12) | 🟡 | ML API, Text-to-CAD | dimensions honoured to the millimetre, but the wait is unobservable |
 
 ---
 
-## #1 — 🟡 `ImportFile.data` est typé `number[]`, ce qui est intenable à l'échelle d'un vrai STEP
+<a id="1"></a>
+## #1 — 🟡 `ImportFile.data` is typed `number[]`, which is untenable at real-STEP scale
 
-**Date :** 2026-08-01
-**Surface :** Engine API, commande `import_files` ; SDK TypeScript
+**Date:** 2026-08-01
+**Surface:** Engine API, `import_files` command; TypeScript SDK
 
-Le type généré déclare :
+The generated type declares:
 
 ```ts
 export interface ImportFile {
@@ -37,369 +53,368 @@ export interface ImportFile {
 }
 ```
 
-Un STEP de machine industrielle pèse couramment 10 à 30 Mo. Suivre le type à la
-lettre — `Array.from(buffer)` — construit un tableau JavaScript de treize
-millions d'entiers boxés, avant de le sérialiser élément par élément. Sur notre
-fichier de test de 12,6 Mo, c'est plusieurs centaines de mégaoctets d'allocation
-pour transmettre 12,6 Mo de données.
+An industrial machine's STEP file routinely weighs 10 to 30 MB. Following the
+type literally — `Array.from(buffer)` — builds a JavaScript array of thirteen
+million boxed integers before serialising it element by element. On our 12.6 MB
+test file that is several hundred megabytes of allocation to transmit 12.6 MB of
+data.
 
-Passer directement un `Buffer` fonctionne et laisse le sérialiseur encoder la
-charge en binaire :
+Passing a `Buffer` directly works, and lets the serialiser encode the payload as
+binary:
 
 ```ts
 files: [{ path: basename(path), data: bytes as unknown as number[] }]
 ```
 
-Le cast est obligatoire pour satisfaire le compilateur, alors que c'est le seul
-usage viable. Le type devrait accepter `Uint8Array`, comme le fait déjà
-`RawFile.contents` en sortie — où le même écart existe, en miroir : le type dit
-`string`, la trame contient des octets.
+The cast is mandatory to satisfy the compiler, even though it is the only viable
+usage. The type should accept `Uint8Array` — as `RawFile.contents` effectively
+does on the way out, where the same mismatch exists in mirror image: the type
+says `string`, the frame carries bytes.
 
 ---
 
-## #2 — 🟡 Les réponses de commande sont enveloppées, sauf `export`, et rien ne le signale
+<a id="2"></a>
+## #2 — 🟡 Command responses are wrapped, except `export`, and nothing signals it
 
-**Date :** 2026-08-01
-**Surface :** Engine API, WebSocket ; SDK TypeScript
+**Date:** 2026-08-01
+**Surface:** Engine API, WebSocket; TypeScript SDK
 
-`import_files` et `bounding_box` répondent dans une enveloppe :
+`import_files` and `bounding_box` answer inside an envelope:
 
 ```
 resp.type === 'modeling'  →  resp.data.modeling_response.type === 'import_files'
 ```
 
-`export`, lui, arrive à plat :
+`export` arrives flat:
 
 ```
 resp.type === 'export'  →  resp.data.files
 ```
 
-Les deux formes existent dans le même type union `OkWebSocketResponseData`, sans
-qu'aucune règle ne permette de savoir *a priori* dans laquelle une commande
-donnée va tomber. On l'apprend en écrivant un test de type qui échoue :
+Both shapes live in the same `OkWebSocketResponseData` union, with no rule
+letting you know *a priori* which one a given command will land in. You find out
+by writing a type test that fails:
 
 ```
 TS2367: This comparison appears to be unintentional because the types
 '"debug" | "export" | … | "modeling"' and '"import_files"' have no overlap.
 ```
 
-Le compilateur finit par le dire, ce qui limite les dégâts, mais la
-documentation des commandes gagnerait à indiquer la forme de réponse attendue.
-La règle réelle semble être : tout passe par `modeling`, sauf les réponses
-volumineuses transportées en MsgPack. Elle n'est écrite nulle part.
+The compiler does eventually say it, which limits the damage, but the
+per-command documentation would benefit from stating the expected response
+shape. The real rule appears to be: everything goes through `modeling`, except
+large responses carried over MsgPack. That is written nowhere.
 
 ---
 
-## #3 — 🟠 « modeling connection interrupted » peut tomber au handshake, avant toute commande
+<a id="3"></a>
+## #3 — 🟠 "modeling connection interrupted" can land at the handshake, before any command
 
-**Date :** 2026-08-01
-**Surface :** Engine API, ouverture de session WebSocket
+**Date:** 2026-08-01
+**Surface:** Engine API, WebSocket session open
 
-Deuxième session de la journée, ouverte quelques minutes après une session
-close proprement. Le WebSocket s'ouvre, puis le moteur émet immédiatement :
+Second session of the day, opened a few minutes after one that closed cleanly.
+The WebSocket opens, then the engine immediately emits:
 
 ```
 [internal_api] modeling connection interrupted; please reconnect and retry
 ```
 
-Deux choses rendent ce message coûteux à interpréter :
+Two things make this expensive to interpret:
 
-1. **Il arrive sans `request_id`.** Il ne peut donc être rattaché à aucune
-   commande en attente. Notre première commande — `set_scene_units`, envoyée
-   pour attendre que la scène soit prête — est restée en attente jusqu'à son
-   timeout de 60 s. Sans une trace explicite des erreurs non corrélées, le
-   symptôme observé est « le moteur ne répond pas », et non « le moteur a
-   refusé la connexion ».
-2. **Le mot « interrupted » suggère une coupure en cours de travail**, alors
-   qu'ici rien n'a encore été envoyé. Nous avons d'abord attribué l'échec à
-   l'import d'un STEP de 12 Mo lancé dans la même passe — mauvaise conclusion,
-   et une heure de piste fausse si le message avait été cru sur parole.
+1. **It arrives with no `request_id`.** It cannot be attached to any pending
+   command. Our first command — `set_scene_units`, sent to wait for the scene to
+   be ready — stayed pending until its 60 s timeout. Without an explicit trace
+   of uncorrelated errors, the observed symptom is "the engine is not
+   answering", not "the engine refused the connection".
+2. **"interrupted" suggests a mid-work cut**, whereas here nothing had been sent
+   yet. We first blamed a 12 MB STEP import launched in the same run — the wrong
+   conclusion, and an hour down a false trail if the message had been believed.
 
-Le message dit lui-même quoi faire, et il a raison : une reconnexion trois
-secondes plus tard réussit sans rien changer d'autre. La conduite à tenir est
-donc de **toujours réessayer l'ouverture**, ce que ne fait aucun exemple de la
-documentation.
+The message tells you what to do and it is right: reconnecting three seconds
+later succeeds with nothing else changed. The correct behaviour is therefore to
+**always retry the open**, which no example in the documentation does.
 
-Suggestion : corréler ce message à la requête d'ouverture, ou le distinguer de
-la vraie coupure en cours de session — par exemple `connection rejected, please
-retry`.
+Suggestion: correlate this message to the open request, or distinguish it from a
+genuine mid-session cut — for instance `connection rejected, please retry`.
 
 ---
 
-## #4 — 🔴 La bascule en asynchrone est indexée sur la taille du fichier, la passerelle sur le temps de conversion
+<a id="4"></a>
+## #4 — 🔴 The async switch is keyed on file size, the gateway times out on conversion time
 
-**Date :** 2026-08-01
-**Surface :** File Format API, `PUT /file/conversion/{src}/{output}`
+**Date:** 2026-08-01
+**Surface:** File Format API, `PUT /file/conversion/{src}/{output}`
 (`create_file_conversion`)
 
-La documentation de l'endpoint dit :
+The endpoint documentation says:
 
 > If the file being converted is larger than 25MB, it will be performed
 > asynchronously.
 
-Le seuil porte sur la **taille**. Or ce qui fait échouer l'appel, c'est le
-**temps de conversion**, et les deux ne sont pas corrélés. Mesures sur cinq
-fichiers STEP réels, même endpoint, même sortie OBJ :
+The threshold is on **size**. What actually fails the call is **conversion
+time**, and the two are uncorrelated. Measurements on five real STEP files, same
+endpoint, same OBJ output:
 
-| Fichier | Taille | Résultat |
+| File | Size | Result |
 |---|---|---|
-| `as1_pe_203.stp` | 0,13 Mo | ✅ 3,2 s — 1 580 sommets |
-| `as1-oc-214.stp` | 0,42 Mo | ✅ 7,8 s — 4 388 sommets |
-| `11752.stp` | **1,51 Mo** | ❌ **HTTP 504 à 61,4 s** |
-| `Ventilator.stp` | **2,15 Mo** | ✅ 50,5 s — 13 054 sommets |
-| `KR600_R2830-4.stp` | 12,59 Mo | ❌ HTTP 504 à 61,9 s |
+| `as1_pe_203.stp` | 0.13 MB | ✅ 3.2 s — 1 580 vertices |
+| `as1-oc-214.stp` | 0.42 MB | ✅ 7.8 s — 4 388 vertices |
+| `11752.stp` | **1.51 MB** | ❌ **HTTP 504 at 61.4 s** |
+| `Ventilator.stp` | **2.15 MB** | ✅ 50.5 s — 13 054 vertices |
+| `KR600_R2830-4.stp` | 12.59 MB | ❌ HTTP 504 at 61.9 s |
 
-**Le fichier de 1,51 Mo échoue et celui de 2,15 Mo passe.** Le facteur n'est pas
-le poids, c'est la complexité géométrique : la passerelle coupe à ~60 s, et le
-seuil des 25 Mo ne protège de rien puisqu'un fichier de 1,5 Mo peut demander
-davantage. Tout le domaine « sous 25 Mo mais au-delà d'une minute de
-tessellation » tombe en 504, sans qu'aucun message n'oriente vers l'asynchrone.
+**The 1.51 MB file fails and the 2.15 MB file succeeds.** The factor is not
+weight, it is geometric complexity: the gateway cuts at ~60 s, and the 25 MB
+threshold protects nothing, since a 1.5 MB file can need more. Everything in the
+band "under 25 MB but over a minute of tessellation" falls into a 504, with no
+message pointing at the async route.
 
-**Le 504 est nu :** pas de corps JSON, pas de code d'erreur Zoo, pas d'id
-d'opération. Rien ne dit si la conversion continue côté serveur ni comment aller
-chercher son résultat. Et `GET /user/api-calls` n'a listé, plusieurs minutes
-après, aucune de nos conversions — seulement les ouvertures de WebSocket : il
-n'y a donc pas non plus de voie détournée pour retrouver le job.
+**The 504 is bare:** no JSON body, no Zoo error code, no operation id. Nothing
+says whether the conversion continues server-side nor how to collect its result.
+And `GET /user/api-calls` listed none of our conversions several minutes later —
+only the WebSocket opens — so there is no back door to recover the job either.
 
-**Contournement, qui marche.** `POST /file/conversion`
-(`create_file_conversion_options`) démarre un job et rend un id, sans horloge de
-passerelle. Le même fichier de 1,51 Mo qui tombait en 504 :
+**Workaround, which works.** `POST /file/conversion`
+(`create_file_conversion_options`) starts a job and returns an id, with no
+gateway clock. The same 1.51 MB file that 504'd:
 
 ```
-job démarré en 1,5 s — uploaded, id 099a6a0b-…
-statut final : completed après 107,4 s
-19 702 sommets, emprise 1280 × 144 × 133 mm
+job started in 1.5 s — uploaded, id 099a6a0b-…
+final status: completed after 107.4 s
+19 702 vertices, footprint 1280 × 144 × 133 mm
 ```
 
-107 s de conversion réelle contre 61 s de budget de passerelle : l'appel
-synchrone ne pouvait pas aboutir.
+107 s of real conversion against a 61 s gateway budget: the synchronous call
+could never have succeeded.
 
-**Suggestions**, par ordre d'utilité décroissante :
+**Suggestions**, most useful first:
 
-1. basculer en asynchrone sur un **temps écoulé** plutôt que sur une taille —
-   au-delà de ~45 s, rendre l'id d'opération au lieu d'attendre le 504 ;
-2. à défaut, renvoyer un 202 avec l'id d'opération quand la conversion dépasse
-   le budget, plutôt qu'un 504 sans corps ;
-3. à défaut encore, mentionner dans la doc de l'endpoint synchrone que la
-   variante `POST /file/conversion` existe et n'a pas cette limite. Aujourd'hui
-   la relation entre les deux endpoints ne se découvre qu'en lisant les types
-   générés.
+1. switch to async on **elapsed time** rather than size — past ~45 s, return the
+   operation id instead of waiting for the 504;
+2. failing that, return a 202 with the operation id when a conversion exceeds
+   the budget, rather than a bodyless 504;
+3. failing that, mention in the synchronous endpoint's docs that
+   `POST /file/conversion` exists and has no such limit. Today the relationship
+   between the two endpoints is only discoverable by reading generated types.
 
 ---
 
-## #5 — 🟠 `import_files` est vingt fois plus lent que la File Format API sur le même fichier, et échoue sans diagnostic sur un STEP réel
+<a id="5"></a>
+## #5 — 🟠 `import_files` is twenty times slower than the File Format API on the same file, and fails without diagnosis on a real STEP
 
-**Date :** 2026-08-01
-**Surface :** Engine API, commande `import_files` en session
+**Date:** 2026-08-01
+**Surface:** Engine API, `import_files` in session
 
-Même fichier, même sortie, deux chemins :
+Same file, same output, two paths:
 
-| | `as1_pe_203.stp` (0,13 Mo) | `KR600_R2830-4.stp` (12,59 Mo) |
+| | `as1_pe_203.stp` (0.13 MB) | `KR600_R2830-4.stp` (12.59 MB) |
 |---|---|---|
-| Engine `import_files` | 56,2 s | ❌ `[internal_engine] import failed` après 457 s |
-| Engine `export` OBJ ensuite | 33,0 s | — |
-| **Total session facturée** | **91,4 s** | **457,8 s, pour rien** |
-| File Format API (asynchrone) | 3,2 s | *voir mesure ci-dessous* |
+| Engine `import_files` | 56.2 s | ❌ `[internal_engine] import failed` after 457 s |
+| Engine `export` to OBJ after | 33.0 s | — |
+| **Billed session total** | **91.4 s** | **457.8 s, for nothing** |
+| File Format API (async) | 3.2 s | 365 s |
 
-Deux points distincts, le second étant le plus coûteux :
+Two separate points, the second being the costly one:
 
-**Le temps.** 56 s pour importer 137 Ko dans le moteur quand la conversion du
-même fichier en prend 3. Comme la facturation Zoo se compte au temps de session,
-l'écart n'est pas seulement de la latence, il est facturé.
+**Time.** 56 s to import 137 KB into the engine, when converting the same file
+takes 3. Since Zoo bills session time, the gap is not merely latency — it is
+billed.
 
-**L'échec.** Sur un STEP de robot industriel du commerce, `import_files` répond
-`[internal_engine] import failed`. Rien d'autre : pas d'entité fautive, pas
-d'étape, pas de distinction entre « fichier refusé », « tessellation trop
-lourde » et « délai dépassé côté moteur ». Le même fichier est accepté par la
-File Format API, donc il n'est pas malformé. Sept minutes de session facturées
-pour un message de six mots.
+**Failure.** On an off-the-shelf industrial robot STEP, `import_files` answers
+`[internal_engine] import failed`. Nothing else: no offending entity, no stage,
+no distinction between "file rejected", "tessellation too heavy" and
+"engine-side timeout". The same file is accepted by the File Format API, so it
+is not malformed. Seven minutes of billed session for a six-word message.
 
-Une session interactive n'a par ailleurs aucun moyen de savoir que l'import
-progresse : pas d'événement d'avancement, pas d'estimation. Pour un outil qui
-promet un résultat en trente secondes, l'écart entre « c'est en train de
-travailler » et « c'est mort » n'est pas observable.
+**Reproducible.** Second attempt the same day with `split_closed_faces: true`
+instead of `false`: same message, after 479 s. So it is neither a fluke nor an
+import setting — the engine cannot read this file, which the File Format API
+converts without error in 365 s.
 
-**Reproductible.** Second essai le même jour avec `split_closed_faces: true` au
-lieu de `false` : même message, après 479 s. Ce n'est donc ni un aléa ni un
-réglage d'import — le moteur ne sait pas lire ce fichier, que la File Format API
-convertit pourtant sans erreur en 365 s.
+An interactive session also has no way to know the import is progressing: no
+progress event, no estimate. For a tool that promises a result in thirty
+seconds, the difference between "it is working" and "it is dead" is not
+observable.
 
-**Suggestions :** un code d'erreur distinguant refus / dépassement / erreur
-interne ; un événement d'avancement pendant l'import ; et, si l'import moteur
-doit rester lent, le dire dans la documentation — le choix d'architecture en
-dépend entièrement.
+**Suggestions:** an error code distinguishing rejection / timeout / internal
+error; a progress event during import; and, if engine-side import must stay
+slow, say so in the documentation — the architecture choice depends entirely on
+it.
 
-**Conséquence pour ce projet.** L'emprise de la machine est mesurée par la File
-Format API, pas par le moteur. L'Engine API reste utilisée pour ce qu'elle fait
-bien et qu'elle seule fait : construire la caisse en b-rep et réexporter un STEP
-qui contient machine et caisse dans la même scène.
+**Consequence for this project.** The machine's footprint is measured by the
+File Format API, not by the engine. The Engine API is kept for what it alone
+does: building the crate as b-rep and re-exporting a STEP that carries machine
+and crate in the same scene.
 
 ---
 
-## #6 — 🟠 Au-delà de 16 Mio, `import_files` échoue côté client sur « offset is out of bounds »
+<a id="6"></a>
+## #6 — 🟠 Past 16 MiB, `import_files` fails client-side with "offset is out of bounds"
 
-**Date :** 2026-08-01
-**Surface :** Engine API, WebSocket, sérialisation BSON du SDK
+**Date:** 2026-08-01
+**Surface:** Engine API, WebSocket, SDK's BSON serialisation
 
-Le maillage du KUKA, rendu en OBJ par la File Format API, pèse 23,4 Mo.
-`session.send({type:'import_files', …})` échoue **avant tout aller-retour
-réseau**, sur :
+The KUKA mesh, rendered to OBJ by the File Format API, weighs 23.4 MB.
+`session.send({type:'import_files', …})` fails **before any network round
+trip**, with:
 
 ```
 offset is out of bounds
 ```
 
-Aucune mention de BSON, de taille, ni de limite. Le message vient du
-sérialiseur : un document BSON est plafonné à 16 Mio, et la charge le dépasse.
-Rien dans la documentation de `import_files` ne mentionne cette borne, alors
-qu'elle est atteinte par n'importe quel maillage de machine réelle.
+No mention of BSON, of size, or of a limit. The message comes from the
+serialiser: a BSON document is capped at 16 MiB and the payload exceeds it.
+Nothing in the `import_files` documentation mentions this bound, even though any
+real machine mesh reaches it.
 
-Contournement, qui suffit ici : retirer du fichier OBJ les normales et les noms
-d'objets. Le moteur recalcule les normales à l'import, et les deux tiers du
-fichier disparaissent — les faces passant de `f 1//1 2//1 3//1` à `f 1 2 3`.
+Workaround, sufficient here: strip normals and object names from the OBJ. The
+engine recomputes normals on import, and two thirds of the file disappear — face
+lines going from `f 1//1 2//1 3//1` to `f 1 2 3`.
 
 ```
-23,4 Mo  →  11,1 Mo    174 043 sommets, 350 484 faces, géométrie identique
+23.4 MB  →  11.1 MB    174 043 vertices, 350 484 faces, identical geometry
 ```
 
-**Suggestions :** vérifier la taille avant sérialisation et lever une erreur qui
-nomme la limite ; documenter la borne dans `import_files` ; ou découper les
-charges volumineuses en plusieurs trames côté SDK.
+**Suggestions:** check size before serialising and raise an error that names the
+limit; document the bound on `import_files`; or chunk large payloads in the SDK.
 
-Effet de bord observé au passage : lorsque la sérialisation échoue ainsi,
-l'attente enregistrée pour la commande n'est jamais résolue, et le rejet
-survient plus tard, à la fermeture de session, en rejet non capturé. Un appelant
-naïf voit donc son processus mourir bien après avoir traité l'erreur.
+Side effect observed along the way: when serialisation fails like this, the
+pending entry registered for the command is never resolved, and the rejection
+surfaces later, at session close, as an unhandled rejection. A naive caller sees
+its process die well after it has handled the error.
 
 ---
 
-## #7 — 🟡 `set: true` est documenté puis refusé : « Absolute transforms are currently not supported »
+<a id="7"></a>
+## #7 — 🟡 `set: true` is documented, then refused: "Absolute transforms are currently not supported"
 
-**Date :** 2026-08-01
-**Surface :** Engine API, `set_object_transform`
+**Date:** 2026-08-01
+**Surface:** Engine API, `set_object_transform`
 
-Le champ est documenté sans réserve dans le type généré :
+The field is documented without reservation in the generated type:
 
 > If true, overwrite the previous value with this. If false, the previous value
 > will be modified.
 
-Envoyé avec `set: true`, le moteur répond :
+Sent with `set: true`, the engine answers:
 
 ```
 [bad_request] Absolute transforms are currently not supported
 ```
 
-Le comportement documenté n'existe donc pas. Ce n'est pas grave — un objet qui
-part de l'identité se place aussi bien en relatif — mais cela se découvre en
-production, et « currently » suggère que la documentation décrit une intention
-plutôt que l'implémentation.
+The documented behaviour does not exist. It is not serious — an object starting
+from identity is placed just as well in relative mode — but you find out in
+production, and "currently" suggests the documentation describes an intention
+rather than the implementation.
 
-**Suggestion :** marquer le champ comme non supporté dans le schéma, ou faire
-répondre l'erreur au moment du parsing plutôt que de l'exécution.
+**Suggestion:** mark the field as unsupported in the schema, or reject it at
+parse time rather than at execution time.
 
 ---
 
-## #8 — 🔴 Un maillage importé ne peut pas être réexporté, dans aucun format
+<a id="8"></a>
+## #8 — 🔴 An imported mesh cannot be re-exported, in any format
 
-**Date :** 2026-08-01
-**Surface :** Engine API, `export` et `export3d`
+**Date:** 2026-08-01
+**Surface:** Engine API, `export` and `export3d`
 
-Scène contenant deux choses : une machine importée en OBJ, et une caisse
-construite par des commandes `extrude`. L'export de l'ensemble échoue :
+Scene containing two things: a machine imported as OBJ, and a crate built with
+`extrude` commands. Exporting the whole thing fails:
 
 ```
 [internal_engine] Exception in graphics engine: No such Brep object exists
 ```
 
-Vérifié dans les quatre combinaisons : `export` et `export3d`, sortie STEP et
-sortie glTF. L'échec est **total** — pas de sortie partielle, pas d'entité
-ignorée : une seule entité non-b-rep fait échouer l'export de toutes les autres.
+Verified in all four combinations: `export` and `export3d`, STEP output and glTF
+output. The failure is **total** — no partial output, no skipped entity: a
+single non-b-rep entity fails the export of every other one.
 
-C'est cohérent pour un STEP, qui ne sait porter que du b-rep. Ça l'est beaucoup
-moins pour un glTF, qui est un format de maillage et pour lequel la scène
-complète serait exactement ce qu'on attend.
+That is coherent for STEP, which can only carry b-rep. It is much less so for
+glTF, which is a mesh format and for which the whole scene is exactly what one
+would expect.
 
-**Conséquence pour ce projet.** L'artefact le plus intéressant que nous
-voulions produire — un STEP unique contenant la machine du client et la caisse
-générée autour — n'est atteignable que si la machine entre en b-rep, donc si le
-moteur sait importer son STEP. Sur un STEP de robot du commerce, il ne le sait
-pas (voir #5). Nous exportons donc la caisse seule en STEP, et le maillage de la
-machine est servi séparément au viewer.
+**Consequence for this project.** The most interesting artefact we wanted to
+produce — a single STEP holding the customer's machine and the crate generated
+around it — is only reachable if the machine enters as b-rep, hence if the
+engine can import its STEP. On an off-the-shelf robot STEP it cannot (see #5).
+We therefore switched the demo to a machine whose STEP the engine does read, and
+the common STEP exists; for the KUKA, the crate is exported alone and we say so.
 
-**Suggestions :** au minimum, faire échouer l'export avec le nom de l'entité
-fautive ; mieux, ignorer les entités non exportables en le signalant ; idéalement,
-autoriser les maillages dans les exports de type maillage.
-
----
-
-## #9 — 🔴 La cote Z d'une esquisse est ignorée en silence, et l'extrusion part toujours de zéro
-
-**Date :** 2026-08-01
-**Surface :** Engine API, `move_path_pen`, `extend_path`, `extrude`
-
-`move_path_pen` prend un `Point3d`. En lui donnant `z = 1505`, puis en étendant
-le chemin et en extrudant, on attend un volume entre 1505 et 1515 mm. On obtient
-un volume entre **0 et 10 mm**. Les coordonnées X et Y, elles, sont respectées.
-
-Aucune erreur, aucun avertissement : le `z` est simplement absorbé.
-
-C'est la pire forme de défaut pour cet usage. Une caisse est un empilement —
-patins, plancher, parois, chapeau. Empilée à plat, elle produit une image qui
-reste **plausible** : les parois dominent, le rendu ressemble à une caisse. Il a
-fallu mesurer la hauteur des solides dans le glTF exporté pour s'en apercevoir :
-
-```
-avant correction      après correction
-0 → 0,010  chapeau    1,505 → 1,515  chapeau
-0 → 0,022  plancher   0,100 → 0,122  plancher
-0 → 0,100  patins ×3  0     → 0,100  patins ×3
-0 → 1,383  ×28        0,122 → 1,505  ×28
-hauteur 1,383 m       hauteur 1,515 m  ← la cote confrontée au gabarit
-```
-
-115 mm d'écart sur une caisse dont le verdict de transport se joue à 19 mm près.
-
-Contournement : esquisser à `z = 0`, extruder, puis remonter le solide avec
-`set_object_transform`. Une commande de plus par volume, sans coût réel dans un
-lot.
-
-**Suggestions**, par ordre d'utilité : honorer le `z` de l'esquisse ; à défaut,
-refuser un `z` non nul avec une erreur explicite ; à défaut encore, documenter
-que le point est projeté sur le plan courant et qu'il faut passer par
-`enable_sketch_mode` ou par une translation.
+**Suggestions:** at minimum, fail the export naming the offending entity;
+better, skip non-exportable entities and report it; ideally, allow meshes in
+mesh-format exports.
 
 ---
 
-## #10 — 🟡 `entity_set_opacity` ne s'applique pas aux solides b-rep
+<a id="9"></a>
+## #9 — 🔴 A sketch's Z coordinate is silently ignored, and extrusion always starts at zero
 
-**Date :** 2026-08-01
-**Surface :** Engine API, `entity_set_opacity`
+**Date:** 2026-08-01
+**Surface:** Engine API, `move_path_pen`, `extend_path`, `extrude`
+
+`move_path_pen` takes a `Point3d`. Give it `z = 1505`, extend the path, extrude,
+and you expect a solid between 1505 and 1515 mm. You get one between **0 and
+10 mm**. X and Y are honoured. No error, no warning: the `z` is simply absorbed.
+
+This is the worst failure mode for this use case. A crate is a stack — skids,
+floor, walls, roof. Stacked flat, it still produces a **plausible** image: the
+walls dominate, the render looks like a crate. We only caught it by measuring
+the height of the solids in the exported glTF:
+
+```
+before                    after
+0 → 0.010  roof panel     1.505 → 1.515  roof panel
+0 → 0.022  floor          0.100 → 0.122  floor
+0 → 0.100  skids ×3       0     → 0.100  skids ×3
+0 → 1.383  ×28            0.122 → 1.505  ×28
+height 1.383 m            height 1.515 m  ← the dimension checked against the gauge
+```
+
+115 mm of error on a crate whose shipping verdict turns on 110 mm.
+
+Workaround: sketch at `z = 0`, extrude, then lift the solid with
+`set_object_transform`. One extra command per volume, free inside a batch.
+
+**Suggestions**, most useful first: honour the sketch's `z`; failing that,
+reject a non-zero `z` with an explicit error; failing that, document that the
+point is projected onto the current plane and that you must go through
+`enable_sketch_mode` or a translation.
+
+---
+
+<a id="10"></a>
+## #10 — 🟡 `entity_set_opacity` does not apply to b-rep solids
+
+**Date:** 2026-08-01
+**Surface:** Engine API, `entity_set_opacity`
 
 ```
 [bad_request] This object cannot be made semi-transparent
 ```
 
-Sur les solides issus d'`extrude`. Rien dans le nom ni dans la documentation de
-la commande ne restreint son domaine — elle parle d'« entité », et les solides
-en sont. Montrer une machine à l'intérieur de sa caisse est pourtant un besoin
-courant, et la translucidité en est la réponse naturelle.
+On solids produced by `extrude`. Nothing in the command's name or documentation
+restricts its domain — it speaks of an "entity", and solids are entities.
+Showing a machine inside its crate is a common need, and translucency is its
+natural answer.
 
-Contournement : masquer les parois avec `object_visible`, ce qui donne une vue
-écorchée — de toute façon la convention de représentation en caisserie.
+Workaround: hide the walls with `object_visible`, which gives a cutaway view —
+the usual representation convention in crate making anyway.
 
-**Suggestion :** préciser dans la documentation à quelles entités la commande
-s'applique, et faire dire à l'erreur ce qui est attendu.
+**Suggestion:** state in the docs which entities the command applies to, and
+make the error say what is expected.
 
 ---
 
-## #11 — 🟡 La File Format API ignore `storage` en sortie PLY, et dé-indexe les maillages
+<a id="11"></a>
+## #11 — 🟡 The File Format API ignores `storage` for PLY output, and de-indexes meshes
 
-**Date :** 2026-08-01
-**Surface :** File Format API, conversions de maillage à maillage
+**Date:** 2026-08-01
+**Surface:** File Format API, mesh-to-mesh conversions
 
-Cherchant à compacter un OBJ de 23 Mo avant de l'envoyer au moteur (#6), nous
-avons demandé une conversion OBJ → PLY avec
-`storage: 'binary_little_endian'`. Le fichier rendu commence par :
+Trying to compact a 23 MB OBJ before sending it to the engine (#6), we requested
+an OBJ → PLY conversion with `storage: 'binary_little_endian'`. The returned
+file starts with:
 
 ```
 format ascii 1.0
@@ -407,54 +422,51 @@ comment Generated by zoo.dev
 element vertex 1051452
 ```
 
-Deux choses :
+Two things:
 
-1. **`storage` est ignoré** — le PLY sort en ASCII alors que le binaire était
-   demandé, et c'était précisément l'objet de la conversion ;
-2. **le maillage est dé-indexé** — 174 043 sommets en entrée, 1 051 452 en
-   sortie, soit exactement trois par face. La topologie est perdue et le fichier
-   grossit d'un facteur six, alors que le PLY sait parfaitement porter un
-   maillage indexé.
+1. **`storage` is ignored** — the PLY comes out ASCII although binary was
+   requested, and binary was the entire point of the conversion;
+2. **the mesh is de-indexed** — 174 043 vertices in, 1 051 452 out, exactly
+   three per face. Topology is lost and the file grows sixfold, even though PLY
+   perfectly supports indexed meshes.
 
-Même dé-indexation constatée en sortie glTF, où le fichier passe de 23 à 32 Mo.
+The same de-indexing shows in glTF output, where the file goes from 23 to 32 MB.
 
-Ces deux conversions n'ont donc pas d'usage pratique pour alléger un maillage,
-qui est pourtant le cas d'emploi évident d'un convertisseur maillage → maillage.
+Neither conversion is therefore usable for lightening a mesh, which is the
+obvious use case for a mesh-to-mesh converter.
 
-**Suggestion :** honorer `storage`, et préserver l'indexation quand le format de
-sortie la supporte.
-
----
-
-## #12 — 🟡 Text-to-CAD tient les cotes au millimètre, mais l'attente n'est pas observable
-
-**Date :** 2026-08-01
-**Surface :** ML API, `POST /ai/text-to-cad/{output_format}`
-
-Utilisé pour produire la machine de démonstration, faute de modèle constructeur
-librement licencié assez grand pour franchir un seuil de gabarit.
-
-**Ce qui marche remarquablement bien.** Les cotes demandées en langage naturel
-sont respectées **exactement** : « 2.0 m wide, 1.9 m deep and 3.1 m tall » rend
-un solide de 2000 × 1900 × 3100 mm mesuré sur le maillage converti. Le KCL est
-rendu avec le modèle, ce qui documente le résultat bien mieux qu'une capture.
-
-Deux frictions, mineures mais réelles :
-
-1. **Aucun avancement.** 278 s en `in_progress`, sans progression, sans
-   estimation, sans étape. Sur une opération de plusieurs minutes, la seule
-   information disponible est « ce n'est pas fini ». Le même reproche que pour
-   l'import moteur (#5) : l'écart entre « ça travaille » et « c'est mort » n'est
-   pas observable.
-2. **Le temps varie du simple au double sans que rien ne le laisse prévoir** —
-   176 s pour un premier prompt, 278 s pour un second à peine plus détaillé.
-
-**Une observation de rendu, pour finir.** Une machine importée en b-rep est
-rendue du même gris que les solides que l'on vient de créer par `extrude` : dans
-une scène qui montre une machine à l'intérieur d'une caisse, plus rien ne se
-distingue. Un maillage importé, lui, reçoit une couleur différente. L'écart
-n'est documenté nulle part et se découvre en regardant l'image.
-`object_set_material_params_pbr` le corrige en une commande, mais encore
-faut-il savoir qu'il faut la passer.
+**Suggestion:** honour `storage`, and preserve indexing when the output format
+supports it.
 
 ---
+
+<a id="12"></a>
+## #12 — 🟡 Text-to-CAD honours dimensions to the millimetre, but the wait is unobservable
+
+**Date:** 2026-08-01
+**Surface:** ML API, `POST /ai/text-to-cad/{output_format}`
+
+Used to produce the demo machine, for want of a freely licensed manufacturer
+model large enough to cross a gauge threshold.
+
+**What works remarkably well.** Dimensions asked for in natural language are
+honoured **exactly**: "2.0 m wide, 1.9 m deep and 3.1 m tall" returns a solid
+measuring 2000 × 1900 × 3100 mm on the converted mesh. The KCL is returned with
+the model, which documents the result far better than a screenshot.
+
+Two frictions, minor but real:
+
+1. **No progress.** 278 s in `in_progress`, with no progress, no estimate, no
+   stage. On a multi-minute operation the only available information is "not
+   finished yet". Same complaint as for engine import (#5): the gap between "it
+   is working" and "it is dead" is not observable.
+2. **Time varies twofold with nothing to predict it** — 176 s for a first
+   prompt, 278 s for a second one barely more detailed.
+
+**One rendering observation to close.** A machine imported as b-rep renders in
+the same grey as the solids you have just created with `extrude`: in a scene
+meant to show a machine inside a crate, nothing is distinguishable any more. An
+imported *mesh*, on the other hand, is given a different colour by the engine.
+The difference is documented nowhere and is discovered by looking at the image.
+`object_set_material_params_pbr` fixes it in one command — but you have to know
+to send it.
