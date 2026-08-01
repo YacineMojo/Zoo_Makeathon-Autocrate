@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "scene": "tsx src/scene-cli.ts",
     "dev": "tsx src/serveur.ts",
-    "verifier-ui": "node tools/verifier-ui.mjs"
+    "verifier-ui": "node tools/verifier-ui.mjs",
+    "machine-demo": "tsx src/machine-demo.ts",
+    "bout-en-bout": "tsx src/bout-en-bout.ts"
   },
   "dependencies": {
     "@kittycad/lib": "^4.3.15",

@@ -34,7 +34,10 @@ page.on('pageerror', (e) => erreurs.push(`pageerror: ${e.message}`));
 const propre = (s) => s.replace(/\s+/g, ' ').trim();
 
 await page.goto(URL_BASE, { waitUntil: 'networkidle' });
-await page.selectOption('#mode', 'route');
+// Mode maritime, celui du §16 : c'est là que le franchissement de seuil coûte
+// le plus cher, et c'est la phrase de la démonstration — debout hors gabarit,
+// couchée dans un 40 pieds standard.
+await page.selectOption('#mode', 'maritime');
 await page.click('#calculer');
 await page.waitForSelector('.tableau-poses tr[data-pose]', { timeout: 120_000 });
 
