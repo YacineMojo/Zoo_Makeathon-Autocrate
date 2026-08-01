@@ -1,0 +1,10 @@
+node_modules/
+.env
+dist/
+*.log
+out/
+
+# Modèles STEP de test : lourds, et licence à vérifier avant redistribution.
+# Voir fixtures/README.md pour les récupérer.
+fixtures/*.stp
+fixtures/*.step
