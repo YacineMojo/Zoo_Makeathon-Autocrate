@@ -1,6 +1,6 @@
 # Caisse
 
-**Drop in the STEP file of a machine. Thirty seconds later, know whether its
+**Drop in the STEP file of a machine. Four seconds later, know whether its
 shipping crate fits in a container — and what it costs if it doesn't.**
 
 Built for the [Zoo API Makeathon](https://zoo.dev) (22 July → 5 August 2026).
@@ -27,8 +27,8 @@ until it is too late.
 
 ## What this does
 
-You drop in the machine's STEP file and enter its mass. Thirty seconds later
-you get a **crate pre-design**: the real footprint, the generated crate
+You drop in the machine's STEP file and enter its mass. Four seconds later you
+get a **crate pre-design**: the real footprint, the generated crate
 structure, and a table of orientations with a gauge verdict, a cost and a lead
 time for each.
 
