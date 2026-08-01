@@ -107,7 +107,7 @@ git clone <this repo> && cd ZOO_Hackaton_Caisse
 ./script.sh          # installs, converts the demo machine, opens the workshop
 ```
 
-Then open <http://localhost:5173>.
+Then open <http://localhost:5174>.
 
 You need Node 20+ and a Zoo API token in `.env` (`ZOO_API_TOKEN=…`, from
 <https://zoo.dev/account/api-tokens>). `script.sh` creates the file and tells you

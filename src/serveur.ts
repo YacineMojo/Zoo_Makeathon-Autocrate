@@ -31,7 +31,9 @@ import type { ShippingMode } from './domain/types.js';
  * et ce qui ne l'est pas.
  */
 
-const PORT = Number(process.env.PORT ?? 5173);
+// 5174 et non 5173 : le premier projet du makeathon, le configurateur BESS,
+// occupe déjà 5173. Les deux doivent pouvoir tourner en même temps.
+const PORT = Number(process.env.PORT ?? 5174);
 const ROOT = resolve(process.cwd());
 
 const MIME: Record<string, string> = {

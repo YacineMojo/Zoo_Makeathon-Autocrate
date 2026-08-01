@@ -14,7 +14,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PORT="${PORT:-5173}"
+# 5174 : le configurateur BESS, premier projet du makeathon, occupe 5173.
+PORT="${PORT:-5174}"
 ACTION="${1:-atelier}"
 
 bleu()  { printf '\033[1;34m%s\033[0m\n' "$*"; }
