@@ -15,12 +15,14 @@ import { parseObjVertices, axisAlignedBounds } from './mesh/obj.js';
  * candidate pour la mesure d'emprise.
  */
 
-const FILES = [
-  'fixtures/as1_assembly.stp',
-  'fixtures/as1-oc-214.stp',
-  'fixtures/11752.stp',
-  'fixtures/Ventilator.stp',
-];
+const FILES = process.argv.slice(2).length
+  ? process.argv.slice(2)
+  : [
+      'fixtures/as1_assembly.stp',
+      'fixtures/as1-oc-214.stp',
+      'fixtures/11752.stp',
+      'fixtures/Ventilator.stp',
+    ];
 
 const client = createZooClient();
 

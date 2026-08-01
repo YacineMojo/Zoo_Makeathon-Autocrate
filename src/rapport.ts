@@ -1,4 +1,4 @@
-import { study, savings, type PoseInput } from './moteur/etude.js';
+import { savings } from './moteur/etude.js';
 import { explain } from './moteur/verdict.js';
 import type { Study } from './domain/types.js';
 
@@ -9,15 +9,15 @@ import type { Study } from './domain/types.js';
  * maintenant coûte dix minutes et dérisque l'étape 5 : la mise en forme HTML
  * n'aura plus qu'à habiller une sortie dont on sait déjà qu'elle est juste.
  *
- * Les emprises utilisées ici sont celles mesurées sur le vrai STEP pendant le
- * spike, **avant** orientation. C'est délibéré : le tableau doit montrer d'abord
- * le mauvais chiffre, celui d'aujourd'hui.
+ * La première ligne du tableau est toujours la référence naïve. Le tableau doit
+ * montrer d'abord le mauvais chiffre, celui d'aujourd'hui — c'est le delta qui
+ * est le produit, pas la valeur absolue (§6.2).
  */
 
 const eur = (v: number) => `${v.toLocaleString('fr-FR')} €`;
 const mm = (v: number) => `${(v / 1000).toFixed(2)} m`;
 
-function render(title: string, result: Study): void {
+export function render(title: string, result: Study): void {
   console.log(`\n${title}`);
   console.log('─'.repeat(title.length));
   console.log(`Masse machine : ${result.massKg.toLocaleString('fr-FR')} kg\n`);
@@ -79,34 +79,3 @@ function render(title: string, result: Study): void {
   for (const n of result.notices) console.log(`  ⚠ ${n}`);
 }
 
-// Emprise naïve du KUKA KR 600 R2830, mesurée sur le STEP pendant le spike.
-const kuka = { l: 2517, w: 1303, h: 2941 };
-
-const poses: PoseInput[] = [
-  {
-    pose: 'reference',
-    label: 'Repère CAO (naïf)',
-    footprint: { lengthMm: kuka.l, widthMm: kuka.w, heightMm: kuka.h },
-    lying: false,
-  },
-  {
-    pose: 'A',
-    label: 'Pose A — debout',
-    footprint: { lengthMm: kuka.l, widthMm: kuka.w, heightMm: kuka.h },
-    lying: false,
-  },
-  {
-    pose: 'B',
-    label: 'Pose B — couchée',
-    footprint: { lengthMm: kuka.h, widthMm: kuka.l, heightMm: kuka.w },
-    lying: true,
-  },
-  {
-    pose: 'C',
-    label: 'Pose C — sur le flanc',
-    footprint: { lengthMm: kuka.h, widthMm: kuka.w, heightMm: kuka.l },
-    lying: true,
-  },
-];
-
-render('KUKA KR 600 R2830 — emprise naïve, avant orientation', study({ poses, massKg: 2_350 }));
