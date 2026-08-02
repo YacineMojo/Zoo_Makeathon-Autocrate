@@ -5,22 +5,25 @@ import { costForGabarit } from './chiffrage.js';
 import { SPLIT_ENGINEERING_EUR, SPLIT_EXTRA_DAYS } from '../domain/tariffs.js';
 
 /**
- * Quels corps portent le dépassement (PROJECT.md §6.5).
+ * Découper l'expédition en plusieurs caisses (PROJECT.md §6.5).
  *
- * **L'outil ne découpe toujours pas.** C'est la ligne du §6.5 et elle tient :
- * il ne lit pas l'arbre d'assemblage, il ne décide pas du découpage, il ne dit
- * pas qu'une pièce est démontable. Ce qu'il fait est plus modeste et plus utile
- * — il **révèle** : sur seize corps, trois portent la hauteur ; sans eux la
- * caisse principale rentre en conteneur ; voilà ce que coûtent les deux
- * expéditions. L'ingénierie tranche ensuite.
+ * **Ce que l'outil affirme, et ce qu'il n'affirme pas.** Il ne dit pas que ces
+ * pièces se démontent : un corps distinct dans un maillage peut être une
+ * soudure, un ensemble monobloc, ou un résidu de conversion. Il dit lesquels
+ * portent le dépassement, ce que leur séparation coûterait, et à quoi ça
+ * ressemble. L'ingénierie tranche.
  *
- * C'est le « retourner le non en proposition » du §15, appliqué un cran plus
- * loin : au lieu de dire « ça ne passe pas, voici le prix du hors gabarit », on
- * dit « voilà ce qui coince, et voilà ce que ça vaut de le retirer ».
+ * **On coupe par des plans, on ne cueille pas des pièces.** Une première
+ * version retirait le corps qui réduisait le plus l'encombrement, un à la fois.
+ * Elle ne trouvait jamais rien : une colonne et la poutre qu'elle porte montent
+ * à la même cote, et en retirer une seule ne baisse la caisse d'aucun
+ * millimètre. Les plans décrivent aussi mieux ce qu'un bureau d'études regarde —
+ * non pas quelle pièce enlever, mais jusqu'où descendre.
  *
  * Deux hypothèses, explicites parce qu'elles sont discutables :
  *
- *   - un corps distinct dans le maillage n'est pas une pièce démontable ;
+ *   - un corps qui chevauche un plan part **avec le groupe du dessus**, entier :
+ *     on ne coupe jamais une pièce en deux ;
  *   - la masse est répartie au prorata du volume des boîtes, faute de matière.
  */
 
@@ -32,29 +35,11 @@ export interface PlacedBody {
   volumeMm3: number;
 }
 
-export interface Decoupe {
-  /** Corps qui dépassent le plan de coupe, et partent donc à part. */
-  retires: string[];
-  /**
-   * Leurs boîtes, en coordonnées caisse.
-   *
-   * Le viewer en a besoin : annoncer une coupe en montrant une caisse entière
-   * est la même contradiction que celle du tableau. On désigne à l'écran ce
-   * qu'on désigne dans le texte.
-   */
-  retiresBoites: Array<{ name: string; min: [number, number, number]; max: [number, number, number] }>;
-  corpsTotal: number;
-  /** Cote du plan de coupe, en coordonnées caisse. */
-  planDeCoupeMm: number;
-  /** Axe du repère caisse sur lequel la coupe est faite : 0 X, 1 Y, 2 Z. */
-  axe: 0 | 1 | 2;
-  principale: Colis;
-  seconde: Colis;
-  totalEur: number;
-  leadTimeDays: number;
-}
-
-export interface Colis {
+export interface Caisse {
+  /** Rang dans l'expédition, de la plus basse à la plus haute. */
+  rang: number;
+  corps: string[];
+  boites: Array<{ name: string; min: [number, number, number]; max: [number, number, number] }>;
   footprint: Triplet;
   crate: Crate;
   checks: GabaritCheck[];
@@ -63,8 +48,19 @@ export interface Colis {
   massKg: number;
 }
 
+export interface Decoupe {
+  caisses: Caisse[];
+  corpsTotal: number;
+  /** Axe du repère caisse sur lequel la coupe est faite : 0 X, 1 Y, 2 Z. */
+  axe: 0 | 1 | 2;
+  /** Cotes des plans de coupe, en coordonnées caisse. */
+  plansMm: number[];
+  totalEur: number;
+  leadTimeDays: number;
+}
+
 /** Au-delà, ce n'est plus un démontage, c'est une refonte du produit. */
-const RETRAITS_MAX = 6;
+export const CAISSES_MAX = 4;
 
 /** Étendues brutes d'un ensemble de corps, suivant X, Y et Z de la caisse. */
 function etendues(bodies: PlacedBody[]): [number, number, number] {
@@ -82,13 +78,12 @@ function etendues(bodies: PlacedBody[]): [number, number, number] {
 /**
  * Encombrement d'un ensemble de corps.
  *
- * `libre` change tout. Pour la caisse principale, la pose est déjà choisie et on
- * ne la rejoue pas : la hauteur reste la hauteur. Pour la **seconde** caisse,
- * en revanche, les pièces déposées sont libres — une colonne de trois mètres se
- * couche, et c'est même la première chose qu'un caissier fait. L'évaluer debout
- * la déclarait hors gabarit et faisait échouer toute proposition de découpage.
+ * `libre` change tout. La caisse qui garde la pose étudiée garde sa hauteur.
+ * Les autres se recouchent — une colonne de trois mètres se couche, et c'est la
+ * première chose qu'un caissier fait. L'évaluer debout la déclarait hors
+ * gabarit et faisait échouer toute proposition.
  */
-function envelope(bodies: PlacedBody[], libre = false): Triplet {
+function envelope(bodies: PlacedBody[], libre: boolean): Triplet {
   const [dx, dy, dz] = etendues(bodies);
   if (!libre) return { lengthMm: Math.max(dx, dy), widthMm: Math.min(dx, dy), heightMm: dz };
 
@@ -96,40 +91,95 @@ function envelope(bodies: PlacedBody[], libre = false): Triplet {
   return { lengthMm: L!, widthMm: l!, heightMm: h! };
 }
 
-function colis(bodies: PlacedBody[], massKg: number, mode: ShippingMode, libre = false): Colis {
+function caisse(
+  bodies: PlacedBody[],
+  massKg: number,
+  mode: ShippingMode,
+  libre: boolean,
+  rang: number
+): Caisse {
   const footprint = envelope(bodies, libre);
   const crate = buildCrate(footprint, Math.max(1, Math.round(massKg)));
   const checks = checkAll(crate);
   const retained = cheapestFit(crate, checks, mode);
+
   return {
+    rang,
+    corps: bodies.map((b) => b.name),
+    boites: bodies.map((b) => ({ name: b.name, min: b.min, max: b.max })),
     footprint,
     crate,
     checks,
     retained,
-    costing: retained ? costForGabarit(crate, retained) : { crateEur: 0, thresholdEur: 0, volumeEur: 0, totalEur: 0, leadTimeDays: 0 },
+    costing: retained
+      ? costForGabarit(crate, retained)
+      : { crateEur: 0, thresholdEur: 0, volumeEur: 0, totalEur: 0, leadTimeDays: 0 },
     massKg: Math.max(1, Math.round(massKg)),
   };
 }
 
 /**
- * Cherche le plus petit ensemble de corps dont le retrait fait passer le reste.
+ * Répartit les corps en `nb` groupes par des plans.
  *
- * **On coupe par un plan, on ne cueille pas des pièces.** Une première version
- * retirait, à chaque tour, le corps qui réduisait le plus l'encombrement. Elle
- * ne trouvait jamais rien, pour une raison qui saute aux yeux après coup :
- * plusieurs corps atteignent la même cote extrême — une colonne et la poutre
- * qu'elle porte montent à 3 100 mm toutes les deux — et en retirer un seul ne
- * baisse la caisse d'aucun millimètre.
+ * Les plans sont posés à intervalles réguliers sur l'étendue occupée, et chaque
+ * corps rejoint le groupe où tombe **son sommet** : un corps qui chevauche un
+ * plan part donc avec le groupe du dessus, entier.
+ */
+function grouper(
+  bodies: PlacedBody[],
+  axe: 0 | 1 | 2,
+  nb: number
+): { groupes: PlacedBody[][]; plans: number[] } {
+  const bas = Math.min(...bodies.map((b) => b.min[axe]));
+  const haut = Math.max(...bodies.map((b) => b.max[axe]));
+  const pas = (haut - bas) / nb;
+
+  const plans = Array.from({ length: nb - 1 }, (_, k) => bas + pas * (k + 1));
+  const groupes: PlacedBody[][] = Array.from({ length: nb }, () => []);
+
+  for (const b of bodies) {
+    let g = plans.findIndex((niveau) => b.max[axe] <= niveau + 1);
+    if (g === -1) g = nb - 1;
+    groupes[g]!.push(b);
+  }
+
+  return { groupes: groupes.filter((g) => g.length > 0), plans };
+}
+
+/**
+ * L'axe **du repère caisse** sur lequel se joue le refus.
  *
- * On essaie donc des **plans de coupe** successifs, du plus haut au plus bas :
- * à chaque niveau, tout ce qui dépasse part dans la seconde caisse. C'est aussi
- * ce qu'un bureau d'études regarde en premier — non pas « quelle pièce enlever »
- * mais « jusqu'où faut-il descendre ».
+ * Le verdict dit sur quoi il refuse — hauteur, largeur, porte. Reste à traduire
+ * en axe : la hauteur est toujours Z, la largeur est celui de X ou Y qui est le
+ * plus court. Confondre l'ordre du triplet (longueur, largeur, hauteur) avec
+ * l'ordre du repère (X, Y, Z) fait couper au mauvais endroit sans qu'aucun
+ * chiffre ne s'en plaigne.
+ */
+function axeBloquant(checks: GabaritCheck[], bodies: PlacedBody[]): 0 | 1 | 2 {
+  const [dx, dy, dz] = etendues(bodies);
+  const axeLarge: 0 | 1 = dx >= dy ? 0 : 1;
+  const axeEtroit: 0 | 1 = dx >= dy ? 1 : 0;
+
+  const raisons = new Set(checks.flatMap((v) => v.reasons));
+  if (raisons.has('hauteur') || raisons.has('porte-hauteur')) return 2;
+  if (raisons.has('largeur') || raisons.has('porte-largeur')) return axeEtroit;
+  if (raisons.has('longueur')) return axeLarge;
+
+  return dz >= Math.max(dx, dy) ? 2 : axeLarge;
+}
+
+/**
+ * Propose un découpage.
+ *
+ * `cible` force un nombre de caisses ; sans lui, on cherche le plus petit qui
+ * marche. Forcer sert à comparer : chaque caisse de plus est un forfait de
+ * plus, et voir l'écart vaut mieux que le supposer.
  */
 export function proposeDecoupe(
   bodies: PlacedBody[],
   massTotaleKg: number,
-  mode: ShippingMode
+  mode: ShippingMode,
+  cible?: number
 ): Decoupe | undefined {
   if (bodies.length < 2) return undefined;
 
@@ -139,67 +189,34 @@ export function proposeDecoupe(
   const masse = (sous: PlacedBody[]) =>
     (sous.reduce((a, b) => a + b.volumeMm3, 0) / volumeTotal) * massTotaleKg;
 
-  const entier = colis(bodies, massTotaleKg, mode);
-  if (entier.retained) return undefined; // rien à découper : ça passe déjà
+  const entier = caisse(bodies, massTotaleKg, mode, false, 0);
+  const axe = axeBloquant(entier.checks, bodies);
 
-  const axe = axeBloquant(entier, bodies);
+  // Sans cible, on cherche le plus petit nombre de caisses qui passe. Avec, on
+  // ne tente que celui-là : l'utilisateur demande une comparaison, pas une
+  // optimisation.
+  const essais = cible ? [cible] : Array.from({ length: CAISSES_MAX - 1 }, (_, k) => k + 2);
 
-  // Les cotes extrêmes des corps, du plus haut au plus bas : autant de plans de
-  // coupe candidats.
-  const niveaux = [...new Set(bodies.map((b) => Math.round(b.max[axe])))].sort((a, b) => b - a);
+  for (const nb of essais) {
+    if (nb < 2 || nb > CAISSES_MAX) continue;
 
-  for (const seuil of niveaux.slice(1)) {
-    const retires = bodies.filter((b) => b.max[axe] > seuil + 1);
-    const restants = bodies.filter((b) => b.max[axe] <= seuil + 1);
+    const { groupes, plans } = grouper(bodies, axe, nb);
+    if (groupes.length < nb) continue; // des plans sont tombés dans le vide
 
-    if (restants.length === 0) break;
-    if (retires.length > RETRAITS_MAX) break;
-
-    const principale = colis(restants, masse(restants), mode);
-    if (!principale.retained) continue;
-
-    // Les pièces déposées se recouchent : la seconde caisse est libre de pose.
-    const seconde = colis(retires, masse(retires), mode, true);
-    if (!seconde.retained) continue;
+    // La caisse du bas garde la pose étudiée ; les autres se recouchent.
+    const caisses = groupes.map((g, i) => caisse(g, masse(g), mode, i > 0, i));
+    if (caisses.some((c) => !c.retained)) continue;
 
     return {
-      retires: retires.map((b) => b.name),
-      retiresBoites: retires.map((b) => ({ name: b.name, min: b.min, max: b.max })),
+      caisses,
       corpsTotal: bodies.length,
-      planDeCoupeMm: Math.round(seuil),
       axe,
-      principale,
-      seconde,
-      // Deux caisses, deux forfaits, plus l'étude et le démontage.
-      totalEur: principale.costing.totalEur + seconde.costing.totalEur + SPLIT_ENGINEERING_EUR,
-      leadTimeDays:
-        Math.max(principale.costing.leadTimeDays, seconde.costing.leadTimeDays) + SPLIT_EXTRA_DAYS,
+      plansMm: plans.map((v) => Math.round(v)),
+      // Un forfait par caisse, plus l'étude et le démontage, une seule fois.
+      totalEur: caisses.reduce((a, c) => a + c.costing.totalEur, 0) + SPLIT_ENGINEERING_EUR,
+      leadTimeDays: Math.max(...caisses.map((c) => c.costing.leadTimeDays)) + SPLIT_EXTRA_DAYS,
     };
   }
 
   return undefined;
-}
-
-/**
- * L'axe **du repère caisse** sur lequel se joue le refus.
- *
- * Le verdict dit sur quoi il refuse — hauteur, largeur, porte. Reste à traduire
- * en axe : la hauteur est toujours Z, la largeur est celui de X ou Y qui est le
- * plus court, la longueur le plus long. Confondre l'ordre du triplet
- * (longueur, largeur, hauteur) avec l'ordre du repère (X, Y, Z) fait retirer
- * les mauvais corps sans qu'aucun chiffre ne s'en plaigne.
- */
-function axeBloquant(c: Colis, bodies: PlacedBody[]): 0 | 1 | 2 {
-  const [dx, dy] = etendues(bodies);
-  const axeLarge: 0 | 1 = dx >= dy ? 0 : 1;
-  const axeEtroit: 0 | 1 = dx >= dy ? 1 : 0;
-
-  const raisons = new Set(c.checks.flatMap((v) => v.reasons));
-  if (raisons.has('hauteur') || raisons.has('porte-hauteur')) return 2;
-  if (raisons.has('largeur') || raisons.has('porte-largeur')) return axeEtroit;
-  if (raisons.has('longueur')) return axeLarge;
-
-  // Refus par charge, ou aucune raison dimensionnelle : la plus grande cote.
-  const [, , dz] = etendues(bodies);
-  return dz >= Math.max(dx, dy) ? 2 : axeLarge;
 }

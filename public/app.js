@@ -245,8 +245,7 @@ async function afficherPose(poseId, gltfNom) {
   $('legende').textContent = pose
     ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(pose.crate.outer.heightMm)}, ` +
       (etude.study.decoupe
-        ? `plan de coupe en rouge à ${(etude.study.decoupe.planDeCoupeMm / 1000).toFixed(2)} m, ` +
-          `${etude.study.decoupe.retires.length} corps cerclés partent à part. `
+        ? `coupes en rouge à ${etude.study.decoupe.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}. `
         : '') +
       `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm, ` +
       `${pose.stackable ? 'gerbable' : 'non gerbable'}. ` +
@@ -273,11 +272,14 @@ function dessinerDecoupe(d, pose) {
     new THREE.PlaneGeometry(L * 1.15, l * 1.15),
     new THREE.MeshBasicMaterial({ color: 0xc0392b, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
   );
-  plan.position.set(0, 0, d.planDeCoupeMm * MM);
-  groupe.add(plan);
+  for (const niveau of d.plansMm) {
+    const p = plan.clone();
+    p.position.set(0, 0, niveau * MM);
+    groupe.add(p);
+  }
 
   // Les corps qui dépassent, cerclés de rouge.
-  for (const b of d.retiresBoites) {
+  for (const b of d.caisses.slice(1).flatMap((c) => c.boites)) {
     const taille = [0, 1, 2].map((a) => Math.max(1, b.max[a] - b.min[a]) * MM);
     const geo = new THREE.BoxGeometry(...taille);
     const arete = new THREE.LineSegments(
@@ -306,14 +308,18 @@ async function afficherDecoupe(r) {
   viderGroupe();
   dessinerCaisse(r.boxes);
 
-  for (const [role, fichier] of Object.entries(r.fichiers)) {
+  // Une couleur par caisse : la première garde le jaune machine, les suivantes
+  // s'en détachent — c'est ce qui rend la répartition lisible d'un coup d'œil.
+  const teintes = [0xb2b400, 0xc0392b, 0x2e86c1, 0x8e44ad];
+
+  for (const [i, fichier] of r.fichiers.entries()) {
     const texte = await fetch(`/out/${fichier}`).then((x) => x.text());
     const objet = chargeurObj.parse(texte);
     objet.scale.setScalar(MM);
     objet.traverse((o) => {
       if (o.isMesh) {
         o.material = new THREE.MeshStandardMaterial({
-          color: role === 'seconde' ? 0xc0392b : 0xb2b400,
+          color: teintes[i % teintes.length],
           roughness: 0.55,
           metalness: 0.15,
         });
@@ -327,12 +333,15 @@ async function afficherDecoupe(r) {
 
   const d = r.decoupe;
   $('legende').textContent =
-    `Deux caisses. À gauche, la principale : ${m(d.principale.crate.outer.lengthMm)} × ` +
-    `${m(d.principale.crate.outer.widthMm)} × ${m(d.principale.crate.outer.heightMm)}, ` +
-    `${d.principale.retained.gabarit.label}. À droite, en rouge, les ${d.retires.length} corps déposés : ` +
-    `${m(d.seconde.crate.outer.lengthMm)} × ${m(d.seconde.crate.outer.widthMm)} × ` +
-    `${m(d.seconde.crate.outer.heightMm)}, ${d.seconde.retained.gabarit.label}. ` +
-    `Total ${eur(d.totalEur)} en ${d.leadTimeDays} j.`;
+    `${d.caisses.length} caisses, de gauche à droite : ` +
+    d.caisses
+      .map(
+        (c) =>
+          `${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)} ` +
+          `(${c.corps.length} corps, ${c.retained.gabarit.label})`
+      )
+      .join(' — ') +
+    `. Total ${eur(d.totalEur)} en ${d.leadTimeDays} j.`;
 }
 
 /* ---------------------------------------------------------------- tableau */
@@ -432,13 +441,11 @@ function rendreTableau() {
     // Le §6.5 dit « l'outil ne découpe pas ». Il ne découpe toujours pas : il
     // désigne les corps qui portent le dépassement et chiffre l'hypothèse.
     const d = s.decoupe;
-    verdict = `Aucune pose ne passe. Mais <strong>${d.retires.length} corps sur ${d.corpsTotal}</strong>
-      portent le dépassement : coupés ${d.axe === 2 ? 'en hauteur' : 'en largeur'} à
-      ${(d.planDeCoupeMm / 1000).toFixed(2)} m et expédiés à part, l'ensemble passe en
-      <strong>${eur(d.totalEur)}</strong> et ${d.leadTimeDays} j —
-      ${d.principale.retained.gabarit.label} pour la caisse principale,
-      ${d.seconde.retained.gabarit.label} pour la seconde.
-      Contre ${eur(s.fallbacks.oversize.totalEur)} en ${s.fallbacks.oversize.leadTimeDays} j hors gabarit.
+    verdict = `Aucune pose ne passe. Mais en <strong>${d.caisses.length} caisses</strong>, coupées
+      ${d.axe === 2 ? 'en hauteur' : 'en largeur'} à
+      ${d.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}, l'ensemble passe en
+      <strong>${eur(d.totalEur)}</strong> et ${d.leadTimeDays} j — contre
+      ${eur(s.fallbacks.oversize.totalEur)} en ${s.fallbacks.oversize.leadTimeDays} j hors gabarit.
       <span class="verdict-second">L'outil ne découpe pas : un corps distinct dans un maillage n'est pas
       une pièce démontable. Il dit lesquels coûtent, l'ingénierie tranche.</span>`;
   } else {
@@ -497,6 +504,7 @@ function saisie() {
     unit: $('unit').value,
     mode: $('mode').value,
     forbidLying: $('forbidLying').checked,
+    caisses: $('caisses').value ? Number($('caisses').value) : undefined,
   };
 }
 
@@ -531,7 +539,7 @@ $('decouper').addEventListener('click', async () => {
   try {
     const r = await poster('/api/decoupe', saisie());
     await afficherDecoupe(r);
-    $('vue-etat').textContent = `${r.decoupe.retires.length} corps déposés — deux caisses`;
+    $('vue-etat').textContent = `${r.decoupe.caisses.length} caisses — ${r.decoupe.corpsTotal} corps répartis`;
     $('telechargements').innerHTML = '';
   } catch (err) {
     $('vue-etat').textContent = `échec : ${err.message}`;

@@ -477,11 +477,14 @@ test('le découpage désigne les corps qui portent le dépassement', () => {
   assert.equal(result.best, undefined, 'debout, rien ne passe');
   assert.ok(result.decoupe, 'le découpage doit être proposé');
 
-  assert.deepEqual(result.decoupe.retires.sort(), ['colonne', 'poutre']);
   assert.equal(result.decoupe.corpsTotal, 4);
   assert.equal(result.decoupe.axe, 2, 'la coupe se fait en hauteur');
-  assert.ok(result.decoupe.principale.retained, 'ce qui reste doit passer');
-  assert.ok(result.decoupe.seconde.retained, 'ce qui part doit passer aussi');
+  assert.ok(result.decoupe.caisses.length >= 2);
+  for (const c of result.decoupe.caisses) assert.ok(c.retained, `la caisse ${c.rang + 1} doit passer`);
+
+  // Les deux corps hauts doivent finir dans une caisse autre que la première.
+  const hautes = result.decoupe.caisses.slice(1).flatMap((c) => c.corps);
+  assert.ok(hautes.includes('colonne') && hautes.includes('poutre'));
 });
 
 test('le découpage est moins cher que le hors gabarit, sinon il ne vaut rien', () => {
@@ -527,7 +530,7 @@ test('une pose écartée ne sert pas de base au découpage', () => {
 
   assert.equal(result.best, undefined);
   assert.ok(result.decoupe, 'le découpage doit se baser sur la pose autorisée');
-  assert.deepEqual(result.decoupe.retires, ['colonne']);
+  assert.ok(result.decoupe.caisses.slice(1).flatMap((c) => c.corps).includes('colonne'));
 });
 
 test('rien à découper quand la machine passe déjà', () => {

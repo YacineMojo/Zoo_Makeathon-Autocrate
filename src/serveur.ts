@@ -88,6 +88,8 @@ interface EtudeBody {
   unit?: UnitChoice;
   mode?: ShippingMode;
   forbidLying?: boolean;
+  /** Nombre de caisses imposé pour le découpage. Absent : le plus petit qui passe. */
+  caisses?: number;
 }
 
 /** Maillages disponibles, servis depuis `out/`. Le dépôt d'un STEP passe par /api/conversion. */
@@ -164,6 +166,7 @@ async function etude(body: EtudeBody) {
     massKg,
     mode,
     forbidLying: body.forbidLying === true,
+    caisses: Number.isInteger(body.caisses) ? body.caisses : undefined,
   });
 
   // Le placement de chaque pose part avec l'étude : le viewer en a besoin pour
@@ -427,7 +430,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
  * viewer n'a qu'à charger : aucune transformation n'est rejouée côté client,
  * donc aucune occasion de la rejouer de travers.
  */
-async function decoupe(body: EtudeBody) {
+async function decoupe(body: EtudeBody & { caisses?: number }) {
   const data = await etude(body);
   const d = data.study.decoupe;
   if (!d) throw new Error('Aucun découpage à montrer : une pose passe déjà.');
@@ -448,52 +451,50 @@ async function decoupe(body: EtudeBody) {
     return [r[0] + pl.translateMm[0], r[1] + pl.translateMm[1], r[2] + pl.translateMm[2]];
   };
 
-  const retires = new Set(d.retires);
-  const tous = new Set(parseObjBodies(texte).map((b) => b.name));
-  const gardes = new Set([...tous].filter((n) => !retires.has(n)));
+  const fichiers: string[] = [];
 
-  const fichiers: Record<string, string> = {};
+  for (const [i, c] of d.caisses.entries()) {
+    const noms = new Set<string>(c.corps);
+    const brut = extraireCorps(texte, noms);
+    const offset = scene.offsets[i]!;
 
-  // Caisse principale : les pièces gardées, dans la pose étudiée, décalées.
-  const objA = transformerObj(extraireCorps(texte, gardes), (p) => decalerX(scene.offsets.principale)(poser(p)));
-  await writeFile(join('out', 'decoupe-principale.obj'), objA);
-  fichiers.principale = 'decoupe-principale.obj';
+    // La caisse du bas garde la pose étudiée ; les autres se recouchent, comme
+    // le chiffrage l'a supposé. Le placement est **cuit** dans le fichier : le
+    // viewer charge et affiche, sans rejouer la moindre transformation.
+    let transformer: (p: [number, number, number]) => [number, number, number];
 
-  // Seconde caisse : les pièces déposées, recouchées puis recentrées — c'est
-  // l'hypothèse sur laquelle le chiffrage a été fait.
-  const brut = extraireCorps(texte, retires);
-  const poses: Array<[number, number, number]> = [];
-  for (const ligne of brut.split('\n')) {
-    if (ligne.startsWith('v ')) {
-      const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
-      poses.push(poser([x, y, z]));
+    if (i === 0) {
+      transformer = (p) => decalerX(offset)(poser(p));
+    } else {
+      const poses: Array<[number, number, number]> = [];
+      for (const ligne of brut.split('\n')) {
+        if (ligne.startsWith('v ')) {
+          const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
+          poses.push(poser([x, y, z]));
+        }
+      }
+
+      const min: [number, number, number] = [Infinity, Infinity, Infinity];
+      const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+      for (const p of poses) {
+        for (let a = 0; a < 3; a++) {
+          if (p[a]! < min[a]!) min[a] = p[a]!;
+          if (p[a]! > max[a]!) max[a] = p[a]!;
+        }
+      }
+
+      const { permuter } = coucher(min, max);
+      const floorTop = c.crate.skid.heightMm + c.crate.floorThicknessMm;
+      const recentrer = centrer(poses.map(permuter), offset, floorTop);
+      transformer = (p) => recentrer(permuter(poser(p)));
     }
+
+    const nom = `decoupe-${i + 1}.obj`;
+    await writeFile(join('out', nom), transformerObj(brut, transformer));
+    fichiers.push(nom);
   }
 
-  const min: [number, number, number] = [Infinity, Infinity, Infinity];
-  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
-  for (const p of poses) {
-    for (let a = 0; a < 3; a++) {
-      if (p[a]! < min[a]!) min[a] = p[a]!;
-      if (p[a]! > max[a]!) max[a] = p[a]!;
-    }
-  }
-
-  const { permuter } = coucher(min, max);
-  const couches = poses.map(permuter);
-  const floorTopB = d.seconde.crate.skid.heightMm + d.seconde.crate.floorThicknessMm;
-  const recentrer = centrer(couches, scene.offsets.seconde, floorTopB);
-
-  const objB = transformerObj(brut, (p) => recentrer(permuter(poser(p))));
-  await writeFile(join('out', 'decoupe-seconde.obj'), objB);
-  fichiers.seconde = 'decoupe-seconde.obj';
-
-  return {
-    boxes: scene.boxes,
-    offsets: scene.offsets,
-    fichiers,
-    decoupe: d,
-  };
+  return { boxes: scene.boxes, offsets: scene.offsets, fichiers, decoupe: d };
 }
 
 /* ------------------------------------------------------------- conversion */

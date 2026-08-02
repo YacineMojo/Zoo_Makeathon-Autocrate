@@ -55,6 +55,13 @@ export interface StudyInput {
    * de seuil coûte le plus cher.
    */
   mode?: ShippingMode;
+  /**
+   * Nombre de caisses imposé au découpage.
+   *
+   * Sans lui, on cherche le plus petit qui passe. Forcer sert à comparer :
+   * chaque caisse de plus est un forfait de plus.
+   */
+  caisses?: number;
 }
 
 /** Évalue une pose : caisse, verdicts, chiffrage. */
@@ -248,7 +255,7 @@ export function study(input: StudyInput): Study {
     // qu'une coupe au milieu : dire **lesquels** portent le dépassement.
     const avecCorps = input.poses.find((p) => p.pose === tightest.pose)?.bodies;
     if (avecCorps && avecCorps.length > 1) {
-      study.decoupe = proposeDecoupe(avecCorps, massKg, mode);
+      study.decoupe = proposeDecoupe(avecCorps, massKg, mode, input.caisses);
     }
   }
 

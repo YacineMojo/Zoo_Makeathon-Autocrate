@@ -90,17 +90,16 @@ export function render(title: string, result: Study): void {
       const d = result.decoupe;
       const axe = d.axe === 2 ? 'en hauteur' : 'en largeur';
       console.log(
-        `\n→ ${d.retires.length} corps sur ${d.corpsTotal} portent le dépassement. ` +
-          `Coupés ${axe} à ${(d.planDeCoupeMm / 1000).toFixed(2)} m et expédiés à part :`
+        `\n→ ${d.caisses.length} caisses. Coupes ${axe} à ` +
+          `${d.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')} :`
       );
-      console.log(
-        `    caisse principale   ${mm(d.principale.crate.outer.lengthMm)} × ${mm(d.principale.crate.outer.widthMm)} × ${mm(d.principale.crate.outer.heightMm)}   ` +
-          `${d.principale.retained!.gabarit.label.padEnd(24)} ${eur(d.principale.costing.totalEur).padStart(9)}`
-      );
-      console.log(
-        `    seconde caisse      ${mm(d.seconde.crate.outer.lengthMm)} × ${mm(d.seconde.crate.outer.widthMm)} × ${mm(d.seconde.crate.outer.heightMm)}   ` +
-          `${d.seconde.retained!.gabarit.label.padEnd(24)} ${eur(d.seconde.costing.totalEur).padStart(9)}`
-      );
+      for (const c of d.caisses) {
+        console.log(
+          `    caisse ${c.rang + 1}  ${mm(c.crate.outer.lengthMm)} × ${mm(c.crate.outer.widthMm)} × ${mm(c.crate.outer.heightMm)}   ` +
+            `${(c.retained?.gabarit.label ?? 'hors gabarit').padEnd(24)} ${eur(c.costing.totalEur).padStart(9)}   ` +
+            `${c.corps.length} corps`
+        );
+      }
       console.log(`    total ${eur(d.totalEur)} en ${d.leadTimeDays} j, étude et démontage compris.`);
       console.log(
         `    L'outil ne découpe pas : un corps distinct dans un maillage n'est pas une pièce démontable. Il dit lesquels coûtent.`
