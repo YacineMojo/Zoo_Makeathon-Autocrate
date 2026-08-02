@@ -40,7 +40,8 @@ export const TOP_CLEARANCE_MM = TRAVERSE_MM + TOLERANCE_POSE_MM;
 
 /** Hauteur d'une butée au sol, et largeur d'une colonne de calage. */
 export const BUTEE_HAUTEUR_MM = 150;
-export const COLONNE_MM = 300;
+/** Largeur d'une butée, dans le sens de la paroi. */
+export const BUTEE_LARGEUR_MM = 300;
 /**
  * Au-delà de cette profondeur, on ne remplit plus le jeu de bois plein.
  *

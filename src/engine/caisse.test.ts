@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crateBoxes, boxesEnvelope } from './caisse.js';
 import { blockingBoxes } from './calage.js';
-import { COLONNE_MM } from '../geometrie/tranches.js';
+import { machineProfile } from '../geometrie/tranches.js';
+import { BUTEE_LARGEUR_MM } from '../domain/assumptions.js';
 import { buildCrate } from '../moteur/structure.js';
 import { placeForPose } from '../geometrie/placement.js';
 import type { VertexCloud } from '../mesh/obj.js';
@@ -155,7 +156,7 @@ test('une colonne où la machine n’est pas au sol ne reçoit pas de butée', (
   const cales = blockingBoxes(crate, surUneBande).filter((b) => b.name.startsWith('butee_long'));
   for (const b of cales) {
     assert.ok(
-      Math.abs(b.x + b.width / 2 - 1400) < COLONNE_MM,
+      Math.abs(b.x + b.width / 2 - 1400) < BUTEE_LARGEUR_MM,
       `${b.name} est posée en ${Math.round(b.x)} alors que la machine n’est qu’en 1400`
     );
   }
@@ -172,29 +173,39 @@ test('une butée ne monte jamais plus haut que la machine qu’elle retient', ()
   }
 });
 
-test('la traverse descend jusqu’à la machine sous elle, pas jusqu’au sommet global', () => {
+test('une traverse ne se pose que sur une partie haute, et repose dessus', () => {
+  // Une traverse posée au droit d'une partie basse descendrait jusqu'à elle et
+  // deviendrait un poteau d'un mètre quatre-vingts. Vu sur la machine de
+  // démonstration : une « traverse » de 382 à 2 217 mm.
   const irregulier = {
     ...profilPlein,
-    hautParX: [col(-900, -600, 600, zSol + 600), col(900, -600, 600, zSol + 1303)],
+    hautParX: [
+      ...Array.from({ length: 6 }, (_, k) => col(-1000 + k * 50, -600, 600, zSol + 600)),
+      ...Array.from({ length: 6 }, (_, k) => col(700 + k * 50, -600, 600, zSol + 1303)),
+    ],
     topMm: zSol + 1303,
   };
 
   const traverses = blockingBoxes(crate, irregulier).filter((b) => b.name.startsWith('traverse_'));
-  assert.equal(traverses.length, 2);
-  const hauteurs = traverses.map((t) => Math.round(t.z)).sort((a, b) => a - b);
-  assert.notEqual(hauteurs[0], hauteurs[1], 'deux traverses à la même cote sur une machine irrégulière');
+  assert.ok(traverses.length >= 1, 'la partie haute doit recevoir sa traverse');
+  for (const t of traverses) {
+    assert.ok(t.z >= zSol + 1303 - 1e-6, `traverse posée à ${Math.round(t.z)}, sous la partie haute`);
+    assert.ok(t.height < 200, `traverse de ${Math.round(t.height)} mm : c’est un poteau, pas une traverse`);
+  }
 });
 
 test('une colonne au ras de la paroi produit quand même sa cale', () => {
   // Deux traverses de maintien avaient disparu en silence : centrées sur les
   // colonnes extrêmes, elles débordaient, et le bornage les rabotait à néant.
   // La caisse était juste et la machine n'était plus tenue par le haut.
+  // Les colonnes du profil sont fines (50 mm) : une cale de 300 mm en couvre
+  // plusieurs, et elle est remesurée sur celles qu'elle couvre vraiment.
+  const bande = (centre: number) =>
+    Array.from({ length: 8 }, (_, k) => col(centre + (k - 4) * 50, -600, 600, zSol + 1200));
+
   const auRas = {
     ...profilPlein,
-    hautParX: [
-      col(-crate.outer.lengthMm / 2, -600, 600, zSol + 1200),
-      col(crate.outer.lengthMm / 2, -600, 600, zSol + 1200),
-    ],
+    hautParX: [...bande(-crate.outer.lengthMm / 2 + 200), ...bande(crate.outer.lengthMm / 2 - 200)],
   };
 
   const traverses = blockingBoxes(crate, auRas).filter((b) => b.name.startsWith('traverse_'));
@@ -233,5 +244,47 @@ test('une machine qui touche déjà la paroi ne reçoit pas de cale dégénéré
   };
   for (const b of blockingBoxes(crate, colle)) {
     assert.ok(b.width > 1 && b.depth > 1 && b.height > 1, `${b.name} dégénérée`);
+  }
+});
+
+test('aucune cale ne traverse la machine, sur une géométrie irrégulière', () => {
+  // Invariant de bout en bout : nuage → placement → profil → cales, puis on
+  // vérifie qu'aucun sommet de la machine n'est à l'intérieur d'une cale.
+  // C'est ce test qui manquait : trois défauts successifs — cale déplacée hors
+  // de sa colonne, colonnes agrégées par leur centre au lieu de leur
+  // chevauchement, matière rare écartée du relevé — ont chacun produit des
+  // cales traversantes qu'aucun test ne voyait.
+  const pts: Array<[number, number, number]> = [];
+  const ajouter = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) => {
+    for (const x of [x0, (x0 + x1) / 2, x1])
+      for (const y of [y0, (y0 + y1) / 2, y1])
+        for (const z of [z0, (z0 + z1) / 2, z1]) pts.push([x, y, z]);
+  };
+
+  // Un socle large et bas, une colonne étroite et haute décalée, un bras en
+  // porte-à-faux : les trois formes qui piègent un calage.
+  ajouter(-1200, 1200, -700, 700, 0, 300);
+  ajouter(600, 900, -200, 200, 300, 1800);
+  ajouter(-400, 900, -150, 150, 1500, 1800);
+
+  const cloud: VertexCloud = { count: pts.length, xyz: Float64Array.from(pts.flat()) };
+  const machine = buildCrate({ lengthMm: 2400, widthMm: 1400, heightMm: 1800 }, 2_000);
+  const floorTop = machine.skid.heightMm + machine.floorThicknessMm;
+
+  const placement = placeForPose(cloud, 'z', 0, 1, floorTop);
+  const cales = blockingBoxes(machine, machineProfile(cloud, 'z', placement, 1, floorTop));
+  assert.ok(cales.length > 0, 'la géométrie doit produire des cales');
+
+  for (const b of cales) {
+    for (const [px, py, pz] of pts) {
+      const x = px + placement.translateMm[0];
+      const y = py + placement.translateMm[1];
+      const z = pz + placement.translateMm[2];
+      const dedans =
+        x > b.x + 1 && x < b.x + b.width - 1 &&
+        y > b.y + 1 && y < b.y + b.depth - 1 &&
+        z > b.z + 1 && z < b.z + b.height - 1;
+      assert.ok(!dedans, `${b.name} traverse la machine en ${Math.round(x)}, ${Math.round(y)}, ${Math.round(z)}`);
+    }
   }
 });

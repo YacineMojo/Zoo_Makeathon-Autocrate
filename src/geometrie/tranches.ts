@@ -54,9 +54,26 @@ export interface MachineProfile {
 
 /** Hauteur de la bande basse examinée : c'est la hauteur utile d'une butée. */
 export const BANDE_BASSE_MM = 200;
-/** Largeur d'une colonne. Une colonne, une cale candidate. */
-export const COLONNE_MM = 300;
-/** En deçà, la colonne est trop pauvre pour qu'on y appuie quoi que ce soit. */
+/**
+ * Largeur d'une colonne du profil.
+ *
+ * Fine, et volontairement plus fine qu'une cale : une cale doit pouvoir être
+ * mesurée sur **son emprise exacte**, pas sur la colonne où elle a été
+ * pressentie. Le recadrage d'une cale dans le volume utile la déplace, et une
+ * mesure prise ailleurs la fait traverser la machine — 59 mm de pénétration
+ * relevés sur un robot KR 6.
+ */
+export const COLONNE_MM = 50;
+/**
+ * En deçà, la colonne est trop pauvre pour qu'on y **appuie** quoi que ce soit.
+ *
+ * Ce seuil ne vaut que pour les butées : on ne cale pas contre trois sommets
+ * isolés. Il ne doit surtout pas s'appliquer à la mesure des hauteurs — une
+ * colonne écartée devient de la matière invisible, et une traverse posée
+ * dessus la traverse. C'est ce qui s'est produit : une traverse descendue à
+ * 382 mm au lieu de 2 022, parce que la matière au-dessus tenait dans un bac
+ * de deux sommets.
+ */
 const SOMMETS_MINIMUM = 3;
 
 /** Applique pose, lacet et translation, et rend les sommets en coordonnées caisse. */
@@ -94,6 +111,7 @@ function colonnes(
   axe: 0 | 1,
   zMin: number,
   zMax: number,
+  minimum = SOMMETS_MINIMUM,
   largeurMm = COLONNE_MM
 ): Column[] {
   const transverse = axe === 0 ? 1 : 0;
@@ -119,7 +137,7 @@ function colonnes(
   }
 
   return [...bacs.entries()]
-    .filter(([, b]) => b.count >= SOMMETS_MINIMUM)
+    .filter(([, b]) => b.count >= minimum)
     .map(([clef, b]) => ({ center: (clef + 0.5) * largeurMm, min: b.min, max: b.max, topMm: b.topMm, count: b.count }))
     .sort((a, b) => a.center - b.center);
 }
@@ -129,6 +147,49 @@ function colonnes(
  *
  * `floorTopMm` est la cote du dessus du plancher : la machine y repose.
  */
+/**
+ * Agrège les colonnes couvertes par une plage.
+ *
+ * C'est ce qui permet à une cale d'être mesurée sur l'emprise qu'elle occupe
+ * vraiment : `min` est l'approche la plus proche sous elle, `topMm` la cote la
+ * plus basse à laquelle la machine s'arrête. Les deux sont les choix prudents.
+ */
+export function agreger(colonnes: Column[], de: number, a: number): Column | undefined {
+  const dedans = chevauchantes(colonnes, de, a);
+  if (dedans.length === 0) return undefined;
+
+  return {
+    center: (de + a) / 2,
+    min: Math.min(...dedans.map((c) => c.min)),
+    max: Math.max(...dedans.map((c) => c.max)),
+    topMm: Math.min(...dedans.map((c) => c.topMm)),
+    count: dedans.reduce((n, c) => n + c.count, 0),
+  };
+}
+
+/**
+ * Colonnes **chevauchant** une plage, et non colonnes dont le centre y tombe.
+ *
+ * La nuance vaut dix millimètres de pénétration : une traverse de 70 mm posée à
+ * cheval sur des colonnes de 50 n'en contient parfois qu'un seul centre, et la
+ * matière de la colonne voisine — plus haute — passait alors à travers elle.
+ */
+function chevauchantes(colonnes: Column[], de: number, a: number): Column[] {
+  const demi = COLONNE_MM / 2;
+  return colonnes.filter((c) => c.center + demi > de && c.center - demi < a);
+}
+
+/**
+ * Cote la plus haute atteinte par la machine sous une plage.
+ *
+ * C'est le contraire du choix prudent de `agreger` : une traverse doit reposer
+ * sur le point le **plus haut** qui passe dessous, sinon elle le traverse.
+ */
+export function sommetSous(colonnes: Column[], de: number, a: number): number | undefined {
+  const dedans = chevauchantes(colonnes, de, a);
+  return dedans.length === 0 ? undefined : Math.max(...dedans.map((c) => c.topMm));
+}
+
 export function machineProfile(
   cloud: VertexCloud,
   up: Axis,
@@ -142,7 +203,9 @@ export function machineProfile(
   return {
     basParX: colonnes(points, 0, floorTopMm, floorTopMm + BANDE_BASSE_MM),
     basParY: colonnes(points, 1, floorTopMm, floorTopMm + BANDE_BASSE_MM),
-    hautParX: colonnes(points, 0, floorTopMm, topMm),
+    // Aucun seuil ici : la mesure des hauteurs doit voir toute la matière, même
+    // isolée. Une colonne écartée est de la matière qu'une traverse traverse.
+    hautParX: colonnes(points, 0, floorTopMm, topMm, 1),
     topMm,
   };
 }

@@ -1,12 +1,13 @@
 import type { Box } from './box.js';
 import type { Crate } from '../domain/types.js';
 import type { Column, MachineProfile } from '../geometrie/tranches.js';
+import { agreger, sommetSous } from '../geometrie/tranches.js';
 import {
   BUTEE_HAUTEUR_MM,
   BUTEES_PAR_PAROI,
   CALE_ENTRETOISE_MM,
   CALE_PLEINE_MAX_MM,
-  COLONNE_MM,
+  BUTEE_LARGEUR_MM,
   LISSE_MM,
   STUD_SECTION_MM,
   TRAVERSE_MM,
@@ -48,6 +49,8 @@ import {
 const BUTEE_HAUTEUR_MINI_MM = 40;
 /** En deçà de ce jeu, il n'y a rien à caler : la machine touche déjà. */
 const JEU_MINIMAL_MM = 15;
+/** Une traverse ne se pose que sur une partie haute de la machine, à ceci près. */
+const PORTEE_TRAVERSE_MM = 150;
 
 /**
  * Place un pavé de largeur `taille` autour de `centre`, sans sortir du volume.
@@ -127,48 +130,52 @@ export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
 
   /* ── butées au sol, contre les deux grands côtés ────────────────────────── */
 
-  retenir(profile.basParX).forEach((c, i) => {
-    const hauteur = hauteurButee(c, zFloorTop);
+  retenir(profile.basParX).forEach((pressentie, i) => {
+    // La cale est d'abord **placée**, puis **remesurée sur l'emprise qu'elle
+    // occupe**. Sans cela, le recadrage dans le volume utile la déplace hors de
+    // la colonne où elle a été mesurée, et elle traverse la machine — 59 mm de
+    // pénétration relevés sur un KR 6.
+    const x = caler(pressentie.center, BUTEE_LARGEUR_MM, interieur.minX, interieur.maxX);
+    const c = agreger(profile.basParX, x, x + BUTEE_LARGEUR_MM);
+    if (!c) return;
 
-    // Côté « a » : de la paroi jusqu'au bord de la machine **dans cette
-    // colonne**. Si la machine y est loin de la paroi, la cale est épaisse.
-    // Si elle n'y est pas du tout, la colonne n'existe pas et on ne passe
-    // jamais ici.
-    const x = caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX);
+    const hauteur = hauteurButee(c, zFloorTop);
 
     const jeuA = c.min - interieur.minY;
     if (jeuA >= JEU_MINIMAL_MM) {
       boxes.push(
-        ...combler(`butee_long_a_${i + 1}`, interieur.minY, jeuA, { transverse: x, largeur: COLONNE_MM, z: zFloorTop, hauteur }, false)
+        ...combler(`butee_long_a_${i + 1}`, interieur.minY, jeuA, { transverse: x, largeur: BUTEE_LARGEUR_MM, z: zFloorTop, hauteur }, false)
       );
     }
 
     const jeuB = interieur.maxY - c.max;
     if (jeuB >= JEU_MINIMAL_MM) {
       boxes.push(
-        ...combler(`butee_long_b_${i + 1}`, c.max, jeuB, { transverse: x, largeur: COLONNE_MM, z: zFloorTop, hauteur }, false)
+        ...combler(`butee_long_b_${i + 1}`, c.max, jeuB, { transverse: x, largeur: BUTEE_LARGEUR_MM, z: zFloorTop, hauteur }, false)
       );
     }
   });
 
   /* ── butées au sol, contre les deux pignons ─────────────────────────────── */
 
-  retenir(profile.basParY).forEach((c, i) => {
-    const hauteur = hauteurButee(c, zFloorTop);
+  retenir(profile.basParY).forEach((pressentie, i) => {
+    const y = caler(pressentie.center, BUTEE_LARGEUR_MM, interieur.minY, interieur.maxY);
+    const c = agreger(profile.basParY, y, y + BUTEE_LARGEUR_MM);
+    if (!c) return;
 
-    const y = caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY);
+    const hauteur = hauteurButee(c, zFloorTop);
 
     const jeuA = c.min - interieur.minX;
     if (jeuA >= JEU_MINIMAL_MM) {
       boxes.push(
-        ...combler(`butee_pignon_a_${i + 1}`, interieur.minX, jeuA, { transverse: y, largeur: COLONNE_MM, z: zFloorTop, hauteur }, true)
+        ...combler(`butee_pignon_a_${i + 1}`, interieur.minX, jeuA, { transverse: y, largeur: BUTEE_LARGEUR_MM, z: zFloorTop, hauteur }, true)
       );
     }
 
     const jeuB = interieur.maxX - c.max;
     if (jeuB >= JEU_MINIMAL_MM) {
       boxes.push(
-        ...combler(`butee_pignon_b_${i + 1}`, c.max, jeuB, { transverse: y, largeur: COLONNE_MM, z: zFloorTop, hauteur }, true)
+        ...combler(`butee_pignon_b_${i + 1}`, c.max, jeuB, { transverse: y, largeur: BUTEE_LARGEUR_MM, z: zFloorTop, hauteur }, true)
       );
     }
   });
@@ -178,18 +185,29 @@ export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
   // Chaque traverse descend jusqu'à la cote où la machine s'arrête **sous
   // elle**, et non jusqu'au sommet global : au droit d'une partie basse, une
   // traverse calée sur le point le plus haut ne toucherait rien.
-  retenir(
-    profile.hautParX.filter((c) => zRoof - c.topMm >= JEU_MINIMAL_MM && c.topMm > zFloorTop),
-    2
-  ).forEach((c, i) => {
+  // Une traverse ne se pose qu'au droit du **haut** de la machine. Ailleurs,
+  // elle descendrait jusqu'à une partie basse et deviendrait un poteau d'un
+  // mètre quatre-vingts — vu sur la machine de démonstration avant correction.
+  const sommetsHauts = profile.hautParX.filter(
+    (c) => c.topMm >= profile.topMm - PORTEE_TRAVERSE_MM && zRoof - c.topMm >= JEU_MINIMAL_MM
+  );
+
+  retenir(sommetsHauts, 2).forEach((pressentie, i) => {
+    const x = caler(pressentie.center, TRAVERSE_MM, interieur.minX, interieur.maxX);
+    // Même règle qu'au sol : la traverse est remesurée sur son emprise. Elle
+    // doit reposer sur le point le plus **haut** qui passe dessous, sinon elle
+    // le traverse.
+    const sommet = sommetSous(profile.hautParX, x, x + TRAVERSE_MM);
+    if (sommet === undefined || zRoof - sommet < JEU_MINIMAL_MM) return;
+
     boxes.push({
       name: `traverse_haute_${i + 1}`,
-      x: caler(c.center, TRAVERSE_MM, interieur.minX, interieur.maxX),
+      x,
       y: interieur.minY,
-      z: c.topMm,
+      z: sommet,
       width: TRAVERSE_MM,
       depth: interieur.maxY - interieur.minY,
-      height: zRoof - c.topMm,
+      height: zRoof - sommet,
     });
   });
 

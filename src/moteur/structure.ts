@@ -5,7 +5,7 @@ import {
   CALE_ENTRETOISE_MM,
   CALE_PLEINE_MAX_MM,
   CLEARANCE_MM,
-  COLONNE_MM,
+  BUTEE_LARGEUR_MM,
   LISSE_MM,
   TRAVERSE_MM,
   PANEL_THICKNESS_MM,
@@ -145,7 +145,7 @@ export function buildCrate(machine: Triplet, massKg: number): Crate {
 export function blockingAllowanceMm3(inner: Triplet, clearanceMm: number): number {
   const lisses = 2 * inner.lengthMm * LISSE_MM * LISSE_MM;
   const profondeur = Math.max(Math.min(clearanceMm, CALE_PLEINE_MAX_MM), 2 * CALE_ENTRETOISE_MM);
-  const butees = 2 * BUTEES_PAR_PAROI * COLONNE_MM * profondeur * BUTEE_HAUTEUR_MM;
+  const butees = 2 * BUTEES_PAR_PAROI * BUTEE_LARGEUR_MM * profondeur * BUTEE_HAUTEUR_MM;
   const traverses = 2 * TRAVERSE_MM * inner.widthMm * TRAVERSE_MM;
   return lisses + butees + traverses;
 }
