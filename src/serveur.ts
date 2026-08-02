@@ -114,6 +114,33 @@ async function meshes(): Promise<string[]> {
 }
 
 /**
+ * La machine de démonstration, déposée dans `out/` si elle n'y est pas.
+ *
+ * `out/` n'est pas versionné — c'est un répertoire de travail. La liste des
+ * exemples en étant tirée, un dépôt fraîchement cloné n'en proposait aucun :
+ * le menu était vide, l'étude de démarrage échouait sans rien dire, et la seule
+ * voie qui restait était de déposer un STEP. C'est exactement ce qu'on ne veut
+ * pas faire vivre à un jury qui ouvre la page pour la première fois.
+ *
+ * La machine de démo est la seule dont la licence est nôtre — elle est générée
+ * par Zoo Text-to-CAD depuis `fixtures/machine-demo.kcl`. Son maillage est donc
+ * versionné à côté de son STEP, et recopié ici au démarrage. Aucun appel réseau,
+ * aucune clé d'API : la page fonctionne hors ligne, dès le premier `npm run dev`.
+ */
+const EXEMPLE_DEMO = 'async-machine-demo.obj';
+
+async function amorcerExemples(): Promise<void> {
+  await mkdir('out', { recursive: true });
+  const cible = join('out', EXEMPLE_DEMO);
+  try {
+    await readFile(cible);
+  } catch {
+    await writeFile(cible, await readFile(join('fixtures', 'machine-demo.obj')));
+    console.log(`Exemple de démonstration déposé dans ${cible}`);
+  }
+}
+
+/**
  * Bornes de saisie, alignées sur celles du formulaire.
  *
  * Une API plus permissive que son formulaire n'est pas une API souple, c'est
@@ -731,6 +758,8 @@ const server = createServer((req, res) => {
     }
   })();
 });
+
+await amorcerExemples();
 
 server.listen(PORT, () => {
   console.log(`Atelier Caisse — http://localhost:${PORT}`);

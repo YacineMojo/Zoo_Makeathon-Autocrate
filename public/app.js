@@ -509,30 +509,44 @@ const ETAPES_ZOO = [
   'export STEP et glTF',
 ];
 
+/**
+ * Une seule exécution à la fois, et elle seule commande l'animation.
+ *
+ * Sans ce jeton, deux calculs qui se croisent se marchent dessus : le premier
+ * termine sa temporisation et éteint l'animation du second, dont la minuterie
+ * continue de tourner sur un élément caché. L'animation ne s'arrêtait plus.
+ */
+let execution = 0;
 let minuterie;
 
 function demarrerChargement(etapes, dureeMs = 3000) {
+  const id = ++execution;
   const zone = $('chargement');
-  zone.hidden = false;
   const debut = performance.now();
   let i = 0;
 
   const afficher = () => {
+    if (id !== execution) return;
     zone.innerHTML =
       `<span class="fusee"></span><span class="chargement-etape">${etapes[Math.min(i, etapes.length - 1)]}</span>`;
   };
 
-  afficher();
   clearInterval(minuterie);
+  zone.hidden = false;
+  afficher();
+
   minuterie = setInterval(() => {
+    if (id !== execution) return;
     i += 1;
-    if (i >= etapes.length) return;
-    afficher();
+    if (i < etapes.length) afficher();
   }, dureeMs / etapes.length);
 
   return async () => {
     const reste = dureeMs - (performance.now() - debut);
     if (reste > 0) await new Promise((r) => setTimeout(r, reste));
+    // Une exécution plus récente a pris la main : ce n'est pas à celle-ci
+    // d'éteindre son animation.
+    if (id !== execution) return;
     clearInterval(minuterie);
     zone.hidden = true;
   };
@@ -692,7 +706,17 @@ async function remplirMaillages(selection) {
   // est nôtre, et la seule qui joue la démonstration du §16 en entier.
   if (selection && meshes.includes(selection)) $('mesh').value = selection;
   else if (meshes.some((f) => f.includes('machine-demo'))) $('mesh').value = meshes.find((f) => f.includes('machine-demo'));
+  return meshes;
 }
 
-await remplirMaillages();
+const disponibles = await remplirMaillages();
 redimensionner();
+
+// Une étude au chargement : sans elle, l'exemple déjà sélectionné ne déclenche
+// aucun `change`, et l'écran reste vide tant qu'on n'a pas changé de fichier.
+// « Ça ne marche qu'avec un import » venait de là.
+//
+// Et s'il n'y a aucun exemple, on le dit. Un menu vide au-dessus d'une page
+// vide laisse croire que l'outil est cassé, alors qu'il attend un fichier.
+if (disponibles.length) void etudier();
+else $('etat-calcul').textContent = 'Aucun exemple disponible : déposez un STEP ou un OBJ pour commencer.';

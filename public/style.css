@@ -41,6 +41,20 @@
   box-sizing: border-box;
 }
 
+/*
+  `hidden` doit gagner, toujours.
+
+  La règle du navigateur — `[hidden] { display: none }` — a la même spécificité
+  qu'une classe, et perd donc contre toute classe déclarée après elle. Un
+  `.chargement { display: flex }` suffisait à rendre l'attribut inopérant :
+  `zone.hidden = true` s'exécutait, l'animation continuait de tourner par-dessus
+  la vue 3D, et le calque interceptait les clics — on ne pouvait plus faire
+  tourner la caisse. Le voile était bien « caché », et bien visible.
+*/
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
