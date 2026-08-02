@@ -99,3 +99,91 @@ export function parseObjBodies(text: string): Body[] {
 export function volumeMm3(b: Body): number {
   return (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
 }
+
+/**
+ * Extrait un sous-ensemble de corps sous forme d'OBJ autonome.
+ *
+ * Sert au découpage : chaque caisse reçoit un fichier ne contenant que les
+ * pièces qui lui reviennent. Les indices de sommets sont renumérotés, sinon le
+ * fichier renvoie à des sommets qu'il ne déclare pas.
+ *
+ * Les normales sont laissées de côté : le moteur les recalcule, et le viewer
+ * aussi (FEEDBACK.md #6).
+ */
+export function extraireCorps(text: string, noms: ReadonlySet<string>): string {
+  const xs: string[] = [];
+  const gardes: number[][] = [];
+  let courant: string | undefined;
+
+  let start = 0;
+  const len = text.length;
+
+  while (start < len) {
+    let end = text.indexOf('\n', start);
+    if (end === -1) end = len;
+
+    const c0 = text.charCodeAt(start);
+    const c1 = text.charCodeAt(start + 1);
+
+    if (c0 === 118 /* v */ && (c1 === 32 || c1 === 9)) {
+      xs.push(text.slice(start + 2, end).trim());
+    } else if (c0 === 111 /* o */ && (c1 === 32 || c1 === 9)) {
+      courant = text.slice(start + 2, end).trim();
+    } else if (c0 === 102 /* f */ && (c1 === 32 || c1 === 9) && courant && noms.has(courant)) {
+      const face = text
+        .slice(start + 2, end)
+        .trim()
+        .split(/\s+/)
+        .map((tok) => {
+          const slash = tok.indexOf('/');
+          return Number(slash === -1 ? tok : tok.slice(0, slash)) - 1;
+        })
+        .filter((i) => Number.isInteger(i) && i >= 0 && i < xs.length);
+      if (face.length >= 3) gardes.push(face);
+    }
+
+    start = end + 1;
+  }
+
+  // Renumérotation : on ne garde que les sommets réellement utilisés.
+  const ancienVersNouveau = new Map<number, number>();
+  const lignes: string[] = [];
+  for (const face of gardes) {
+    for (const i of face) {
+      if (!ancienVersNouveau.has(i)) {
+        ancienVersNouveau.set(i, ancienVersNouveau.size + 1);
+        lignes.push(`v ${xs[i]}`);
+      }
+    }
+  }
+  for (const face of gardes) {
+    lignes.push(`f ${face.map((i) => ancienVersNouveau.get(i)).join(' ')}`);
+  }
+
+  return lignes.join('\n') + '\n';
+}
+
+/**
+ * Réécrit un OBJ en appliquant une transformation à ses sommets.
+ *
+ * Sert à **cuire** le placement dans le fichier : chaque caisse du découpage
+ * reçoit ses pièces déjà posées, dans le repère de la scène. Le viewer n'a plus
+ * qu'à charger et afficher — aucune transformation à rejouer côté client, donc
+ * aucune occasion de la rejouer de travers.
+ */
+export function transformerObj(
+  text: string,
+  appliquer: (p: [number, number, number]) => [number, number, number]
+): string {
+  const out: string[] = [];
+  for (const ligne of text.split('\n')) {
+    if (ligne.startsWith('v ')) {
+      const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
+      const p = appliquer([x, y, z]);
+      out.push(`v ${p[0].toFixed(2)} ${p[1].toFixed(2)} ${p[2].toFixed(2)}`);
+    } else if (ligne.length > 0) {
+      out.push(ligne);
+    }
+  }
+  return out.join('\n') + '\n';
+}

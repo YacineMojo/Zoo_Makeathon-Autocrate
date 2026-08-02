@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { extname, join, normalize, resolve, basename } from 'node:path';
 import { parseObjVertices } from './mesh/obj.js';
-import { parseObjBodies } from './mesh/corps.js';
+import { parseObjBodies, extraireCorps, transformerObj } from './mesh/corps.js';
 import { compactObj } from './mesh/compacter.js';
 import { buildPoses } from './geometrie/poses.js';
 import { placeForPose, placeBodies } from './geometrie/placement.js';
@@ -12,6 +12,9 @@ import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
 import { buildCrate } from './moteur/structure.js';
 import { blockingBoxes, isBlocking } from './engine/calage.js';
+import { sceneDecoupe, coucher, centrer, decalerX } from './moteur/scene-decoupe.js';
+import { rotate } from './geometrie/placement.js';
+import { alignedCloud } from './geometrie/emprise.js';
 import { machineProfile } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
 import type { ShippingMode } from './domain/types.js';
@@ -414,6 +417,85 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   }
 }
 
+/* ---------------------------------------------------------------- découpage */
+
+/**
+ * Les deux caisses du découpage, garnies de leurs pièces.
+ *
+ * Chaque groupe de corps est extrait du maillage, **placé** — pose, lacet,
+ * translation, et recouchage pour la seconde caisse — puis écrit tel quel. Le
+ * viewer n'a qu'à charger : aucune transformation n'est rejouée côté client,
+ * donc aucune occasion de la rejouer de travers.
+ */
+async function decoupe(body: EtudeBody) {
+  const data = await etude(body);
+  const d = data.study.decoupe;
+  if (!d) throw new Error('Aucun découpage à montrer : une pose passe déjà.');
+
+  const scene = sceneDecoupe(d);
+  const texte = await readFile(join('out', body.mesh!), 'utf8');
+
+  // La pose qui sert de base au découpage : la première autorisée.
+  const base = data.study.poses.find((p) => p.pose !== 'reference' && !p.forbidden)!;
+  const place = data.placements.find((p) => p.pose === base.pose)!;
+  const axe = place.axis as 'x' | 'y' | 'z';
+  const pl = place.placement;
+
+  /** Applique à un point du fichier la pose, le lacet et la translation. */
+  const poser = (p: [number, number, number]): [number, number, number] => {
+    const a = alignedCloud({ count: 1, xyz: Float64Array.from(p) }, axe, data.unit.scale);
+    const r = rotate([a.xyz[0]!, a.xyz[1]!, a.xyz[2]!], [0, 0, 1], pl.yawDeg);
+    return [r[0] + pl.translateMm[0], r[1] + pl.translateMm[1], r[2] + pl.translateMm[2]];
+  };
+
+  const retires = new Set(d.retires);
+  const tous = new Set(parseObjBodies(texte).map((b) => b.name));
+  const gardes = new Set([...tous].filter((n) => !retires.has(n)));
+
+  const fichiers: Record<string, string> = {};
+
+  // Caisse principale : les pièces gardées, dans la pose étudiée, décalées.
+  const objA = transformerObj(extraireCorps(texte, gardes), (p) => decalerX(scene.offsets.principale)(poser(p)));
+  await writeFile(join('out', 'decoupe-principale.obj'), objA);
+  fichiers.principale = 'decoupe-principale.obj';
+
+  // Seconde caisse : les pièces déposées, recouchées puis recentrées — c'est
+  // l'hypothèse sur laquelle le chiffrage a été fait.
+  const brut = extraireCorps(texte, retires);
+  const poses: Array<[number, number, number]> = [];
+  for (const ligne of brut.split('\n')) {
+    if (ligne.startsWith('v ')) {
+      const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
+      poses.push(poser([x, y, z]));
+    }
+  }
+
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+  for (const p of poses) {
+    for (let a = 0; a < 3; a++) {
+      if (p[a]! < min[a]!) min[a] = p[a]!;
+      if (p[a]! > max[a]!) max[a] = p[a]!;
+    }
+  }
+
+  const { permuter } = coucher(min, max);
+  const couches = poses.map(permuter);
+  const floorTopB = d.seconde.crate.skid.heightMm + d.seconde.crate.floorThicknessMm;
+  const recentrer = centrer(couches, scene.offsets.seconde, floorTopB);
+
+  const objB = transformerObj(brut, (p) => recentrer(permuter(poser(p))));
+  await writeFile(join('out', 'decoupe-seconde.obj'), objB);
+  fichiers.seconde = 'decoupe-seconde.obj';
+
+  return {
+    boxes: scene.boxes,
+    offsets: scene.offsets,
+    fichiers,
+    decoupe: d,
+  };
+}
+
 /* ------------------------------------------------------------- conversion */
 
 async function conversion(body: { name?: string; base64?: string }) {
@@ -496,7 +578,13 @@ async function serveStatic(url: string, res: ServerResponse): Promise<void> {
 
   try {
     const body = await readFile(safe);
-    res.writeHead(200, { 'content-type': MIME[extname(safe)] ?? 'application/octet-stream' });
+    res.writeHead(200, {
+      'content-type': MIME[extname(safe)] ?? 'application/octet-stream',
+      // Un atelier qu'on modifie en continu ne doit jamais servir de version
+      // périmée : une correction invisible dans le navigateur se cherche dans
+      // le code pendant une heure. Le trafic est local, le coût est nul.
+      'cache-control': 'no-store',
+    });
     res.end(body);
   } catch {
     res.writeHead(404).end('Introuvable');
@@ -513,6 +601,7 @@ const server = createServer((req, res) => {
       if (req.method === 'GET' && url === '/api/maillages') return json(res, 200, { meshes: await meshes() });
       if (req.method === 'POST' && url === '/api/etude') return json(res, 200, await etude((await readBody(req)) as EtudeBody));
       if (req.method === 'POST' && url === '/api/scene') return json(res, 200, await scene((await readBody(req)) as never));
+      if (req.method === 'POST' && url === '/api/decoupe') return json(res, 200, await decoupe((await readBody(req)) as never));
       if (req.method === 'POST' && url === '/api/conversion') return json(res, 200, await conversion((await readBody(req)) as never));
       if (req.method === 'GET') return await serveStatic(url, res);
       res.writeHead(405).end('Méthode non autorisée');

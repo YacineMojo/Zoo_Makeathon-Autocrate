@@ -110,7 +110,9 @@ const MATIERES = {
   calage: { color: 0x9c6b3f, opacity: 1 },
 };
 
-function matiere(nom) {
+function matiere(nomComplet) {
+  // Dans la scène du découpage, les pavés sont préfixés par leur caisse.
+  const nom = nomComplet.replace(/^(principale|seconde)_/, '');
   if (/^(butee_|traverse_|cale_|lisse_)/.test(nom)) {
     const { color } = MATIERES.calage;
     return new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.02 });
@@ -292,6 +294,47 @@ function dessinerDecoupe(d, pose) {
   }
 }
 
+/**
+ * Les deux caisses du découpage, garnies.
+ *
+ * Les pièces arrivent **déjà placées** dans les fichiers rendus par le serveur :
+ * on charge et on affiche, sans rejouer la moindre transformation. C'est
+ * volontaire — chaque transformation rejouée est une occasion de la rejouer de
+ * travers, et on en a déjà corrigé trois.
+ */
+async function afficherDecoupe(r) {
+  viderGroupe();
+  dessinerCaisse(r.boxes);
+
+  for (const [role, fichier] of Object.entries(r.fichiers)) {
+    const texte = await fetch(`/out/${fichier}`).then((x) => x.text());
+    const objet = chargeurObj.parse(texte);
+    objet.scale.setScalar(MM);
+    objet.traverse((o) => {
+      if (o.isMesh) {
+        o.material = new THREE.MeshStandardMaterial({
+          color: role === 'seconde' ? 0xc0392b : 0xb2b400,
+          roughness: 0.55,
+          metalness: 0.15,
+        });
+      }
+    });
+    groupe.add(objet);
+  }
+
+  cadrer();
+  redimensionner();
+
+  const d = r.decoupe;
+  $('legende').textContent =
+    `Deux caisses. À gauche, la principale : ${m(d.principale.crate.outer.lengthMm)} × ` +
+    `${m(d.principale.crate.outer.widthMm)} × ${m(d.principale.crate.outer.heightMm)}, ` +
+    `${d.principale.retained.gabarit.label}. À droite, en rouge, les ${d.retires.length} corps déposés : ` +
+    `${m(d.seconde.crate.outer.lengthMm)} × ${m(d.seconde.crate.outer.widthMm)} × ` +
+    `${m(d.seconde.crate.outer.heightMm)}, ${d.seconde.retained.gabarit.label}. ` +
+    `Total ${eur(d.totalEur)} en ${d.leadTimeDays} j.`;
+}
+
 /* ---------------------------------------------------------------- tableau */
 
 function rendreTableau() {
@@ -467,6 +510,7 @@ $('formulaire').addEventListener('submit', async (e) => {
     $('panneau-vue').hidden = false;
     $('panneau-hypotheses').hidden = false;
     $('generer').disabled = false;
+    $('decouper').hidden = !etude.study.decoupe;
 
     rendreTableau();
     // La pose montrée est celle qu'on recommande. Afficher la machine debout
@@ -479,6 +523,18 @@ $('formulaire').addEventListener('submit', async (e) => {
     $('vue-etat').textContent = 'aperçu local';
   } catch (err) {
     $('etat-calcul').textContent = `échec : ${err.message}`;
+  }
+});
+
+$('decouper').addEventListener('click', async () => {
+  $('vue-etat').textContent = 'découpage…';
+  try {
+    const r = await poster('/api/decoupe', saisie());
+    await afficherDecoupe(r);
+    $('vue-etat').textContent = `${r.decoupe.retires.length} corps déposés — deux caisses`;
+    $('telechargements').innerHTML = '';
+  } catch (err) {
+    $('vue-etat').textContent = `échec : ${err.message}`;
   }
 });
 
