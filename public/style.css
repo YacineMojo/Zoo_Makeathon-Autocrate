@@ -709,3 +709,36 @@ summary:focus-visible {
   letter-spacing: 0;
   color: #48525e;
 }
+
+/* ── Replis ────────────────────────────────────────────────────────────────
+   Ce qui compte mais n'a pas à être lu tout de suite : réglages de lecture,
+   hypothèses, mentions. Présent, vérifiable, et hors du chemin. */
+
+.repli {
+  border-top: 1px solid #eef1f4;
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.repli > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7684;
+  list-style: none;
+  padding: 4px 0;
+}
+
+.repli > summary::-webkit-details-marker {
+  display: none;
+}
+
+.repli > summary::before {
+  content: '▸ ';
+  color: #96a0ac;
+}
+
+.repli[open] > summary::before {
+  content: '▾ ';
+}

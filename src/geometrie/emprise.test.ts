@@ -220,7 +220,7 @@ test('la pose A est toujours la machine debout, même en Y-up', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 20), 'y');
   const a = result.poses.find((p) => p.pose === 'A')!;
   assert.equal(a.lying, false);
-  assert.match(a.label, /debout \(axe Y/);
+  assert.match(a.label, /debout/);
   assert.equal(result.poses.filter((p) => p.lying).length, 2);
 });
 

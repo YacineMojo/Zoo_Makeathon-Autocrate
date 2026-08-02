@@ -79,7 +79,9 @@ export function buildPoses(
     },
     ...oriented.map(({ axis, footprint }, i) => ({
       pose: (['A', 'B', 'C'] as const)[i]!,
-      label: `Pose ${(['A', 'B', 'C'] as const)[i]} — ${i === 0 ? 'debout' : 'couchée'} (axe ${axis.toUpperCase()} vers le haut)`,
+      // Court : le tableau est lu de biais, pas étudié. L'axe reste indiqué
+      // parce que c'est la seule information qui distingue deux poses couchées.
+      label: `Pose ${(['A', 'B', 'C'] as const)[i]} — ${i === 0 ? 'debout' : `couchée sur ${axis.toUpperCase()}`}`,
       footprint: {
         lengthMm: footprint.lengthMm,
         widthMm: footprint.widthMm,

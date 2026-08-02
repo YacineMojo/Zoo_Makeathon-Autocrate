@@ -243,15 +243,8 @@ async function afficherPose(poseId, gltfNom) {
 
   const pose = etude.study.poses.find((p) => p.pose === poseId);
   $('legende').textContent = pose
-    ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(pose.crate.outer.heightMm)}, ` +
-      (etude.study.decoupe
-        ? `coupes en rouge à ${etude.study.decoupe.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}. `
-        : '') +
-      `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm, ` +
-      `${pose.stackable ? 'gerbable' : 'non gerbable'}. ` +
-      `${(etude.boxes[poseId] ?? []).filter((b) => /^(butee_|traverse_|lisse_|cale_)/.test(b.name)).length} pièces de calage, ` +
-      `jeu ${pose.crate.clearanceMm} mm par face.` +
-      (gltfNom ? ' Géométrie b-rep générée par Zoo.' : ' Aperçu local — cliquez « Générer la caisse » pour la géométrie Zoo.')
+    ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ` +
+      `${m(pose.crate.outer.heightMm)}, tare ${pose.crate.tareKg} kg.`
     : '';
 }
 
@@ -350,15 +343,9 @@ async function afficherDecoupe(r, gltfNom) {
 
   const d = r.decoupe;
   $('legende').textContent =
-    `${d.caisses.length} caisses, de gauche à droite : ` +
     d.caisses
-      .map(
-        (c) =>
-          `${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)} ` +
-          `(${c.corps.length} corps, ${c.retained.gabarit.label})`
-      )
-      .join(' — ') +
-    `. Total ${eur(d.totalEur)} en ${d.leadTimeDays} j.`;
+      .map((c, i) => `Caisse ${i + 1} : ${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)}`)
+      .join('  ·  ');
 }
 
 /* ---------------------------------------------------------------- tableau */
@@ -430,13 +417,13 @@ function rendreTableau() {
   } else if (s.best) {
     const eco = ref.costing.totalEur - s.best.costing.totalEur;
     const jours = ref.costing.leadTimeDays - s.best.costing.leadTimeDays;
+    // Une phrase. Le tableau porte le détail, le bandeau porte la conclusion.
     const serre = s.best.retained.confidence === 'juste';
-    verdict = `<strong>${eur(eco)}</strong> et <strong>${jours} jours</strong> économisés sur le repère CAO —
-      ${s.best.label.toLowerCase()}, ${s.best.retained.gabarit.label},
-      ${serre ? 'et ça passe <strong>de justesse</strong> :' : 'marge la plus faible'}
-      ${s.best.retained.tightestMarginMm} mm en ${s.best.retained.tightestOn}${
-        serre ? ', à confirmer avec la caisserie' : ''
-      }.`;
+    verdict = `<strong>${eur(eco)}</strong> et <strong>${jours} jours</strong> économisés —
+      ${s.best.label.toLowerCase()}, ${s.best.retained.gabarit.label}` +
+      (serre
+        ? `, <strong>de justesse</strong> : ${s.best.retained.tightestMarginMm} mm en ${s.best.retained.tightestOn}.`
+        : '.');
 
     // Le groupage est presque toujours le moins cher et presque toujours le
     // plus lent. Trancher en silence sur le prix contredirait la thèse : pour
@@ -446,18 +433,16 @@ function rendreTableau() {
       // est justement ce qui a été demandé, on la donne.
       const ecart = s.decoupe.totalEur - s.best.costing.totalEur;
       verdict += `<br /><span class="verdict-second">En ${s.decoupe.caisses.length} caisses :
-        <strong>${eur(s.decoupe.totalEur)}</strong> en ${s.decoupe.leadTimeDays} j,
-        soit ${ecart >= 0 ? eur(ecart) + ' de plus' : eur(-ecart) + ' de moins'} qu'en une seule.
-        Coupes à ${s.decoupe.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}.</span>`;
+        ${eur(s.decoupe.totalEur)} en ${s.decoupe.leadTimeDays} j,
+        ${ecart >= 0 ? eur(ecart) + ' de plus' : eur(-ecart) + ' de moins'} qu'en une seule.</span>`;
     }
 
     if (s.faster) {
       const jours = s.best.costing.leadTimeDays - s.faster.costing.leadTimeDays;
       const surcout = s.faster.costing.totalEur - s.best.costing.totalEur;
       verdict += `<br /><span class="verdict-second">Plus rapide : ${s.faster.gabaritLabel},
-        <strong>${eur(s.faster.costing.totalEur)}</strong> en ${s.faster.costing.leadTimeDays} j —
-        ${jours} jours de moins pour ${eur(surcout)} de plus.
-        À vous de voir ce que vaut la fenêtre d'expédition.</span>`;
+        ${eur(s.faster.costing.totalEur)} en ${s.faster.costing.leadTimeDays} j —
+        ${jours} jours de moins pour ${eur(surcout)}.</span>`;
     }
   } else if (s.otherMode) {
     verdict = `Aucun gabarit ${$('mode').value === 'maritime' ? 'maritime' : 'routier'}.
@@ -484,18 +469,6 @@ function rendreTableau() {
   }
   $('verdict').innerHTML = verdict;
 
-  $('detail').innerHTML = s.poses
-    .map(
-      (p) => `
-      <div class="alerte">
-        <span class="alerte-code">${p.pose === 'reference' ? 'réf.' : p.pose}</span>
-        <span class="alerte-message">
-          ${p.checksText.map((c) => `<em>${c.label}</em> : ${c.text}`).join('<br />')}
-          ${p.forbidden ? `<br /><strong>${p.forbidden}</strong>` : ''}
-        </span>
-      </div>`
-    )
-    .join('');
 
   // Valeurs en texte, pas dans un cadre qui ressemble à un champ de saisie :
   // la table est en lecture seule (§10), autant que ça se voie. Une fausse
@@ -535,8 +508,7 @@ function saisie() {
   };
 }
 
-$('formulaire').addEventListener('submit', async (e) => {
-  e.preventDefault();
+async function etudier() {
   $('etat-calcul').textContent = 'calcul…';
   try {
     etude = await poster('/api/etude', saisie());
@@ -560,14 +532,26 @@ $('formulaire').addEventListener('submit', async (e) => {
       await afficherPose(etude.study.best?.pose ?? etude.study.otherMode?.pose ?? 'A', null);
     }
 
+    // Une ligne. Le détail vit dans les hypothèses, pas sous le formulaire.
     $('etat-calcul').textContent =
-      `${etude.vertices.toLocaleString('fr-FR')} sommets, emprises et verdicts en ${etude.ms} ms. ` +
-      `${etude.unit.note} Emprise orientée : ${etude.areaGainPct.toFixed(1)} % d'emprise au sol gagnés (lacet ${etude.yawDeg.toFixed(1)}°).`;
+      `${etude.vertices.toLocaleString('fr-FR')} sommets · ${etude.ms} ms · ${etude.unit.unit}` +
+      (etude.unit.plausible ? '' : ' ⚠ unité douteuse');
     $('vue-etat').textContent = 'aperçu local';
   } catch (err) {
     $('etat-calcul').textContent = `échec : ${err.message}`;
   }
+}
+
+// Pas de bouton « calculer » : l'étude coûte quatre millisecondes et n'appelle
+// pas Zoo. Un bouton pour ça, c'est un clic de plus et une occasion d'oublier.
+$('formulaire').addEventListener('submit', (e) => {
+  e.preventDefault();
+  void etudier();
 });
+
+for (const champ of ['mesh', 'massKg', 'up', 'unit', 'mode', 'caisses', 'forbidLying']) {
+  $(champ).addEventListener('change', () => void etudier());
+}
 
 $('generer').addEventListener('click', async () => {
   $('vue-etat').textContent = 'session Zoo en cours…';
@@ -619,9 +603,9 @@ $('fichier').addEventListener('change', async (e) => {
   if (!fichier) return;
 
   const estObj = /\.obj$/i.test(fichier.name);
-  $('note-conversion').textContent = estObj
+  $('etat-calcul').textContent = estObj
     ? `lecture de ${fichier.name}…`
-    : `conversion de ${fichier.name} par Zoo…`;
+    : `${fichier.name} — conversion par Zoo, cela peut prendre plusieurs minutes…`;
   try {
     const base64 = await new Promise((resolve, reject) => {
       const lecteur = new FileReader();
@@ -632,11 +616,10 @@ $('fichier').addEventListener('change', async (e) => {
 
     const r = await poster('/api/conversion', { name: fichier.name, base64 });
     await remplirMaillages(r.mesh);
-    $('note-conversion').textContent = r.direct
-      ? `${fichier.name} chargé directement — ${r.vertices.toLocaleString('fr-FR')} sommets, aucune conversion nécessaire.`
-      : `${fichier.name} converti par Zoo en ${(r.ms / 1000).toFixed(1)} s — ${r.vertices.toLocaleString('fr-FR')} sommets.`;
+    void etudier();
+    if (!r.direct) $('etat-calcul').textContent = `converti par Zoo en ${(r.ms / 1000).toFixed(1)} s`;
   } catch (err) {
-    $('note-conversion').textContent = `conversion refusée : ${err.message}`;
+    $('etat-calcul').textContent = `conversion refusée : ${err.message}`;
   }
 });
 

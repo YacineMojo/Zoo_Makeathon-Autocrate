@@ -25,15 +25,13 @@
       <div class="plaque-titre">
         <h1>Caisse</h1>
         <p class="plaque-sous">
-          Avant-projet de caisse d'expédition, à partir du STEP de la machine
+          Déposez le STEP d'une machine : sa caisse d'expédition, et le gabarit dans lequel elle rentre
         </p>
       </div>
       <dl class="plaque-meta">
         <dt>Lecture du STEP</dt>
         <dd>Zoo File Format API</dd>
-        <dt>Emprise et verdicts</dt>
-        <dd>local, déterministe</dd>
-        <dt>Caisse</dt>
+        <dt>Caisse b-rep</dt>
         <dd>Zoo Engine API</dd>
       </dl>
     </header>
@@ -41,58 +39,36 @@
     <div class="barre-omnibus" aria-hidden="true"></div>
 
     <main class="atelier">
-      <!-- ── Entrées ─────────────────────────────────────────────────────── -->
+      <!-- ── Entrées ─────────────────────────────────────────────────────────
+           Le strict nécessaire est visible. Les garde-fous — axe vertical,
+           unité — vivent dans un repli : ils comptent, mais leur valeur
+           automatique est bonne dans l'immense majorité des cas, et les
+           afficher revient à demander au lecteur de trancher ce qu'il ne sait
+           pas encore.
+
+           L'étude se relance à chaque changement : il n'y a pas de bouton
+           « calculer », parce qu'il n'y a rien à attendre — quatre millisecondes
+           et aucun appel à Zoo. -->
       <form class="panneau panneau-saisie" id="formulaire" novalidate>
-        <h2 class="panneau-titre">La machine</h2>
+        <div class="champ champ-large">
+          <label for="fichier">Fichier STEP ou OBJ</label>
+          <div class="champ-saisie">
+            <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" />
+          </div>
+        </div>
 
         <div class="champ champ-large">
-          <label for="mesh">Maillage</label>
+          <label for="mesh">…ou un exemple</label>
           <div class="champ-saisie">
             <select id="mesh" name="mesh"></select>
           </div>
         </div>
 
-        <div class="champ champ-large">
-          <label for="fichier">…ou déposer un fichier</label>
-          <div class="champ-saisie">
-            <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" />
-          </div>
-        </div>
-        <p class="actions-note" id="note-conversion">
-          La conversion du STEP est faite par Zoo. Sur une cellule robotisée
-          réelle, elle prend plusieurs minutes — c'est le poste le plus lent de
-          la chaîne, et il n'est pas chez nous.
-        </p>
-
         <div class="champ">
-          <label for="massKg">Masse réelle</label>
+          <label for="massKg">Masse</label>
           <div class="champ-saisie">
             <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
             <span class="unite">kg</span>
-          </div>
-        </div>
-        <p class="actions-note">Un STEP ne porte pas de matériau : la masse se saisit.</p>
-
-        <div class="champ">
-          <label for="up">Axe vertical</label>
-          <div class="champ-saisie">
-            <select id="up" name="up">
-              <option value="z" selected>Z</option>
-              <option value="y">Y</option>
-              <option value="x">X</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="champ">
-          <label for="unit">Unité du fichier</label>
-          <div class="champ-saisie">
-            <select id="unit" name="unit">
-              <option value="auto" selected>auto</option>
-              <option value="mm">mm</option>
-              <option value="m">m</option>
-              <option value="in">pouce</option>
-            </select>
           </div>
         </div>
 
@@ -100,8 +76,8 @@
           <label for="mode">Acheminement</label>
           <div class="champ-saisie">
             <select id="mode" name="mode">
-              <option value="maritime" selected>maritime (conteneur)</option>
-              <option value="route">route (semi-remorque)</option>
+              <option value="maritime" selected>maritime</option>
+              <option value="route">route</option>
             </select>
           </div>
         </div>
@@ -110,7 +86,7 @@
           <label for="caisses">Découper en</label>
           <div class="champ-saisie">
             <select id="caisses" name="caisses">
-              <option value="">le moins de caisses possible</option>
+              <option value="">— au besoin —</option>
               <option value="2">2 caisses</option>
               <option value="3">3 caisses</option>
               <option value="4">4 caisses</option>
@@ -122,11 +98,36 @@
           <label for="forbidLying">Couchage interdit</label>
           <input id="forbidLying" name="forbidLying" type="checkbox" />
         </div>
-        <p class="actions-note">Bain d'huile, axes précontraints, consigne constructeur.</p>
+
+        <details class="repli">
+          <summary>Réglages de lecture</summary>
+          <div class="champ">
+            <label for="up">Axe vertical</label>
+            <div class="champ-saisie">
+              <select id="up" name="up">
+                <option value="z" selected>Z</option>
+                <option value="y">Y</option>
+                <option value="x">X</option>
+              </select>
+            </div>
+          </div>
+          <div class="champ">
+            <label for="unit">Unité</label>
+            <div class="champ-saisie">
+              <select id="unit" name="unit">
+                <option value="auto" selected>auto</option>
+                <option value="mm">mm</option>
+                <option value="m">m</option>
+                <option value="in">pouce</option>
+              </select>
+            </div>
+          </div>
+        </details>
 
         <div class="actions">
-          <button class="bouton bouton-primaire" id="calculer" type="submit">Étudier</button>
-          <button class="bouton" id="generer" type="button" disabled>Générer la caisse (Zoo)</button>
+          <button class="bouton bouton-primaire" id="generer" type="button" disabled>
+            Générer la caisse (Zoo)
+          </button>
         </div>
         <p class="actions-note" id="etat-calcul"></p>
       </form>
@@ -134,20 +135,13 @@
       <!-- ── Résultats ───────────────────────────────────────────────────── -->
       <section class="colonne-resultats">
         <section class="panneau panneau-verdict" id="panneau-verdict" hidden>
-          <h2 class="panneau-titre">Le tableau des poses</h2>
           <div class="verdict" id="verdict"></div>
           <div class="donnees" id="tableau"></div>
-          <div class="alertes" id="detail"></div>
         </section>
 
         <section class="panneau" id="panneau-vue" hidden>
-          <div class="vue-entete">
-            <h2 class="panneau-titre">La machine dans sa caisse</h2>
-          </div>
           <div class="vue-scene">
             <canvas id="scene"></canvas>
-            <!-- L'état est en surimpression sur le rendu : c'est là qu'il est
-                 lu, et `.vue-etat` est positionné par rapport à `.vue-scene`. -->
             <p class="vue-etat" id="vue-etat"></p>
           </div>
           <p class="legende" id="legende"></p>
@@ -155,9 +149,11 @@
         </section>
 
         <section class="panneau panneau-hypotheses" id="panneau-hypotheses" hidden>
-          <h2 class="panneau-titre">Hypothèses</h2>
-          <div class="hypotheses" id="hypotheses"></div>
-          <div class="avertissement" id="mentions"></div>
+          <details class="repli">
+            <summary>Hypothèses et mentions</summary>
+            <div class="hypotheses" id="hypotheses"></div>
+            <div class="avertissement" id="mentions"></div>
+          </details>
         </section>
       </section>
     </main>
