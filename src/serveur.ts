@@ -15,7 +15,7 @@ import { blockingBoxes, isBlocking } from './engine/calage.js';
 import { sceneDecoupe, coucher, centrer, decalerX } from './moteur/scene-decoupe.js';
 import { rotate } from './geometrie/placement.js';
 import { alignedCloud } from './geometrie/emprise.js';
-import { machineProfile } from './geometrie/tranches.js';
+import { machineProfile, profilDepuisPoints } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
 import type { ShippingMode } from './domain/types.js';
 
@@ -275,7 +275,7 @@ async function sceneDecoupeZoo(body: EtudeBody & { caisses?: number }) {
   const d = data.study.decoupe;
   if (!d) throw new Error('Aucun découpage à générer : une pose passe déjà.');
 
-  const boxes = sceneDecoupe(d).boxes;
+  const boxes = (await construireDecoupe(body)).boxes;
   const t0 = performance.now();
   const session = await EngineSession.open();
 
@@ -499,7 +499,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
  * viewer n'a qu'à charger : aucune transformation n'est rejouée côté client,
  * donc aucune occasion de la rejouer de travers.
  */
-async function decoupe(body: EtudeBody & { caisses?: number }) {
+async function construireDecoupe(body: EtudeBody & { caisses?: number }) {
   const data = await etude(body);
   const d = data.study.decoupe;
   if (!d) throw new Error('Aucun découpage à montrer : une pose passe déjà.');
@@ -507,7 +507,7 @@ async function decoupe(body: EtudeBody & { caisses?: number }) {
   const scene = sceneDecoupe(d);
   const texte = await readFile(join('out', body.mesh!), 'utf8');
 
-  // La pose qui sert de base au découpage : la première autorisée.
+  // La pose sur laquelle le découpage a été calculé, et son placement.
   const base = data.study.poses.find((p) => p.pose !== 'reference' && !p.forbidden)!;
   const place = data.placements.find((p) => p.pose === base.pose)!;
   const axe = place.axis as 'x' | 'y' | 'z';
@@ -521,19 +521,20 @@ async function decoupe(body: EtudeBody & { caisses?: number }) {
   };
 
   const fichiers: string[] = [];
+  const boxes: typeof scene.boxes = [];
 
   for (const [i, c] of d.caisses.entries()) {
-    const noms = new Set<string>(c.corps);
-    const brut = extraireCorps(texte, noms);
+    const brut = extraireCorps(texte, new Set<string>(c.corps));
     const offset = scene.offsets[i]!;
+    const floorTop = c.crate.skid.heightMm + c.crate.floorThicknessMm;
 
-    // La caisse du bas garde la pose étudiée ; les autres se recouchent, comme
-    // le chiffrage l'a supposé. Le placement est **cuit** dans le fichier : le
-    // viewer charge et affiche, sans rejouer la moindre transformation.
-    let transformer: (p: [number, number, number]) => [number, number, number];
+    // Transformation **locale** : la caisse est centrée sur l'origine. Le
+    // décalage vers sa place dans la scène vient après, sinon le calage serait
+    // relevé dans un repère et posé dans un autre.
+    let locale: (p: [number, number, number]) => [number, number, number];
 
     if (i === 0) {
-      transformer = (p) => decalerX(offset)(poser(p));
+      locale = poser;
     } else {
       const poses: Array<[number, number, number]> = [];
       for (const ligne of brut.split('\n')) {
@@ -553,17 +554,39 @@ async function decoupe(body: EtudeBody & { caisses?: number }) {
       }
 
       const { permuter } = coucher(min, max);
-      const floorTop = c.crate.skid.heightMm + c.crate.floorThicknessMm;
-      const recentrer = centrer(poses.map(permuter), offset, floorTop);
-      transformer = (p) => recentrer(permuter(poser(p)));
+      const recentrer = centrer(poses.map(permuter), 0, floorTop);
+      locale = (p) => recentrer(permuter(poser(p)));
     }
 
+    // Les sommets de cette caisse, dans son repère : c'est sur eux que se
+    // relève le calage. Repartir du nuage entier donnerait le profil de la
+    // mauvaise géométrie, et des cales posées contre du vide.
+    const sommets: number[] = [];
+    for (const ligne of brut.split('\n')) {
+      if (ligne.startsWith('v ')) {
+        const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
+        sommets.push(...locale([x, y, z]));
+      }
+    }
+
+    const hauts = sommets.filter((_, k) => k % 3 === 2);
+    const profil = profilDepuisPoints(Float64Array.from(sommets), floorTop, Math.max(floorTop, ...hauts));
+
+    boxes.push(
+      ...crateBoxes(c.crate).map((b) => ({ ...b, name: `caisse${i + 1}_${b.name}`, x: b.x + offset })),
+      ...blockingBoxes(c.crate, profil).map((b) => ({ ...b, name: `caisse${i + 1}_${b.name}`, x: b.x + offset }))
+    );
+
     const nom = `decoupe-${i + 1}.obj`;
-    await writeFile(join('out', nom), transformerObj(brut, transformer));
+    await writeFile(join('out', nom), transformerObj(brut, (p) => decalerX(offset)(locale(p))));
     fichiers.push(nom);
   }
 
-  return { boxes: scene.boxes, offsets: scene.offsets, fichiers, decoupe: d };
+  return { boxes, offsets: scene.offsets, fichiers, decoupe: d };
+}
+
+async function decoupe(body: EtudeBody & { caisses?: number }) {
+  return construireDecoupe(body);
 }
 
 /* ------------------------------------------------------------- conversion */

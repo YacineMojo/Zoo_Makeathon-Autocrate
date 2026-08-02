@@ -197,9 +197,22 @@ export function machineProfile(
   scale: number,
   floorTopMm: number
 ): MachineProfile {
-  const points = placedPoints(cloud, up, placement, scale);
-  const topMm = floorTopMm + placement.size[2];
+  return profilDepuisPoints(placedPoints(cloud, up, placement, scale), floorTopMm, floorTopMm + placement.size[2]);
+}
 
+/**
+ * Même relevé, à partir de sommets **déjà placés**.
+ *
+ * Le découpage en a besoin : chaque caisse contient un sous-ensemble de pièces,
+ * recouchées et recentrées dans leur propre caisse. Repartir du nuage d'origine
+ * et de la pose de la machine entière donnerait le profil de la mauvaise
+ * géométrie — et un calage posé contre du vide.
+ */
+export function profilDepuisPoints(
+  points: Float64Array,
+  floorTopMm: number,
+  topMm: number
+): MachineProfile {
   return {
     basParX: colonnes(points, 0, floorTopMm, floorTopMm + BANDE_BASSE_MM),
     basParY: colonnes(points, 1, floorTopMm, floorTopMm + BANDE_BASSE_MM),
