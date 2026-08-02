@@ -219,9 +219,28 @@ async function etude(body: EtudeBody) {
  *   async-machine-demo.obj  →  fixtures/machine-demo.step   (machine de démo)
  *   web-<nom>.obj           →  out/web-<nom>.step           (STEP déposé)
  */
+/**
+ * Au-delà, on ne tente même pas l'import b-rep dans l'atelier.
+ *
+ * Le moteur met 56 s pour importer un STEP de 137 Ko et échoue au bout de
+ * 458 s sur un robot de 12,6 Mo (FEEDBACK.md #5). Tenter quand même, c'est
+ * bloquer l'écran huit minutes pour finir sur un échec connu d'avance, et payer
+ * huit minutes de session. On refuse tout de suite, et on dit pourquoi.
+ */
+const BREP_MAX_OCTETS = 2 * 1024 * 1024;
+/** Et même sous cette taille, on ne laisse pas l'import courir indéfiniment. */
+const BREP_TIMEOUT_MS = 90_000;
+
 async function sourceBrep(mesh: string): Promise<string | undefined> {
   const base = mesh.replace(/\.obj$/, '');
-  const candidats = [join('fixtures', `${base.replace(/^async-/, '')}.step`), join('out', `${base}.step`)];
+  // Les deux extensions courantes : un STEP s'écrit .step ou .stp, et ne pas
+  // chercher les deux revient à traiter deux fichiers identiques différemment.
+  const nu = base.replace(/^async-/, '');
+  const candidats = [
+    join('fixtures', `${nu}.step`),
+    join('fixtures', `${nu}.stp`),
+    join('out', `${base}.step`),
+  ];
 
   for (const chemin of candidats) {
     try {
@@ -254,6 +273,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   try {
     const entites: string[] = [];
     let machineIncluse = false;
+    let note: string | undefined;
 
     // La machine, si son STEP est à portée : c'est la seule voie vers le STEP
     // commun du §7.3.
@@ -261,13 +281,20 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
     if (brep) {
       try {
         const bytes = await readFile(brep);
+        if (bytes.length > BREP_MAX_OCTETS) {
+          throw new Error(
+            `STEP de ${(bytes.length / 1024 / 1024).toFixed(1)} Mo : au-delà de ` +
+              `${BREP_MAX_OCTETS / 1024 / 1024} Mo le moteur Zoo échoue après plusieurs minutes ` +
+              `(voir FEEDBACK.md #5). La caisse est générée seule.`
+          );
+        }
         const { resp } = await session.send(
           {
             type: 'import_files',
             files: [{ path: basename(brep), data: bytes as unknown as number[] }],
             format: { type: 'step', split_closed_faces: false },
           },
-          900_000
+          BREP_TIMEOUT_MS
         );
         if (resp.type === 'modeling' && resp.data.modeling_response.type === 'import_files') {
           const machineId = resp.data.modeling_response.data.object_id;
@@ -309,9 +336,11 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
           entites.push(machineId);
           machineIncluse = true;
         }
-      } catch {
+      } catch (err) {
         // Le moteur ne sait pas lire tous les STEP (FEEDBACK #5). On continue
-        // avec la caisse seule plutôt que de ne rien rendre.
+        // avec la caisse seule plutôt que de ne rien rendre — mais on dit
+        // pourquoi, au lieu de laisser croire à un oubli.
+        note = err instanceof Error ? err.message : String(err);
       }
     }
 
@@ -373,6 +402,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
       gltf,
       step,
       machineIncluse,
+      note,
       pose: poseId,
       solides: ids.length,
       sessionMs: session.elapsedMs(),

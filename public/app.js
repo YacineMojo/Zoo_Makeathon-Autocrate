@@ -442,7 +442,8 @@ $('generer').addEventListener('click', async () => {
       `${r.solides} solides b-rep, session ${(r.sessionMs / 1000).toFixed(1)} s — ` +
       (ok
         ? `encombrement conforme au verdict${r.machineIncluse ? ', machine comprise' : ''}`
-        : `⚠ écart de ${Math.round(r.controle.ecartMm)} mm avec le verdict`);
+        : `⚠ écart de ${Math.round(r.controle.ecartMm)} mm avec le verdict`) +
+      (r.note ? ` — ${r.note}` : '');
 
     // Un caissier ne peut rien faire d'une scène qu'il ne peut pas ouvrir : le
     // STEP est l'artefact qui sort de l'outil et rentre dans son PLM.
