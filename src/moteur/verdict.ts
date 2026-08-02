@@ -1,4 +1,5 @@
-import type { Crate, Gabarit, GabaritCheck, RejectionReason, ShippingMode } from '../domain/types.js';
+import type { Confidence, Crate, Gabarit, GabaritCheck, RejectionReason, ShippingMode } from '../domain/types.js';
+import { MARGE_SERREE_MM } from '../domain/types.js';
 import { GABARITS } from '../domain/gabarits.js';
 import { TARIFFS } from '../domain/tariffs.js';
 
@@ -46,9 +47,17 @@ export function checkGabarit(crate: Crate, gabarit: Gabarit): GabaritCheck {
 
   const tightest = margins.reduce((a, b) => (b.marginMm < a.marginMm ? b : a));
 
+  const fits = reasons.length === 0;
+  const confidence: Confidence = !fits
+    ? 'refusé'
+    : tightest.marginMm < MARGE_SERREE_MM
+      ? 'juste'
+      : 'confortable';
+
   return {
     gabarit,
-    fits: reasons.length === 0,
+    fits,
+    confidence,
     reasons,
     tightestMarginMm: Math.round(tightest.marginMm),
     tightestOn: tightest.reason,
@@ -82,7 +91,9 @@ export function cheapestFit(checks: GabaritCheck[], mode?: ShippingMode): Gabari
 /** Formulation lisible d'un refus. « Ça ne passe pas » vaut zéro (§15). */
 export function explain(check: GabaritCheck): string {
   if (check.fits) {
-    return `passe — marge la plus faible ${check.tightestMarginMm} mm en ${check.tightestOn}`;
+    return check.confidence === 'juste'
+      ? `passe de justesse — ${check.tightestMarginMm} mm en ${check.tightestOn}, à confirmer avec la caisserie`
+      : `passe — marge la plus faible ${check.tightestMarginMm} mm en ${check.tightestOn}`;
   }
   const parts = check.reasons.map((r) => {
     switch (r) {

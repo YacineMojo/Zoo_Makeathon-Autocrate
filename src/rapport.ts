@@ -24,11 +24,13 @@ export function render(title: string, result: Study): void {
 
   const header = ['Pose', 'Caisse L×l×h', 'Gabarit', 'Coût', 'Délai'];
   const rows = result.poses.map((p) => [
-    p.forbidden ? `${p.label} ✕` : p.label,
+    p.forbidden ? `${p.label} ✕` : result.best?.pose === p.pose && result.arbitrage === 'gabarit' ? `${p.label} ★` : p.label,
     `${mm(p.crate.outer.lengthMm)} × ${mm(p.crate.outer.widthMm)} × ${mm(p.crate.outer.heightMm)}`,
     p.forbidden ? 'écartée' : p.retained ? p.retained.gabarit.label : 'hors gabarit',
-    eur(p.costing.totalEur),
-    `${p.costing.leadTimeDays} j`,
+    // Une pose écartée n'a pas de prix : afficher un montant inviterait à
+    // comparer, alors qu'elle est interdite, pas chère.
+    p.forbidden ? '—' : eur(p.costing.totalEur),
+    p.forbidden ? '—' : `${p.costing.leadTimeDays} j`,
   ]);
 
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
@@ -46,7 +48,23 @@ export function render(title: string, result: Study): void {
   }
 
   const delta = savings(result);
-  if (delta) {
+  if (result.overloaded) {
+    // Un refus par masse ne se règle par aucune orientation : on le dit d'une
+    // phrase au lieu d'afficher un tableau de poses qui suggérerait le contraire.
+    const o = result.overloaded;
+    console.log(
+      `\n→ Refus par charge utile : ${o.grossKg.toLocaleString('fr-FR')} kg brut pour ` +
+        `${o.maxPayloadKg.toLocaleString('fr-FR')} kg admissibles sur le gabarit le plus capable ` +
+        `(${o.gabaritLabel}). Aucune orientation ne change cela, et le hors gabarit non plus : ` +
+        `c'est un problème de masse, pas d'encombrement.`
+    );
+  } else if (result.arbitrage === 'aucun') {
+    console.log(
+      `\n→ Toutes les poses tombent dans le même gabarit — ${result.best!.retained!.gabarit.label}, ` +
+        `${result.best!.costing.leadTimeDays} j. L'écart entre elles n'est que du contreplaqué : ` +
+        `gardez le repère CAO, il n'y a rien à arbitrer.`
+    );
+  } else if (delta) {
     console.log(
       `\n→ ${eur(delta.eur)} et ${delta.days} jours économisés par rapport au repère CAO.`
     );

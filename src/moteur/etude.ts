@@ -121,15 +121,48 @@ export function study(input: StudyInput): Study {
   const candidates = poses.filter((p) => p.pose !== 'reference' && p.retained && !p.forbidden);
   const best = candidates.sort((a, b) => a.costing.totalEur - b.costing.totalEur)[0];
 
+  // Y a-t-il quelque chose à arbitrer ? Si la meilleure pose tombe dans le même
+  // gabarit et le même délai que le repère CAO, l'écart n'est que du
+  // contreplaqué. Recommander de coucher une machine pour quelques dizaines
+  // d'euros apprend au lecteur à ignorer nos recommandations.
+  const reference = poses.find((p) => p.pose === 'reference');
+  const arbitrage: Study['arbitrage'] =
+    best &&
+    reference?.retained &&
+    reference.retained.gabarit.id === best.retained!.gabarit.id &&
+    reference.costing.leadTimeDays === best.costing.leadTimeDays
+      ? 'aucun'
+      : 'gabarit';
+
   const study: Study = {
     massKg,
     poses,
     best,
+    arbitrage,
     assumptions: [...ASSUMPTIONS],
     notices: notices(poses.some((p) => p.crate.hasSolidWood)),
   };
 
-  if (!best) {
+  // Un refus par charge utile ne se règle par aucune orientation, et un flat
+  // rack n'y change rien non plus : c'est un problème de masse. On le dit, au
+  // lieu d'afficher un tableau de poses qui suggère qu'une pose sauverait la
+  // mise.
+  const tousSurcharges =
+    !best &&
+    poses.every((p) => p.checks.length > 0 && p.checks.every((c) => c.reasons.includes('charge')));
+
+  if (tousSurcharges) {
+    const plusCapable = poses[0]!.checks.reduce((a, c) =>
+      c.gabarit.maxPayloadKg > a.gabarit.maxPayloadKg ? c : a
+    );
+    study.overloaded = {
+      grossKg: poses[0]!.crate.grossKg,
+      maxPayloadKg: plusCapable.gabarit.maxPayloadKg,
+      gabaritLabel: plusCapable.gabarit.label,
+    };
+  }
+
+  if (!best && !study.overloaded) {
     // Avant de conclure au hors gabarit, on regarde l'autre mode : il arrive
     // qu'un semi-remorque passe de quelques millimètres là où aucun conteneur
     // n'entre. C'est une proposition, pas une décision — la destination n'est
@@ -182,6 +215,9 @@ export function study(input: StudyInput): Study {
 export function savings(study: Study): { eur: number; days: number } | undefined {
   const reference = study.poses.find((p) => p.pose === 'reference');
   if (!reference || !study.best) return undefined;
+  // Rien à annoncer quand il n'y a rien à arbitrer : « 0 € et 0 jours
+  // économisés » est un message qui use la confiance pour rien.
+  if (study.arbitrage === 'aucun') return undefined;
   return {
     eur: reference.costing.totalEur - study.best.costing.totalEur,
     days: reference.costing.leadTimeDays - study.best.costing.leadTimeDays,

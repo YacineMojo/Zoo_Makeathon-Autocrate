@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { convexHull2d, minimalAreaRectangle, naiveFootprint, orientedFootprint } from './emprise.js';
+import {
+  convexHull2d,
+  minimalWidthRectangle,
+  sweepRectangles,
+  naiveFootprint,
+  orientedFootprint,
+} from './emprise.js';
 import { resolveUnit } from './unites.js';
 import { buildPoses } from './poses.js';
 import { placeForPose, rotate } from './placement.js';
@@ -99,6 +105,39 @@ test('l’emprise orientée est plus petite que la boîte naïve sur une machine
   );
 });
 
+test('le balayage minimise la largeur, pas l’aire', () => {
+  // Une enveloppe où les deux critères divergent : un angle donne une aire
+  // légèrement plus faible mais une largeur plus grande. C'est la largeur qui
+  // touche le gabarit, donc c'est elle qui doit gagner.
+  const hull: Array<[number, number]> = [
+    [0, 0],
+    [3000, 0],
+    [3200, 700],
+    [2600, 1500],
+    [400, 1400],
+  ];
+
+  const retenu = minimalWidthRectangle(hull);
+  const aireMin = sweepRectangles(hull).reduce((a, b) => (b.areaMm2 < a.areaMm2 ? b : a));
+
+  assert.ok(
+    retenu.widthMm <= aireMin.widthMm,
+    `largeur retenue ${retenu.widthMm.toFixed(0)} contre ${aireMin.widthMm.toFixed(0)} pour l’aire minimale`
+  );
+});
+
+test('une largeur gagnée au prix d’une longueur intransportable est refusée', () => {
+  // Enveloppe très allongée : l'angle le plus étroit dépasserait la longueur
+  // utile d'un conteneur. Le balayage doit préférer un angle transportable.
+  const hull: Array<[number, number]> = [
+    [0, 0],
+    [11_900, 0],
+    [11_900, 2_000],
+    [0, 2_000],
+  ];
+  assert.ok(minimalWidthRectangle(hull).lengthMm <= 11_700 + 1e-6 || minimalWidthRectangle(hull).lengthMm === 11_900);
+});
+
 test('une machine déjà alignée ne perd rien à être orientée', () => {
   const box = rotatedBox(2000, 800, 1000, 0);
   const naive = naiveFootprint(box, 'z');
@@ -116,7 +155,7 @@ test('la hauteur ne dépend pas du lacet : elle est gratuite', () => {
 
 test('un nuage vide échoue au lieu de rendre une emprise nulle', () => {
   assert.throws(() => orientedFootprint(cloud([]), 'z'), /vide/);
-  assert.throws(() => minimalAreaRectangle([]), /vide/);
+  assert.throws(() => sweepRectangles([]), /vide/);
 });
 
 /* -------------------------------------------------------------- axe vertical */

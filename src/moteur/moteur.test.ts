@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCrate, isStackable } from './structure.js';
-import { checkGabarit, checkAll, cheapestFit } from './verdict.js';
+import { checkGabarit, checkAll, cheapestFit, explain } from './verdict.js';
 import { study, savings, type PoseInput } from './etude.js';
 import { GABARITS } from '../domain/gabarits.js';
 import type { Triplet } from '../domain/types.js';
@@ -310,4 +310,73 @@ test('les mentions obligatoires sont dans la sortie, pas seulement dans le disco
   assert.ok(result.notices.some((n) => /NIMP-15/.test(n)));
   assert.ok(result.notices.some((n) => /élingage/.test(n)));
   assert.ok(result.assumptions.length > 0);
+});
+
+/* ------------------------------------------------- nuances du lot A */
+
+test('une marge faible est annoncée comme serrée, pas comme un simple « passe »', () => {
+  // 19 mm de marge, c'est un panneau qui gondole. L'annoncer sans nuance est le
+  // genre de chose qui fait revenir une caisse du port.
+  const large = buildCrate({ lengthMm: 3000, widthMm: 2100, heightMm: 1200 }, 2_000);
+  const juste = checkGabarit(large, gabarit('40-std'));
+
+  assert.equal(juste.fits, true);
+  assert.equal(juste.confidence, 'juste');
+  assert.ok(juste.tightestMarginMm < 50);
+  assert.match(explain(juste), /justesse.*caisserie/);
+
+  const confortable = checkGabarit(buildCrate({ lengthMm: 3000, widthMm: 1200, heightMm: 1200 }, 2_000), gabarit('40-std'));
+  assert.equal(confortable.confidence, 'confortable');
+});
+
+test('un refus par charge utile est invariant par orientation, et le dit', () => {
+  // 45 t dans une caisse d'un mètre cube : aucune pose n'y changera rien, et un
+  // flat rack non plus. Proposer du hors gabarit ici serait mensonger.
+  const petit: Triplet = { lengthMm: 1200, widthMm: 900, heightMm: 800 };
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: petit, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: petit, lying: false },
+    ],
+    massKg: 45_000,
+  });
+
+  assert.equal(result.best, undefined);
+  assert.ok(result.overloaded, 'le refus par masse doit être nommé');
+  assert.ok(result.overloaded.grossKg > result.overloaded.maxPayloadKg);
+  assert.equal(result.fallbacks, undefined, 'et aucun hors gabarit ne doit être proposé');
+});
+
+test('rien à arbitrer quand toutes les poses tombent dans le même gabarit', () => {
+  // Recommander de coucher une machine pour 38 € de contreplaqué apprend au
+  // lecteur à ignorer nos recommandations.
+  const petit: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 1000 };
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: petit, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: petit, lying: false },
+      { pose: 'B', label: 'Pose B', footprint: { lengthMm: 1500, widthMm: 1000, heightMm: 1200 }, lying: true },
+    ],
+    massKg: 1_500,
+  });
+
+  assert.ok(result.best);
+  assert.equal(result.arbitrage, 'aucun');
+  assert.equal(savings(result), undefined, 'et donc aucun « 0 € économisés » à afficher');
+});
+
+test('il y a un arbitrage dès que le gabarit ou le délai change', () => {
+  const debout: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 2400 };
+  const couchee: Triplet = { lengthMm: 2400, widthMm: 1500, heightMm: 1200 };
+
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'B', label: 'Pose B', footprint: couchee, lying: true },
+    ],
+    massKg: 1_500,
+  });
+
+  assert.equal(result.arbitrage, 'gabarit');
+  assert.ok(savings(result)!.eur > 0);
 });

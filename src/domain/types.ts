@@ -103,9 +103,22 @@ export type RejectionReason =
   | 'porte-hauteur'
   | 'charge';
 
+/**
+ * Niveau de confiance d'un verdict favorable.
+ *
+ * « Passe » sans nuance à 19 mm de marge est dangereux : c'est l'épaisseur d'un
+ * panneau qui gondole, d'un patin qui déborde, d'une tête de clou. L'outil doit
+ * dire qu'il passe **de justesse**, et que ça se confirme avec la caisserie.
+ */
+export type Confidence = 'confortable' | 'juste' | 'refusé';
+
+/** En deçà de cette marge, un verdict favorable est annoncé comme serré. */
+export const MARGE_SERREE_MM = 50;
+
 export interface GabaritCheck {
   gabarit: Gabarit;
   fits: boolean;
+  confidence: Confidence;
   reasons: RejectionReason[];
   /** Marge la plus faible, en mm. Négative si ça ne passe pas. C'est le chiffre du §2 : trois centimètres. */
   tightestMarginMm: number;
@@ -169,6 +182,24 @@ export interface Study {
   best?: PoseResult;
   /** Renseigné uniquement si aucune pose ne passe. */
   fallbacks?: Fallbacks;
+  /**
+   * Le refus tient à la **masse**, pas à l'encombrement.
+   *
+   * Un refus par charge utile est invariant par orientation : aucune pose n'y
+   * changera rien, et un flat rack non plus. Afficher un tableau de poses et
+   * proposer du hors gabarit laisserait croire qu'une orientation peut sauver
+   * la mise. Il faut le dire d'une phrase.
+   */
+  overloaded?: { grossKg: number; maxPayloadKg: number; gabaritLabel: string };
+  /**
+   * Y a-t-il quelque chose à arbitrer ?
+   *
+   * Si toutes les poses tombent dans le même gabarit et le même délai que le
+   * repère CAO, l'écart de prix n'est que du contreplaqué — quelques dizaines
+   * d'euros. Recommander de coucher une machine pour 38 € apprend au lecteur à
+   * ignorer nos recommandations, y compris le jour où elles comptent.
+   */
+  arbitrage: 'aucun' | 'gabarit';
   /**
    * Aucune pose ne passe dans le mode demandé, mais une passe dans l'autre.
    *

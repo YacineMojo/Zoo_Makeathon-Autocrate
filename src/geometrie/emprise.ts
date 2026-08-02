@@ -13,8 +13,9 @@ import type { Triplet } from '../domain/types.js';
  * > sur la machine.
  *
  * Méthode, triviale et à ne pas surestimer : projeter les sommets dans le plan
- * horizontal, enveloppe convexe 2D, puis balayer 180 rotations et garder l'aire
- * minimale. L'axe vertical ne bouge pas, donc la hauteur est gratuite.
+ * horizontal, enveloppe convexe 2D, puis balayer 180 rotations et garder la
+ * **largeur** minimale — voir `minimalWidthRectangle` pour la raison, qui n'est
+ * pas évidente. L'axe vertical ne bouge pas, donc la hauteur est gratuite.
  *
  * Pas de rotating calipers : la force brute à 0,5° est exacte à la précision qui
  * nous intéresse, et tient en trente lignes qu'on peut relire.
@@ -69,20 +70,69 @@ export function convexHull2d(points: Array<[number, number]>): Array<[number, nu
 }
 
 /**
- * Rectangle englobant d'aire minimale, par balayage à pas fixe.
+ * Longueur au-delà de laquelle plus aucun gabarit ne prend la caisse.
  *
- * 180 rotations de 0,5° couvrent tout : au-delà de 90°, un rectangle se répète à
- * ses côtés près, et la permutation (longueur, largeur) n'est pas une
- * information nouvelle. On balaie tout de même 180 pas sur 90° pour rester à
- * 0,5° de résolution.
+ * La plus courte des longueurs utiles de la table des gabarits — un conteneur
+ * 40 pieds — moins ce que la caisse ajoute autour de la machine. En deçà, la
+ * longueur n'est jamais la cote qui décide.
  */
-export function minimalAreaRectangle(
-  hull: Array<[number, number]>,
-  stepDeg = 0.5
-): { lengthMm: number; widthMm: number; yawDeg: number; areaMm2: number } {
+export const USABLE_LENGTH_MM = 11_700;
+
+export interface Rectangle {
+  lengthMm: number;
+  widthMm: number;
+  yawDeg: number;
+  areaMm2: number;
+}
+
+/**
+ * Rectangle englobant retenu, par balayage à pas fixe.
+ *
+ * **On minimise la largeur, pas l'aire.** C'est une correction de fond, et elle
+ * mérite son paragraphe.
+ *
+ * Le verdict ne dépend jamais de l'aire au sol : il dépend d'une seule cote,
+ * celle qui touche le gabarit. La hauteur est fixée par la pose et le lacet n'y
+ * change rien. La longueur ne borne qu'à douze mètres, et aucune machine mise
+ * en caisse ne s'en approche. **Il ne reste que la largeur**, et c'est donc
+ * elle, et elle seule, que le lacet doit réduire.
+ *
+ * Minimiser l'aire est un proxy, et un proxy qui trahit. Mesuré sur nos
+ * fichiers :
+ *
+ *     machine-demo, axe X   aire min 3100 × 1900   largeur min 3635 × 1725
+ *     KUKA KR 600,  axe Y   aire min 3168 × 2201   largeur min 3627 × 2090
+ *
+ * 175 mm et 111 mm de largeur abandonnés pour gagner des mètres cubes d'air
+ * dont notre propre énoncé dit qu'ils ne sont pas le sujet. Sur le KUKA, ces
+ * 111 mm font passer la caisse de 2431 à 2320 mm : sous les 2340 mm d'ouverture
+ * de porte d'un conteneur 40 pieds. La même machine change de gabarit.
+ *
+ * L'aire ne sert plus que de départage entre deux angles de même largeur.
+ *
+ * 180 pas de 0,5° sur 90° suffisent : au-delà, un rectangle se répète à ses
+ * côtés près.
+ */
+export function minimalWidthRectangle(hull: Array<[number, number]>, stepDeg = 0.5): Rectangle {
+  const candidates = sweepRectangles(hull, stepDeg);
+
+  // On écarte d'abord les angles qui rendraient la caisse plus longue que le
+  // plus long gabarit : gagner de la largeur en devenant intransportable n'est
+  // pas un gain.
+  const transportables = candidates.filter((r) => r.lengthMm <= USABLE_LENGTH_MM);
+  const pool = transportables.length > 0 ? transportables : candidates;
+
+  return pool.reduce((a, b) => {
+    if (Math.abs(b.widthMm - a.widthMm) > 0.5) return b.widthMm < a.widthMm ? b : a;
+    return b.areaMm2 < a.areaMm2 ? b : a;
+  });
+}
+
+/** Tous les rectangles englobants du balayage, un par angle. */
+export function sweepRectangles(hull: Array<[number, number]>, stepDeg = 0.5): Rectangle[] {
   if (hull.length === 0) throw new Error('Enveloppe vide : aucune emprise calculable.');
 
-  let best = { lengthMm: Infinity, widthMm: Infinity, yawDeg: 0, areaMm2: Infinity };
+  const out: Rectangle[] = [];
 
   for (let deg = 0; deg < 90; deg += stepDeg) {
     const rad = (deg * Math.PI) / 180;
@@ -107,23 +157,22 @@ export function minimalAreaRectangle(
     const b = maxV - minV;
     const area = a * b;
 
-    if (area < best.areaMm2) {
-      // La longueur est la plus grande des deux, **et elle doit finir sur X** :
-      // `crateBoxes` construit la caisse avec sa longueur suivant X. Si le grand
-      // côté tombait sur Y, la machine serait posée en travers de sa propre
-      // caisse — un quart de tour d'écart, invisible dans les chiffres et
-      // catastrophique dans le viewer.
-      //
-      // Un quart de tour de plus échange les deux axes : à `deg + 90`, le `u`
-      // du balayage vaut l'ancien `v`.
-      best =
-        a >= b
-          ? { lengthMm: a, widthMm: b, yawDeg: deg, areaMm2: area }
-          : { lengthMm: b, widthMm: a, yawDeg: deg + 90, areaMm2: area };
-    }
+    // La longueur est la plus grande des deux, **et elle doit finir sur X** :
+    // `crateBoxes` construit la caisse avec sa longueur suivant X. Si le grand
+    // côté tombait sur Y, la machine serait posée en travers de sa propre
+    // caisse — un quart de tour d'écart, invisible dans les chiffres et
+    // catastrophique dans le viewer.
+    //
+    // Un quart de tour de plus échange les deux axes : à `deg + 90`, le `u`
+    // du balayage vaut l'ancien `v`.
+    out.push(
+      a >= b
+        ? { lengthMm: a, widthMm: b, yawDeg: deg, areaMm2: area }
+        : { lengthMm: b, widthMm: a, yawDeg: deg + 90, areaMm2: area }
+    );
   }
 
-  return best;
+  return out;
 }
 
 /**
@@ -226,7 +275,7 @@ export function orientedFootprint(
   }
 
   const hull = convexHull2d(projected);
-  const rect = minimalAreaRectangle(hull.length >= 3 ? hull : projected, stepDeg);
+  const rect = minimalWidthRectangle(hull.length >= 3 ? hull : projected, stepDeg);
 
   return {
     lengthMm: rect.lengthMm,

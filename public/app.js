@@ -227,15 +227,21 @@ function rendreTableau() {
   const lignes = s.poses
     .map((p) => {
       const passe = Boolean(p.retained);
-      const meilleure = s.best && s.best.pose === p.pose;
+      // Le badge « retenue » ne s'affiche que s'il y a réellement quelque chose
+      // à arbitrer. Le poser pour 38 € de contreplaqué apprend au lecteur à
+      // ignorer nos recommandations, y compris le jour où elles comptent.
+      const meilleure = s.best && s.best.pose === p.pose && s.arbitrage === 'gabarit';
       const classe = p.forbidden ? 'ligne-ecartee' : passe ? 'ligne-verte' : 'ligne-rouge';
+      const serre = passe && p.retained.confidence === 'juste';
       return `
-        <tr class="${classe} ${meilleure ? 'ligne-retenue' : ''}" data-pose="${p.pose}">
+        <tr class="${classe} ${meilleure ? 'ligne-retenue' : ''}" data-pose="${p.pose}" title="Cliquer pour voir cette pose en 3D">
           <td>${p.label}${meilleure ? ' <span class="cran">retenue</span>' : ''}</td>
           <td>${m(p.crate.outer.lengthMm)} × ${m(p.crate.outer.widthMm)} × ${m(p.crate.outer.heightMm)}</td>
-          <td>${p.forbidden ? 'écartée' : passe ? p.retained.gabarit.label : 'hors gabarit'}</td>
-          <td class="nombre">${eur(p.costing.totalEur)}</td>
-          <td class="nombre">${p.costing.leadTimeDays} j</td>
+          <td>${p.forbidden ? 'écartée' : passe ? p.retained.gabarit.label : 'hors gabarit'}${
+            serre ? ` <span class="cran cran-juste">${p.retained.tightestMarginMm} mm</span>` : ''
+          }</td>
+          <td class="nombre">${p.forbidden ? '—' : eur(p.costing.totalEur)}</td>
+          <td class="nombre">${p.forbidden ? '—' : `${p.costing.leadTimeDays} j`}</td>
         </tr>`;
     })
     .join('');
@@ -256,12 +262,27 @@ function rendreTableau() {
   // passe, et voilà ce que ça économise » vaut le déplacement (§15).
   const ref = s.poses.find((p) => p.pose === 'reference');
   let verdict;
-  if (s.best) {
+  if (s.overloaded) {
+    // Un refus par charge utile est invariant par orientation. Afficher un
+    // tableau de poses laisserait croire qu'une orientation sauverait la mise.
+    verdict = `<strong>Refus par charge utile.</strong> ${s.overloaded.grossKg.toLocaleString('fr-FR')} kg brut
+      pour ${s.overloaded.maxPayloadKg.toLocaleString('fr-FR')} kg admissibles sur le gabarit le plus capable
+      (${s.overloaded.gabaritLabel}). Aucune orientation ne change cela, et le hors gabarit non plus :
+      c'est un problème de masse, pas d'encombrement.`;
+  } else if (s.best && s.arbitrage === 'aucun') {
+    verdict = `Toutes les poses tombent dans le même gabarit — <strong>${s.best.retained.gabarit.label}</strong>,
+      ${s.best.costing.leadTimeDays} j. L'écart entre elles n'est que du contreplaqué :
+      gardez le repère CAO, il n'y a rien à arbitrer.`;
+  } else if (s.best) {
     const eco = ref.costing.totalEur - s.best.costing.totalEur;
     const jours = ref.costing.leadTimeDays - s.best.costing.leadTimeDays;
+    const serre = s.best.retained.confidence === 'juste';
     verdict = `<strong>${eur(eco)}</strong> et <strong>${jours} jours</strong> économisés sur le repère CAO —
       ${s.best.label.toLowerCase()}, ${s.best.retained.gabarit.label},
-      marge la plus faible ${s.best.retained.tightestMarginMm} mm en ${s.best.retained.tightestOn}.`;
+      ${serre ? 'et ça passe <strong>de justesse</strong> :' : 'marge la plus faible'}
+      ${s.best.retained.tightestMarginMm} mm en ${s.best.retained.tightestOn}${
+        serre ? ', à confirmer avec la caisserie' : ''
+      }.`;
   } else if (s.otherMode) {
     verdict = `Aucun gabarit ${$('mode').value === 'maritime' ? 'maritime' : 'routier'}.
       En revanche « ${s.otherMode.label} » passe en ${s.otherMode.gabaritLabel} avec

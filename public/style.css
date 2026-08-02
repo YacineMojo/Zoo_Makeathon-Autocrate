@@ -679,3 +679,8 @@ summary:focus-visible {
   color: #2f8f5b;
   margin-left: 0.4rem;
 }
+
+/* Marge serrée : la couleur ne remplace pas le texte, elle le double. */
+.tableau-poses .cran-juste {
+  color: #b06a12;
+}
