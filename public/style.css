@@ -134,30 +134,69 @@ code {
 
 /* ── Bandeau ────────────────────────────────────────────────────────────── */
 
+/* Le bandeau passe à la ligne plutôt que de se chevaucher : sur un écran
+   étroit, le verrou de marque et le lien de l'événement se recouvraient, et les
+   deux devenaient illisibles. */
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px var(--pad);
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 18px var(--pad);
   border-bottom: 1px solid rgb(53 231 255 / 14%);
+}
+
+/* ── Le verrou de marque ────────────────────────────────────────────────────
+   Le projet et l'événement pour lequel il est fait, tenus ensemble. La croix
+   est le seul caractère de la page qui n'est ni un mot ni un chiffre : elle
+   sépare deux noms, elle ne décore pas. */
+
+.lockup {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
 
 .wordmark {
   font-family: var(--mono);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--white);
 }
 
-.top-tag {
+.lockup-x {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist);
+}
+
+.lockup-zoo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--neon);
+  text-shadow: 0 0 16px rgb(53 231 255 / 55%);
+}
+
+.top-link {
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--mist);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.top-link:hover {
+  color: var(--neon);
+  border-bottom-color: rgb(53 231 255 / 50%);
 }
 
 /* ── Hero ───────────────────────────────────────────────────────────────── */
@@ -239,18 +278,86 @@ code {
   }
 }
 
-.hero-title {
-  margin: 18px 0 0;
+/* ── L'insigne de l'événement ───────────────────────────────────────────────
+   Le makeathon avant le nom du projet : c'est le cadre dans lequel la page se
+   lit, et il est cliquable parce qu'un jury voudra vérifier. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 7px 14px 7px 12px;
   font-family: var(--mono);
-  font-size: clamp(58px, 15vw, 190px);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--neon);
+  background: rgb(27 107 255 / 14%);
+  border: 1px solid rgb(53 231 255 / 34%);
+  border-radius: 100px;
+  box-shadow: 0 0 26px -10px rgb(53 231 255 / 80%);
+  transition: border-color 170ms ease, box-shadow 170ms ease;
+}
+
+.badge:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 34px -6px rgb(53 231 255 / 95%);
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 10px var(--neon);
+}
+
+.badge-date {
+  padding-left: 10px;
+  border-left: 1px solid rgb(53 231 255 / 30%);
+  color: var(--ice);
+  letter-spacing: 0.12em;
+}
+
+.hero-title {
+  margin: 20px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(38px, 9.6vw, 122px);
   font-weight: 700;
   /* Le plus resserré de la page, contre l'œil le plus ouvert. */
-  letter-spacing: -0.04em;
-  line-height: 0.88;
+  letter-spacing: -0.045em;
+  line-height: 0.9;
   color: var(--white);
   text-shadow:
     0 0 26px rgb(53 231 255 / 42%),
     0 0 74px rgb(27 107 255 / 42%);
+}
+
+/* Le verrou, en grand, sous le titre : c'est la ligne que le jury retiendra. */
+.hero-x {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(15px, 1.9vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--white);
+}
+
+.hero-x-mark {
+  color: var(--mist);
+  font-size: 0.75em;
+}
+
+.hero-x-zoo {
+  color: var(--neon);
+  text-shadow: 0 0 22px rgb(53 231 255 / 60%);
 }
 
 .hero-lead {
@@ -317,6 +424,115 @@ code {
   padding: clamp(38px, 6vw, 84px) var(--pad);
   border-top: 1px solid rgb(53 231 255 / 12%);
   max-width: 1400px;
+}
+
+/* ── La bande de l'événement ────────────────────────────────────────────────
+   Les faits publiés, tels quels. Rien n'est arrondi : la page de l'événement
+   est à un clic, et un jury qui vérifie doit y retrouver la même chose. */
+
+/* La teinte va d'un bord à l'autre, le contenu reste dans la colonne. Posée sur
+   la bande elle-même, elle s'arrêtait à 1400 px et laissait une arête verticale
+   au milieu du fond sur les grands écrans. */
+.event {
+  max-width: none;
+  background:
+    linear-gradient(180deg, rgb(27 107 255 / 10%), transparent 88%);
+}
+
+.event > * {
+  max-width: 1400px;
+}
+
+.event-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(20px, 3.5vw, 56px);
+  margin-top: 26px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .event-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.event-lead h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  text-shadow: 0 0 26px rgb(53 231 255 / 32%);
+}
+
+.event-lead p {
+  margin: 12px 0 0;
+  max-width: 52ch;
+  font-size: 15px;
+  color: var(--ice);
+}
+
+.link-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  color: var(--neon);
+  text-decoration: none;
+  border-bottom: 1px solid rgb(53 231 255 / 40%);
+  padding-bottom: 3px;
+}
+
+.link-out:hover {
+  border-bottom-color: var(--neon);
+  text-shadow: 0 0 16px rgb(53 231 255 / 70%);
+}
+
+.event-facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  font-family: var(--mono);
+}
+
+.event-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 11px 0;
+  border-top: 1px solid rgb(53 231 255 / 14%);
+}
+
+.event-facts > div:last-child {
+  border-bottom: 1px solid rgb(53 231 255 / 14%);
+}
+
+.event-facts dt {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+.event-facts dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--white);
+  text-align: right;
+}
+
+/* La dernière ligne dit ce que nous avons réellement utilisé, et se distingue
+   des trois API mises en avant par l'événement : les confondre serait revendiquer
+   une intégration que le code ne porte pas. */
+.event-facts > div:last-child dd {
+  color: var(--neon);
 }
 
 .cards {

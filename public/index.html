@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Caisse — automatic crate generation for oversized machines</title>
+    <title>AutoCrate ✕ Zoo.dev — automatic crate generation for oversized machines</title>
     <meta
       name="description"
-      content="Zoo API Makeathon demonstrator. Drop in a machine's STEP file: Caisse measures its envelope, builds the shipping crate as real b-rep geometry, and splits the shipment when no single crate fits."
+      content="Zoo API Makeathon 2026 entry. Drop in a machine's STEP file: AutoCrate measures its envelope, builds the shipping crate as real b-rep geometry, and splits the shipment when no single crate fits."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
@@ -18,20 +18,37 @@
     <div class="halo" aria-hidden="true"></div>
 
     <header class="top">
-      <span class="wordmark">Caisse</span>
-      <span class="top-tag">Zoo API Makeathon 2026</span>
+      <!-- Le verrou de marque : le projet et l'événement pour lequel il est
+           fait, jamais l'un sans l'autre. -->
+      <span class="lockup">
+        <span class="wordmark">AutoCrate</span>
+        <span class="lockup-x" aria-hidden="true">✕</span>
+        <span class="lockup-zoo">Zoo.dev</span>
+      </span>
+      <a class="top-link" href="https://zoo.dev/events/api-makeathon" target="_blank" rel="noreferrer noopener">
+        Zoo API Makeathon 2026
+      </a>
     </header>
 
     <main>
       <section class="hero">
         <div class="hero-text">
-          <p class="eyebrow">Zoo API Makeathon 2026 · demonstrator</p>
-          <h1 class="hero-title">CAISSE</h1>
+          <a class="badge" href="https://zoo.dev/events/api-makeathon" target="_blank" rel="noreferrer noopener">
+            <span class="badge-dot" aria-hidden="true"></span>
+            <span>Built for the Zoo API Makeathon</span>
+            <span class="badge-date">22 Jul → 5 Aug 2026</span>
+          </a>
+          <h1 class="hero-title">AUTOCRATE</h1>
+          <p class="hero-x" aria-label="AutoCrate times Zoo dot dev">
+            <span>AutoCrate</span>
+            <span class="hero-x-mark" aria-hidden="true">✕</span>
+            <span class="hero-x-zoo">Zoo.dev</span>
+          </p>
           <p class="hero-lead">
             Automatic shipping crate generation for oversized industrial machines.
           </p>
           <p class="hero-body">
-            Drop in the STEP file of a machine. Caisse measures its real envelope, dimensions a
+            Drop in the STEP file of a machine. AutoCrate measures its real envelope, dimensions a
             crate around it, builds that crate as true b-rep geometry in the Zoo Engine, and names
             the transport gauge that will carry it. When no single crate fits, it splits the
             shipment along planes that follow the engineering breakdown, and never cuts a body in
@@ -78,6 +95,37 @@
           <polygon class="wf-skid" points="242.5,361.0 412.2,459.0 412.2,467.0 242.5,369.0"/>
           <polygon class="wf-skid" points="196.5,387.5 366.3,485.5 366.3,493.5 196.5,395.5"/>
         </svg>
+      </section>
+
+      <!-- L'événement, avec ses faits tels qu'ils sont publiés. Aucun chiffre
+           n'est arrondi ici : la page de l'événement est à un clic, et un jury
+           qui vérifie doit trouver la même chose. -->
+      <section class="band event">
+        <p class="eyebrow">The makeathon</p>
+        <div class="event-grid">
+          <div class="event-lead">
+            <h2>Zoo API Makeathon 2026</h2>
+            <p>
+              A fully virtual makeathon. Build something from scratch that showcases Zoo's
+              flagship APIs, and give other engineers something worth remixing. AutoCrate is our
+              entry.
+            </p>
+            <a class="link-out" href="https://zoo.dev/events/api-makeathon" target="_blank" rel="noreferrer noopener">
+              <span>zoo.dev/events/api-makeathon</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="14" height="14">
+                <path d="M8 16L16 8M9 8h7v7" fill="none" stroke="currentColor" stroke-width="2.2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+          </div>
+          <dl class="event-facts">
+            <div><dt>Format</dt><dd>Fully virtual</dd></div>
+            <div><dt>Build window</dt><dd>22 July to 5 August 2026</dd></div>
+            <div><dt>Submissions close</dt><dd>5 August 2026, 11:59 PM PDT</dd></div>
+            <div><dt>Flagship APIs in scope</dt><dd>Engine · Agent · File Format</dd></div>
+            <div><dt>AutoCrate is built on</dt><dd>Engine, File Format, Text-to-CAD</dd></div>
+          </dl>
+        </div>
       </section>
 
       <section class="band">
@@ -171,8 +219,8 @@
 
     <footer class="foot">
       <p>
-        Caisse is a Makeathon demonstrator. It produces a preliminary crate study: not a
-        fabrication drawing, and not a lifting plan. Gauge dimensions and the price grid are
+        AutoCrate is a Zoo API Makeathon demonstrator. It produces a preliminary crate study: not
+        a fabrication drawing, and not a lifting plan. Gauge dimensions and the price grid are
         indicative and listed in the assumptions.
       </p>
     </footer>

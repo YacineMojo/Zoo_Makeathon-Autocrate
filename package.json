@@ -1,7 +1,7 @@
 {
-  "name": "caisse",
+  "name": "autocrate",
   "version": "0.1.0",
-  "description": "Avant-projet de caisse d'expédition généré à partir du STEP d'une machine — Zoo API Makeathon 2026",
+  "description": "AutoCrate: automatic shipping crate generation from a machine STEP file. Zoo API Makeathon 2026.",
   "type": "module",
   "license": "MIT",
   "scripts": {

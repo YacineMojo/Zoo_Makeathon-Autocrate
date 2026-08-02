@@ -1,9 +1,10 @@
-# Caisse
+# AutoCrate ✕ Zoo.dev
 
 **Drop in the STEP file of a machine. Four seconds later, know whether its
 shipping crate fits in a container — and what it costs if it doesn't.**
 
-Built for the [Zoo API Makeathon](https://zoo.dev) (22 July → 5 August 2026).
+Built for the [Zoo API Makeathon](https://zoo.dev/events/api-makeathon), a fully virtual
+makeathon running 22 July to 5 August 2026.
 
 ![The landing page: what the tool does, and which Zoo APIs it uses](docs/accueil.png)
 
