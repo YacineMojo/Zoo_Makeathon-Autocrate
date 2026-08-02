@@ -97,8 +97,8 @@ test('trois centimètres font basculer le verdict et multiplient la facture', ()
 
   assert.equal(dessus.outer.heightMm - dessous.outer.heightMm, 30);
 
-  const passe = cheapestFit(checkAll(dessous));
-  const passePlus = cheapestFit(checkAll(dessus));
+  const passe = cheapestFit(dessous, checkAll(dessous));
+  const passePlus = cheapestFit(dessus, checkAll(dessus));
 
   assert.ok(passe, 'la caisse basse doit trouver un gabarit');
   assert.equal(passe.gabarit.id, 'semi');
@@ -211,9 +211,14 @@ test('couchage interdit : la pose est écartée mais reste calculée et affiché
   const bride = study({ poses, massKg: 1_500, forbidLying: true });
 
   assert.equal(libre.best?.pose, 'B', 'sans contrainte, la pose couchée gagne');
-  assert.equal(libre.best?.retained?.gabarit.id, '40-std');
+  // Couchée, la caisse tombe sous 2,20 m et six mètres cubes : le groupage la
+  // prend, et il est bien moins cher qu'un conteneur complet. C'est exactement
+  // le seuil que rencontre un constructeur qui expédie cinq machines par an.
+  assert.equal(libre.best?.retained?.gabarit.id, 'lcl');
   assert.equal(bride.best?.pose, 'A', 'avec la contrainte, on retombe sur la pose debout');
-  assert.equal(bride.best?.retained?.gabarit.id, '40-hc', 'plus haute, donc plus chère');
+  // Debout, 2,51 m : trop haute pour le groupage comme pour un 40' standard.
+  assert.equal(bride.best?.retained?.gabarit.id, '40-hc');
+  assert.ok(bride.best!.costing.totalEur > libre.best!.costing.totalEur * 2);
 
   const ecartee = bride.poses.find((p) => p.pose === 'B')!;
   assert.ok(ecartee.forbidden, 'la pose interdite porte son motif');

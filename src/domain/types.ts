@@ -189,6 +189,16 @@ export interface Study {
   poses: PoseResult[];
   /** Meilleure pose retenue : la moins chère parmi celles qui passent. */
   best?: PoseResult;
+  /**
+   * L'option la plus rapide, quand elle n'est pas la moins chère.
+   *
+   * Le groupage est presque toujours le moins cher et presque toujours le plus
+   * lent : il faut attendre que le conteneur du groupeur se remplisse. Trancher
+   * en silence sur le prix contredirait la thèse du projet — pour un
+   * constructeur, rater une fenêtre d'expédition coûte plus cher que le fret
+   * (§2). On pose donc les deux, et on laisse choisir.
+   */
+  faster?: { pose: PoseId; label: string; gabaritLabel: string; costing: Costing };
   /** Renseigné uniquement si aucune pose ne passe. */
   fallbacks?: Fallbacks;
   /**

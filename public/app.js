@@ -296,6 +296,18 @@ function rendreTableau() {
       ${s.best.retained.tightestMarginMm} mm en ${s.best.retained.tightestOn}${
         serre ? ', à confirmer avec la caisserie' : ''
       }.`;
+
+    // Le groupage est presque toujours le moins cher et presque toujours le
+    // plus lent. Trancher en silence sur le prix contredirait la thèse : pour
+    // un constructeur, rater une fenêtre d'expédition coûte plus que le fret.
+    if (s.faster) {
+      const jours = s.best.costing.leadTimeDays - s.faster.costing.leadTimeDays;
+      const surcout = s.faster.costing.totalEur - s.best.costing.totalEur;
+      verdict += `<br /><span class="verdict-second">Plus rapide : ${s.faster.gabaritLabel},
+        <strong>${eur(s.faster.costing.totalEur)}</strong> en ${s.faster.costing.leadTimeDays} j —
+        ${jours} jours de moins pour ${eur(surcout)} de plus.
+        À vous de voir ce que vaut la fenêtre d'expédition.</span>`;
+    }
   } else if (s.otherMode) {
     verdict = `Aucun gabarit ${$('mode').value === 'maritime' ? 'maritime' : 'routier'}.
       En revanche « ${s.otherMode.label} » passe en ${s.otherMode.gabaritLabel} avec
@@ -393,7 +405,18 @@ $('generer').addEventListener('click', async () => {
     const ok = r.controle.ecartMm !== undefined && r.controle.ecartMm < 1;
     $('vue-etat').textContent =
       `${r.solides} solides b-rep, session ${(r.sessionMs / 1000).toFixed(1)} s — ` +
-      (ok ? 'encombrement conforme au verdict' : `⚠ écart de ${Math.round(r.controle.ecartMm)} mm avec le verdict`);
+      (ok
+        ? `encombrement conforme au verdict${r.machineIncluse ? ', machine comprise' : ''}`
+        : `⚠ écart de ${Math.round(r.controle.ecartMm)} mm avec le verdict`);
+
+    // Un caissier ne peut rien faire d'une scène qu'il ne peut pas ouvrir : le
+    // STEP est l'artefact qui sort de l'outil et rentre dans son PLM.
+    $('telechargements').innerHTML = [
+      r.step
+        ? `<a class="bouton" href="/out/${r.step}" download>STEP — ${r.machineIncluse ? 'machine + caisse' : 'caisse seule'}</a>`
+        : '',
+      r.gltf ? `<a class="bouton" href="/out/${r.gltf}" download>glTF — la scène</a>` : '',
+    ].join(' ');
   } catch (err) {
     $('vue-etat').textContent = `échec : ${err.message}`;
   }

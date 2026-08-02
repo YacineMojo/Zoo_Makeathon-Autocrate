@@ -21,9 +21,21 @@ export interface Tariff {
   thresholdEur: number;
   /** Délai d'acheminement en jours, autorisations comprises. */
   leadTimeDays: number;
+  /**
+   * Tarif au m³ propre à ce gabarit, quand le régime continu domine.
+   *
+   * En conteneur complet, le m³ est une ligne secondaire : on paie la boîte.
+   * En groupage, c'est l'inverse — le m³ **est** le prix. Le même modèle porte
+   * les deux régimes, avec des poids très différents.
+   */
+  volumeEurPerM3?: number;
 }
 
 export const TARIFFS: Readonly<Record<string, Tariff>> = {
+  // Groupage : presque pas de forfait, tout au volume, et un délai plus long —
+  // il faut attendre que le conteneur du groupeur se remplisse.
+  lcl: { thresholdEur: 280, leadTimeDays: 12, volumeEurPerM3: 95 },
+  '20-std': { thresholdEur: 2_900, leadTimeDays: 5 },
   '40-std': { thresholdEur: 4_300, leadTimeDays: 5 },
   '40-hc': { thresholdEur: 4_900, leadTimeDays: 5 },
   semi: { thresholdEur: 2_400, leadTimeDays: 3 },

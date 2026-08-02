@@ -21,6 +21,42 @@ import type { Gabarit } from './types.js';
  */
 export const GABARITS: ReadonlyArray<Gabarit> = [
   {
+    // Groupage maritime. Ce n'est pas un contenant, c'est un régime de prix :
+    // on paie au mètre cube, pas au conteneur. C'est le **régime continu** du
+    // §6.6 à l'état pur, et c'est le premier seuil que rencontre un
+    // constructeur qui expédie cinq machines par an — bien avant le flat rack.
+    //
+    // Les cotes ne sont pas celles d'un contenant mais celles de ce qu'un
+    // groupeur accepte de manutentionner : ça doit passer une porte de
+    // conteneur et tenir sur un chariot.
+    id: 'lcl',
+    label: 'Groupage maritime (LCL)',
+    mode: 'maritime',
+    maxLengthMm: 5_800,
+    maxWidthMm: 2_300,
+    maxHeightMm: 2_200,
+    doorWidthMm: 2_300,
+    doorHeightMm: 2_200,
+    // Au-delà, un groupeur refuse la pièce ou la surtaxe lourdement : la
+    // manutention se fait au chariot, pas au portique.
+    maxPayloadKg: 3_000,
+    stackable: true,
+  },
+  {
+    id: '20-std',
+    label: "Conteneur 20' standard",
+    mode: 'maritime',
+    maxLengthMm: 5_890,
+    maxWidthMm: 2_350,
+    maxHeightMm: 2_390,
+    doorWidthMm: 2_340,
+    doorHeightMm: 2_280,
+    // Un 20 pieds porte plus qu'un 40 pieds : c'est la limite de la structure,
+    // pas du volume.
+    maxPayloadKg: 28_200,
+    stackable: true,
+  },
+  {
     id: '40-std',
     label: "Conteneur 40' standard",
     mode: 'maritime',

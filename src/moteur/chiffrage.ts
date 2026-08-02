@@ -41,7 +41,7 @@ export function costForGabarit(crate: Crate, check: GabaritCheck): Costing {
   if (!tariff) throw new Error(`Aucun tarif pour le gabarit ${check.gabarit.id}.`);
 
   const crateEur = crateCostEur(crate);
-  const volumeEur = Math.round(volumeM3(crate.outer) * VOLUME_EUR_PER_M3);
+  const volumeEur = Math.round(volumeM3(crate.outer) * (tariff.volumeEurPerM3 ?? VOLUME_EUR_PER_M3));
 
   return {
     crateEur,

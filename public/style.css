@@ -699,3 +699,13 @@ summary:focus-visible {
   text-transform: uppercase;
   color: #48525e;
 }
+
+/* Seconde option du verdict : présente, mais subordonnée à la première. */
+.verdict-second {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.82em;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #48525e;
+}

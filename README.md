@@ -41,11 +41,17 @@ On the demo machine — 2.0 × 1.9 × 3.1 m, 2 350 kg:
 |---|---|---|---|---|
 | CAD frame (naive) | 2.23 × 2.13 × 3.31 m | **out of gauge** | 13 545 € | 21 days |
 | A — upright | 2.23 × 2.13 × 3.31 m | **out of gauge** | 13 545 € | 21 days |
-| B — laid on X | 3.33 × 2.13 × 2.21 m | 40' standard | 6 784 € | 5 days |
-| **C — laid on Y** | **3.33 × 2.23 × 2.11 m** | **40' standard** | **6 776 €** | **5 days** |
+| B — laid on X | 3.86 × 1.96 × 2.21 m | 20' standard | 5 521 € | 5 days |
+| **C — laid on Y** | **3.33 × 2.23 × 2.11 m** | **LCL groupage** | **3 650 €** | **12 days** |
 
-**6 769 € and 16 days saved per machine.** And the interesting part is *where*
-the money is:
+**9 895 € and 9 days saved per machine.** And because the cheapest option is
+also the slowest, the tool refuses to decide for you:
+
+> Faster: 20' standard, 5 376 € in 5 days — seven days less for 1 726 € more.
+> Up to you what the shipping window is worth.
+
+The interesting part is *where* the money is. Comparing the naive box against
+the same crate shipped in a full container:
 
 | Cost line | Upright | Laid down | Delta |
 |---|---|---|---|
@@ -139,10 +145,30 @@ panels, blocking. Boxes only — no booleans, no fillets, no real joinery. Rules
 of thumb, parameterised and displayed on screen as assumptions. Never a timber
 calculation note.
 
+**Yaw minimises width, not area.** This is not a detail. The verdict never
+depends on floor area: it depends on one dimension, the one that touches the
+gauge. Height is fixed by the pose, length only binds at twelve metres — width
+is all yaw can act on. Minimising area is a proxy, and it betrays: on the demo
+machine it gives 3100 × 1900 where minimising width gives 3635 × **1725**. On
+the KUKA those 111 mm are the difference between a 40-foot container and a
+truck.
+
+**Five gauges, two cost regimes.** LCL groupage, 20' and 40' standard, 40' High
+Cube, road trailer. Groupage is not a container, it is a **pricing regime**: you
+pay per cubic metre, not per box. It is also the first threshold a builder
+shipping five machines a year actually meets — long before a flat rack. The
+gauge retained is the cheapest **in total**, not the one with the smallest flat
+fee, since those are no longer the same thing.
+
 **The verdict is an `if`.** Container and trailer dimensions are constants.
 Door opening and internal height are checked **separately**, because a load can
 fit the volume and not clear the doors. Best value-for-effort in the whole
-project.
+project. Any clearance under 50 mm is reported as *passes narrowly, confirm with
+the crate maker* — nineteen millimetres is a warped panel or a nail head.
+
+**A payload refusal is invariant under orientation.** 45 t in a one-cubic-metre
+crate is a mass problem: no pose fixes it and neither does a flat rack. The tool
+says so in one sentence instead of showing a pose table that implies otherwise.
 
 **If nothing fits**, both outcomes are priced: out-of-gauge (flat rack, OOG,
 special convoy) and splitting into two crates. **The tool does not split.** It

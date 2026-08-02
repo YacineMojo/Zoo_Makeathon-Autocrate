@@ -68,6 +68,15 @@ export function render(title: string, result: Study): void {
     console.log(
       `\n→ ${eur(delta.eur)} et ${delta.days} jours économisés par rapport au repère CAO.`
     );
+    if (result.faster) {
+      const f = result.faster;
+      const jours = result.best!.costing.leadTimeDays - f.costing.leadTimeDays;
+      const surcout = f.costing.totalEur - result.best!.costing.totalEur;
+      console.log(
+        `  Plus rapide : ${f.gabaritLabel}, ${eur(f.costing.totalEur)} en ${f.costing.leadTimeDays} j — ` +
+          `${jours} jours de moins pour ${eur(surcout)} de plus. À vous de voir ce que vaut la fenêtre d'expédition.`
+      );
+    }
   } else if (result.fallbacks) {
     if (result.otherMode) {
       const o = result.otherMode;

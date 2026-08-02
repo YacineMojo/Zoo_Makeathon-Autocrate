@@ -36,6 +36,11 @@ import type { ShippingMode } from './domain/types.js';
 const PORT = Number(process.env.PORT ?? 5174);
 const ROOT = resolve(process.cwd());
 
+const ZOO_COORDS = {
+  forward: { axis: 'y' as const, direction: 'negative' as const },
+  up: { axis: 'z' as const, direction: 'positive' as const },
+};
+
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -175,6 +180,31 @@ async function etude(body: EtudeBody) {
 
 /* ------------------------------------------------------------------ scène */
 
+/**
+ * Retrouve le STEP d'origine d'un maillage, s'il est à portée.
+ *
+ * Un maillage importé dans le moteur n'est pas réexportable (FEEDBACK #8) : le
+ * STEP commun machine + caisse n'existe que si la machine entre en b-rep. Il
+ * faut donc son STEP, pas son maillage.
+ *
+ *   async-machine-demo.obj  →  fixtures/machine-demo.step   (machine de démo)
+ *   web-<nom>.obj           →  out/web-<nom>.step           (STEP déposé)
+ */
+async function sourceBrep(mesh: string): Promise<string | undefined> {
+  const base = mesh.replace(/\.obj$/, '');
+  const candidats = [join('fixtures', `${base.replace(/^async-/, '')}.step`), join('out', `${base}.step`)];
+
+  for (const chemin of candidats) {
+    try {
+      await readFile(chemin);
+      return chemin;
+    } catch {
+      // candidat suivant
+    }
+  }
+  return undefined;
+}
+
 async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   // Import tardif : ouvrir une session coûte, on ne charge le transport que
   // lorsqu'une scène est réellement demandée.
@@ -192,32 +222,109 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
 
   const session = await EngineSession.open();
   try {
+    const entites: string[] = [];
+    let machineIncluse = false;
+
+    // La machine, si son STEP est à portée : c'est la seule voie vers le STEP
+    // commun du §7.3.
+    const brep = await sourceBrep(body.mesh!);
+    if (brep) {
+      try {
+        const bytes = await readFile(brep);
+        const { resp } = await session.send(
+          {
+            type: 'import_files',
+            files: [{ path: basename(brep), data: bytes as unknown as number[] }],
+            format: { type: 'step', split_closed_faces: false },
+          },
+          900_000
+        );
+        if (resp.type === 'modeling' && resp.data.modeling_response.type === 'import_files') {
+          const machineId = resp.data.modeling_response.data.object_id;
+
+          // Le placement est celui que l'étude a déjà calculé : la machine est
+          // posée exactement là où le verdict la suppose, pas approximativement.
+          const prevu = data.placements.find((p) => p.pose === poseId)!.placement;
+          await session.send({
+            type: 'set_object_transform',
+            object_id: machineId,
+            transforms: [
+              {
+                rotate_angle_axis: {
+                  property: {
+                    x: prevu.rotationAxis[0],
+                    y: prevu.rotationAxis[1],
+                    z: prevu.rotationAxis[2],
+                    w: prevu.rotationAngleDeg,
+                  },
+                  set: false,
+                },
+                translate: {
+                  property: { x: prevu.translateMm[0], y: prevu.translateMm[1], z: prevu.translateMm[2] },
+                  set: false,
+                },
+              },
+            ],
+          });
+          // Sans cela, machine et caisse sortent du même gris et l'image ne
+          // montre plus rien. Voir FEEDBACK.md #12.
+          await session.send({
+            type: 'object_set_material_params_pbr',
+            object_id: machineId,
+            color: { r: 0.78, g: 0.72, b: 0.05, a: 1 },
+            metalness: 0.15,
+            roughness: 0.5,
+            ambient_occlusion: 0.4,
+          });
+          entites.push(machineId);
+          machineIncluse = true;
+        }
+      } catch {
+        // Le moteur ne sait pas lire tous les STEP (FEEDBACK #5). On continue
+        // avec la caisse seule plutôt que de ne rien rendre.
+      }
+    }
+
     const ids = await createBoxesBatched(session, boxes);
-    const { resp } = await session.send(
-      {
-        type: 'export',
-        entity_ids: ids,
-        format: { type: 'gltf', storage: 'embedded', presentation: 'compact' },
-      },
-      600_000
-    );
-    if (resp.type !== 'export') throw new Error(`réponse inattendue : ${resp.type}`);
-
-    const file = resp.data.files[0];
-    if (!file) throw new Error('Export vide.');
-
-    const buf = Buffer.from(file.contents as unknown as Uint8Array);
+    entites.push(...ids);
     await mkdir('out', { recursive: true });
-    await writeFile(join('out', 'caisse-web.gltf'), buf);
+
+    const exporter = async (format: 'gltf' | 'step', nom: string): Promise<string | undefined> => {
+      const { resp } = await session.send(
+        {
+          type: 'export',
+          entity_ids: entites,
+          format:
+            format === 'gltf'
+              ? { type: 'gltf', storage: 'embedded', presentation: 'compact' }
+              : { type: 'step', coords: ZOO_COORDS, created: undefined },
+        },
+        600_000
+      );
+      if (resp.type !== 'export' || !resp.data.files[0]) return undefined;
+      const buf = Buffer.from(resp.data.files[0].contents as unknown as Uint8Array);
+      await writeFile(join('out', nom), buf);
+      return nom;
+    };
+
+    const gltf = await exporter('gltf', 'caisse-web.gltf');
+    const step = await exporter('step', 'caisse-web.step');
 
     // Contrôle systématique : la caisse produite par Zoo doit avoir
     // l'encombrement qui a reçu le verdict. Voir FEEDBACK.md #9.
-    const size = gltfSizeMm(JSON.parse(buf.toString('utf8')));
+    const rendu = gltf ? JSON.parse(await readFile(join('out', gltf), 'utf8')) : undefined;
+    const size = rendu ? gltfSizeMm(rendu) : undefined;
     const attendu = [pose.crate.outer.lengthMm, pose.crate.outer.widthMm, pose.crate.outer.heightMm];
+    // Le contrôle vaut aussi — et surtout — avec la machine dans la scène : si
+    // elle dépassait de sa caisse, l'encombrement de l'ensemble excéderait
+    // l'encombrement attendu, et l'écart le dirait. C'est le seul test qui
+    // attrape à la fois une caisse fausse et une machine mal posée.
     const ecartMm = size ? Math.max(...size.map((v, i) => Math.abs(v - attendu[i]!))) : undefined;
 
     return {
-      gltf: 'caisse-web.gltf',
+      gltf,
+      step,
+      machineIncluse,
       pose: poseId,
       solides: ids.length,
       sessionMs: session.elapsedMs(),
@@ -270,7 +377,11 @@ async function conversion(body: { name?: string; base64?: string }) {
   }
 
   await mkdir('out', { recursive: true });
-  const name = `web-${basename(body.name).replace(/\.[^.]+$/, '')}.obj`;
+  const base = `web-${basename(body.name).replace(/\.[^.]+$/, '')}`;
+  const name = `${base}.obj`;
+  // Le STEP d'origine est conservé : le maillage ne suffit pas pour produire le
+  // STEP commun machine + caisse, il faut la machine en b-rep (FEEDBACK #8).
+  await writeFile(join('out', `${base}.step`), bytes);
   const [first] = Object.values(operation.outputs);
   const objText = Buffer.from(first as string, 'base64').toString('utf8');
   await writeFile(join('out', name), objText);

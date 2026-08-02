@@ -67,7 +67,7 @@ function evaluatePose(
   // Une pose interdite est calculée quand même, et affichée barrée. Masquer une
   // ligne, c'est priver l'utilisateur de l'information qui lui permettrait de
   // rediscuter la contrainte avec son bureau d'études.
-  const retained = forbidden ? undefined : cheapestFit(checks, mode);
+  const retained = forbidden ? undefined : cheapestFit(crate, checks, mode);
 
   const costing = retained
     ? costForGabarit(crate, retained)
@@ -76,7 +76,7 @@ function evaluatePose(
   // Ce que la même pose donnerait dans l'autre mode : la colonne du tableau
   // doit pouvoir le dire elle-même, sans dépendre du bandeau.
   const autre: ShippingMode = mode === 'maritime' ? 'route' : 'maritime';
-  const checkAutre = forbidden || retained ? undefined : cheapestFit(checks, autre);
+  const checkAutre = forbidden || retained ? undefined : cheapestFit(crate, checks, autre);
 
   return {
     pose: input.pose,
@@ -140,10 +140,36 @@ export function study(input: StudyInput): Study {
       ? 'aucun'
       : 'gabarit';
 
+  // L'option la plus rapide parmi tout ce qui passe, toutes poses et tous
+  // gabarits du mode confondus. Si elle est plus rapide que la moins chère, le
+  // choix appartient à l'utilisateur, pas à l'outil.
+  let faster: Study['faster'];
+  if (best) {
+    const options = poses
+      .filter((p) => p.pose !== 'reference' && !p.forbidden)
+      .flatMap((p) =>
+        p.checks
+          .filter((c) => c.fits && c.gabarit.mode === mode)
+          .map((c) => ({ pose: p, check: c, costing: costForGabarit(p.crate, c) }))
+      )
+      .sort((a, b) => a.costing.leadTimeDays - b.costing.leadTimeDays || a.costing.totalEur - b.costing.totalEur);
+
+    const rapide = options[0];
+    if (rapide && rapide.costing.leadTimeDays < best.costing.leadTimeDays) {
+      faster = {
+        pose: rapide.pose.pose,
+        label: rapide.pose.label,
+        gabaritLabel: rapide.check.gabarit.label,
+        costing: rapide.costing,
+      };
+    }
+  }
+
   const study: Study = {
     massKg,
     poses,
     best,
+    faster,
     arbitrage,
     assumptions: [...ASSUMPTIONS],
     notices: notices(poses.some((p) => p.crate.hasSolidWood)),

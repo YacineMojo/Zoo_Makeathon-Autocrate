@@ -1,7 +1,7 @@
 import type { Confidence, Crate, Gabarit, GabaritCheck, RejectionReason, ShippingMode } from '../domain/types.js';
 import { MARGE_SERREE_MM } from '../domain/types.js';
 import { GABARITS } from '../domain/gabarits.js';
-import { TARIFFS } from '../domain/tariffs.js';
+import { costForGabarit } from './chiffrage.js';
 
 /**
  * Le verdict gabarit (PROJECT.md §6.4).
@@ -75,17 +75,28 @@ export function checkAll(crate: Crate): GabaritCheck[] {
 }
 
 /**
- * Le gabarit retenu : le moins cher de ceux qui passent.
+ * Le gabarit retenu : le moins cher **au total** de ceux qui passent.
+ *
+ * Comparer les forfaits suffisait tant que tous les gabarits se payaient à la
+ * boîte. Le groupage a changé cela : son forfait est de 280 € et son prix se
+ * fait au mètre cube. Classer sur le forfait le ferait gagner systématiquement,
+ * y compris quand une caisse volumineuse le rend deux fois plus cher qu'un
+ * conteneur complet. On compare donc ce qui se paie : le total.
  *
  * Restreint à un mode d'acheminement quand il est donné. Sans restriction, un
- * semi-remorque à 2 400 € l'emporterait systématiquement sur un conteneur à
- * 4 300 € — ce qui n'a de sens que si la machine part effectivement par la
- * route. Le mode est une entrée de l'étude, pas un résultat d'optimisation.
+ * semi-remorque l'emporterait sur un conteneur — ce qui n'a de sens que si la
+ * machine part effectivement par la route. Le mode est une entrée de l'étude,
+ * pas un résultat d'optimisation.
  */
-export function cheapestFit(checks: GabaritCheck[], mode?: ShippingMode): GabaritCheck | undefined {
+export function cheapestFit(
+  crate: Crate,
+  checks: GabaritCheck[],
+  mode?: ShippingMode
+): GabaritCheck | undefined {
   return checks
     .filter((c) => c.fits && (mode === undefined || c.gabarit.mode === mode))
-    .sort((a, b) => (TARIFFS[a.gabarit.id]?.thresholdEur ?? Infinity) - (TARIFFS[b.gabarit.id]?.thresholdEur ?? Infinity))[0];
+    .map((c) => ({ c, total: costForGabarit(crate, c).totalEur }))
+    .sort((a, b) => a.total - b.total)[0]?.c;
 }
 
 /** Formulation lisible d'un refus. « Ça ne passe pas » vaut zéro (§15). */
