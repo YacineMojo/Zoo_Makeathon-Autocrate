@@ -16,7 +16,8 @@
     "dev": "tsx src/serveur.ts",
     "verifier-ui": "node tools/verifier-ui.mjs",
     "machine-demo": "tsx src/machine-demo.ts",
-    "bout-en-bout": "tsx src/bout-en-bout.ts"
+    "bout-en-bout": "tsx src/bout-en-bout.ts",
+    "relire": "tsx src/relire-step.ts"
   },
   "dependencies": {
     "@kittycad/lib": "^4.3.15",
