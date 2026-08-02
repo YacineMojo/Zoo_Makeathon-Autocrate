@@ -228,18 +228,68 @@ async function afficherPose(poseId, gltfNom) {
     groupe.add(poserMachine(machine, placement.placement, etude.unit.scale));
   }
 
+  // Quand un découpage est proposé, l'image doit le dire aussi : le plan de
+  // coupe, et les corps qui partent à part. Annoncer une coupe en montrant une
+  // caisse entière est la même contradiction que celle du tableau.
+  const d = etude.study.decoupe;
+  if (d && poseId === (etude.study.poses.find((p) => !p.forbidden && p.pose !== 'reference') ?? {}).pose) {
+    dessinerDecoupe(d, etude.study.poses.find((p) => p.pose === poseId));
+  }
+
   cadrer();
   redimensionner();
 
   const pose = etude.study.poses.find((p) => p.pose === poseId);
   $('legende').textContent = pose
     ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(pose.crate.outer.heightMm)}, ` +
+      (etude.study.decoupe
+        ? `plan de coupe en rouge à ${(etude.study.decoupe.planDeCoupeMm / 1000).toFixed(2)} m, ` +
+          `${etude.study.decoupe.retires.length} corps cerclés partent à part. `
+        : '') +
       `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm, ` +
       `${pose.stackable ? 'gerbable' : 'non gerbable'}. ` +
       `${(etude.boxes[poseId] ?? []).filter((b) => /^(butee_|traverse_|lisse_|cale_)/.test(b.name)).length} pièces de calage, ` +
       `jeu ${pose.crate.clearanceMm} mm par face.` +
       (gltfNom ? ' Géométrie b-rep générée par Zoo.' : ' Aperçu local — cliquez « Générer la caisse » pour la géométrie Zoo.')
     : '';
+}
+
+/**
+ * Le plan de coupe et les corps qui partent à part.
+ *
+ * On ne dessine pas deux caisses : l'outil ne découpe pas, et fabriquer les
+ * morceaux laisserait croire qu'il décide. On montre ce qu'il dit — voici le
+ * plan, voici ce qui dépasse.
+ */
+function dessinerDecoupe(d, pose) {
+  if (!pose) return;
+  const L = pose.crate.outer.lengthMm * MM;
+  const l = pose.crate.outer.widthMm * MM;
+
+  // Le plan de coupe, en travers de la caisse.
+  const plan = new THREE.Mesh(
+    new THREE.PlaneGeometry(L * 1.15, l * 1.15),
+    new THREE.MeshBasicMaterial({ color: 0xc0392b, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+  );
+  plan.position.set(0, 0, d.planDeCoupeMm * MM);
+  groupe.add(plan);
+
+  // Les corps qui dépassent, cerclés de rouge.
+  for (const b of d.retiresBoites) {
+    const taille = [0, 1, 2].map((a) => Math.max(1, b.max[a] - b.min[a]) * MM);
+    const geo = new THREE.BoxGeometry(...taille);
+    const arete = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0xc0392b, linewidth: 2 })
+    );
+    arete.position.set(
+      ((b.min[0] + b.max[0]) / 2) * MM,
+      ((b.min[1] + b.max[1]) / 2) * MM,
+      ((b.min[2] + b.max[2]) / 2) * MM
+    );
+    groupe.add(arete);
+    geo.dispose();
+  }
 }
 
 /* ---------------------------------------------------------------- tableau */

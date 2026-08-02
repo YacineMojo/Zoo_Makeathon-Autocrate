@@ -35,6 +35,14 @@ export interface PlacedBody {
 export interface Decoupe {
   /** Corps qui dépassent le plan de coupe, et partent donc à part. */
   retires: string[];
+  /**
+   * Leurs boîtes, en coordonnées caisse.
+   *
+   * Le viewer en a besoin : annoncer une coupe en montrant une caisse entière
+   * est la même contradiction que celle du tableau. On désigne à l'écran ce
+   * qu'on désigne dans le texte.
+   */
+  retiresBoites: Array<{ name: string; min: [number, number, number]; max: [number, number, number] }>;
   corpsTotal: number;
   /** Cote du plan de coupe, en coordonnées caisse. */
   planDeCoupeMm: number;
@@ -156,6 +164,7 @@ export function proposeDecoupe(
 
     return {
       retires: retires.map((b) => b.name),
+      retiresBoites: retires.map((b) => ({ name: b.name, min: b.min, max: b.max })),
       corpsTotal: bodies.length,
       planDeCoupeMm: Math.round(seuil),
       axe,
