@@ -72,7 +72,7 @@ async function readBody(req: IncomingMessage, limitBytes = 64 * 1024 * 1024): Pr
   let total = 0;
   for await (const chunk of req) {
     total += (chunk as Buffer).length;
-    if (total > limitBytes) throw new Error('Corps de requête trop volumineux.');
+    if (total > limitBytes) throw new Error('Request body too large.');
     chunks.push(chunk as Buffer);
   }
   if (total === 0) return {};
@@ -151,7 +151,7 @@ const MASSE_MAX_KG = 100_000;
 
 function unDe<T extends string>(valeur: unknown, permis: readonly T[], champ: string): T {
   if (typeof valeur === 'string' && (permis as readonly string[]).includes(valeur)) return valeur as T;
-  throw new Error(`Champ « ${champ} » invalide : attendu ${permis.join(', ')}.`);
+  throw new Error(`Invalid field "${champ}": expected one of ${permis.join(', ')}.`);
 }
 
 async function etude(body: EtudeBody) {
@@ -160,17 +160,17 @@ async function etude(body: EtudeBody) {
   // faux et crédible est pire qu'une erreur.
   const name = body.mesh;
   if (typeof name !== 'string' || name.length === 0) {
-    throw new Error('Champ « mesh » manquant : indiquez le maillage à étudier.');
+    throw new Error('Missing field "mesh": name the mesh to study.');
   }
   if (basename(name) !== name || !name.endsWith('.obj')) {
-    throw new Error('Nom de maillage invalide.');
+    throw new Error('Invalid mesh name.');
   }
 
   const massKg = Number(body.massKg);
   if (!Number.isFinite(massKg) || massKg < MASSE_MIN_KG || massKg > MASSE_MAX_KG) {
     // Un STEP ne porte pas de matériau. Le demander montre qu'on le sait (§5).
     throw new Error(
-      `Masse invalide : un STEP ne porte pas de matériau, elle doit être saisie, entre ${MASSE_MIN_KG} et ${MASSE_MAX_KG.toLocaleString('fr-FR')} kg.`
+      `Invalid mass. A STEP file carries no material, so the mass has to be entered, between ${MASSE_MIN_KG} and ${MASSE_MAX_KG.toLocaleString('en-GB')} kg.`
     );
   }
 
@@ -182,7 +182,7 @@ async function etude(body: EtudeBody) {
   const objet = await readFile(join('out', name), 'utf8').catch(() => {
     // Jamais l'erreur système : elle expose l'arborescence du serveur et ne dit
     // rien d'utile à qui lit l'écran.
-    throw new Error(`Maillage introuvable : « ${name} ». Convertissez d'abord un STEP.`);
+    throw new Error(`Mesh not found: "${name}". Convert a STEP file first.`);
   });
 
   const cloud = parseObjVertices(objet);
@@ -299,6 +299,48 @@ async function sourceBrep(mesh: string): Promise<string | undefined> {
 }
 
 /**
+ * La couleur d'un ouvrage, décidée côté moteur.
+ *
+ * Le glTF rendu par Zoo ne porte pas de noms de maillage : le viewer ne peut
+ * pas y retrouver un patin pour le distinguer d'un panneau. Tant que seul le
+ * calage était colorié, tout le reste sortait du même gris — et le viewer, qui
+ * ne pouvait que trier à la clarté, rendait translucides les patins et les
+ * montants avec les panneaux. La caisse générée par Zoo apparaissait délavée
+ * là où l'aperçu local montrait une structure.
+ *
+ * On colorie donc **chaque** ouvrage selon sa famille. Le viewer n'a plus rien
+ * à deviner : il ne rend translucide que ce qui est franchement clair, c'est-à-
+ * dire les panneaux et le chapeau.
+ */
+const TEINTES = {
+  patin: { r: 0.725, g: 0.545, b: 0.306 },
+  plancher: { r: 0.788, g: 0.627, b: 0.416 },
+  montant: { r: 0.847, g: 0.706, b: 0.514 },
+  panneau: { r: 0.902, g: 0.827, b: 0.702 },
+  calage: { r: 0.72, g: 0.45, b: 0.16 },
+} as const;
+
+function teinte(nomComplet: string): { r: number; g: number; b: number } {
+  const nom = nomComplet.replace(/^(principale|seconde|caisse\d+)_/, '');
+  if (isBlocking(nom)) return TEINTES.calage;
+  if (nom.startsWith('patin')) return TEINTES.patin;
+  if (nom.startsWith('plancher')) return TEINTES.plancher;
+  if (nom.startsWith('montant')) return TEINTES.montant;
+  return TEINTES.panneau;
+}
+
+function commandesTeinte(boxes: ReadonlyArray<{ name: string }>, ids: string[]) {
+  return boxes.map((b, i) => ({
+    type: 'object_set_material_params_pbr' as const,
+    object_id: ids[i]!,
+    color: { ...teinte(b.name), a: 1 },
+    metalness: 0.02,
+    roughness: 0.9,
+    ambient_occlusion: 0.5,
+  }));
+}
+
+/**
  * Les N caisses du découpage, construites en b-rep par le moteur.
  *
  * Elles sortent en un seul STEP : c'est l'expédition complète, telle qu'elle
@@ -312,7 +354,7 @@ async function sceneDecoupeZoo(body: EtudeBody & { caisses?: number }) {
 
   const data = await etude(body);
   const d = data.study.decoupe;
-  if (!d) throw new Error('Aucun découpage à générer : une pose passe déjà.');
+  if (!d) throw new Error('Nothing to split: one pose already fits.');
 
   const boxes = (await construireDecoupe(body)).boxes;
   const t0 = performance.now();
@@ -321,19 +363,7 @@ async function sceneDecoupeZoo(body: EtudeBody & { caisses?: number }) {
   try {
     const ids = await createBoxesBatched(session, boxes);
 
-    await session.sendBatch(
-      boxes
-        .map((b, i) => (isBlocking(b.name) ? ids[i]! : undefined))
-        .filter((id): id is string => id !== undefined)
-        .map((object_id) => ({
-          type: 'object_set_material_params_pbr' as const,
-          object_id,
-          color: { r: 0.72, g: 0.45, b: 0.16, a: 1 },
-          metalness: 0.02,
-          roughness: 0.9,
-          ambient_occlusion: 0.5,
-        }))
-    );
+    await session.sendBatch(commandesTeinte(boxes, ids));
 
     await mkdir('out', { recursive: true });
 
@@ -377,7 +407,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   const data = await etude(body);
   const poseId = body.pose ?? data.study.best?.pose ?? 'A';
   const pose = data.study.poses.find((p) => p.pose === poseId);
-  if (!pose) throw new Error(`Pose inconnue : ${poseId}.`);
+  if (!pose) throw new Error(`Unknown pose: ${poseId}.`);
 
   const profile = data.placements.find((p) => p.pose === poseId)?.profile;
   const boxes = [...crateBoxes(pose.crate), ...(profile ? blockingBoxes(pose.crate, profile) : [])];
@@ -397,9 +427,9 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
         const bytes = await readFile(brep);
         if (bytes.length > BREP_MAX_OCTETS) {
           throw new Error(
-            `STEP de ${(bytes.length / 1024 / 1024).toFixed(1)} Mo : au-delà de ` +
-              `${BREP_MAX_OCTETS / 1024 / 1024} Mo le moteur Zoo échoue après plusieurs minutes ` +
-              `(voir FEEDBACK.md #5). La caisse est générée seule.`
+            `STEP file of ${(bytes.length / 1024 / 1024).toFixed(1)} MB. Above ` +
+              `${BREP_MAX_OCTETS / 1024 / 1024} MB the Zoo engine fails after several minutes ` +
+              `(see FEEDBACK.md #5), so the crate is generated on its own.`
           );
         }
         const { resp } = await session.send(
@@ -462,21 +492,9 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
     entites.push(...ids);
 
     // Le glTF rendu par Zoo n'a pas de noms de maillage : le viewer ne peut pas
-    // y retrouver le calage pour le colorier. C'est donc le moteur qui le
-    // colorie, et le viewer se contente d'utiliser les matériaux reçus.
-    await session.sendBatch(
-      boxes
-        .map((b, i) => (isBlocking(b.name) ? ids[i]! : undefined))
-        .filter((id): id is string => id !== undefined)
-        .map((object_id) => ({
-          type: 'object_set_material_params_pbr' as const,
-          object_id,
-          color: { r: 0.72, g: 0.45, b: 0.16, a: 1 },
-          metalness: 0.02,
-          roughness: 0.9,
-          ambient_occlusion: 0.5,
-        }))
-    );
+    // y retrouver un patin pour le distinguer d'un panneau. C'est donc le moteur
+    // qui colorie chaque ouvrage, et le viewer se contente des matériaux reçus.
+    await session.sendBatch(commandesTeinte(boxes, ids));
 
     await mkdir('out', { recursive: true });
 
@@ -541,7 +559,7 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
 async function construireDecoupe(body: EtudeBody & { caisses?: number }) {
   const data = await etude(body);
   const d = data.study.decoupe;
-  if (!d) throw new Error('Aucun découpage à montrer : une pose passe déjà.');
+  if (!d) throw new Error('Nothing to split: one pose already fits.');
 
   const scene = sceneDecoupe(d);
   const texte = await readFile(join('out', body.mesh!), 'utf8');
@@ -634,7 +652,7 @@ async function conversion(body: { name?: string; base64?: string }) {
   const { createZooClient } = await import('./zoo-client.js');
   const { api_calls } = await import('@kittycad/lib');
 
-  if (!body.base64 || !body.name) throw new Error('Fichier manquant.');
+  if (!body.base64 || !body.name) throw new Error('No file received.');
   const bytes = Buffer.from(body.base64, 'base64');
 
   // Un maillage déposé n'a rien à convertir : il entre tel quel. C'est le
@@ -643,7 +661,7 @@ async function conversion(body: { name?: string; base64?: string }) {
   if (/\.obj$/i.test(body.name)) {
     const nom = `web-${basename(body.name).replace(/\.[^.]+$/, '')}.obj`;
     const texte = bytes.toString('utf8');
-    if (!/^v\s/m.test(texte)) throw new Error('Ce fichier ne contient aucun sommet : ce n’est pas un OBJ.');
+    if (!/^v\s/m.test(texte)) throw new Error('This file has no vertices, so it is not an OBJ.');
 
     await mkdir('out', { recursive: true });
     await writeFile(join('out', nom), texte);

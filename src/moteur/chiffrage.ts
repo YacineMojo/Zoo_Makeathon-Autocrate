@@ -67,7 +67,7 @@ export function costOversize(crate: Crate): Costing & { label: string } {
   const volumeEur = Math.round(volumeM3(crate.outer) * VOLUME_EUR_PER_M3);
 
   return {
-    label: convoy ? 'Convoi exceptionnel (route)' : OVERSIZE_LABEL,
+    label: convoy ? 'Abnormal road convoy' : OVERSIZE_LABEL,
     crateEur,
     thresholdEur: tariff.thresholdEur,
     volumeEur,
@@ -108,7 +108,7 @@ export function costSplit(
   const checkTariff = TARIFFS['40-std']!;
 
   return {
-    label: 'Démontage en deux caisses',
+    label: 'Break down into two crates',
     assumedHalves: halfCrate.outer,
     crateEur,
     thresholdEur: checkTariff.thresholdEur,

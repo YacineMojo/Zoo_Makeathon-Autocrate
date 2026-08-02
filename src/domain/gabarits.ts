@@ -30,7 +30,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
     // groupeur accepte de manutentionner : ça doit passer une porte de
     // conteneur et tenir sur un chariot.
     id: 'lcl',
-    label: 'Groupage maritime (LCL)',
+    label: 'Ocean groupage (LCL)',
     mode: 'maritime',
     maxLengthMm: 5_800,
     maxWidthMm: 2_300,
@@ -44,7 +44,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
   },
   {
     id: '20-std',
-    label: "Conteneur 20' standard",
+    label: "20' standard container",
     mode: 'maritime',
     maxLengthMm: 5_890,
     maxWidthMm: 2_350,
@@ -58,7 +58,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
   },
   {
     id: '40-std',
-    label: "Conteneur 40' standard",
+    label: "40' standard container",
     mode: 'maritime',
     maxLengthMm: 12_030,
     maxWidthMm: 2_350,
@@ -70,7 +70,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
   },
   {
     id: '40-hc',
-    label: "Conteneur 40' High Cube",
+    label: "40' high cube container",
     mode: 'maritime',
     maxLengthMm: 12_030,
     maxWidthMm: 2_350,
@@ -82,7 +82,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
   },
   {
     id: 'semi',
-    label: 'Semi-remorque (route)',
+    label: 'Road trailer',
     mode: 'route',
     maxLengthMm: 13_600,
     // Largeur chargeable réelle : 2,45 à 2,48 m selon la remorque. On retient la
@@ -101,7 +101,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
  * Ce n'est pas un gabarit de plus dans la liste, parce qu'il ne se teste pas —
  * il se subit. Il sert de branche de repli chiffrée (§6.5).
  */
-export const OVERSIZE_LABEL = 'Flat rack / OOG ou convoi exceptionnel';
+export const OVERSIZE_LABEL = 'Flat rack / OOG or abnormal road convoy';
 
 /**
  * Largeur au-delà de laquelle un transport routier bascule en convoi

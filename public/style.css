@@ -1,18 +1,15 @@
 /*
-  Direction : le terminal à conteneurs, pas la plaquette commerciale.
+  Direction : l'écran d'un banc d'essai, la nuit.
 
-  Tout ce que la page raconte se joue sur un quai — une caisse de bois, une
-  section de conteneur, et trois centimètres de marge. Les couleurs viennent de
-  là et de nulle part ailleurs : l'encre de coque, la craie du marquage sur
-  l'acier, l'oxyde du corten pour ce qui ne passe pas, le vert d'antifouling
-  pour ce qui passe. Le cuivre est le seul accent chaud, et il est rare : il ne
-  signale que l'interaction et Zoo.
+  Bleu partout, du presque noir de fond au néon cyan qui porte l'accent, et le
+  rouge fluo réservé à une seule chose : ce qui sort de l'outil et part chez le
+  caissier. Tout ce qui brille est fonctionnel. Un texte blanc, un accent néon,
+  une couleur de sortie, et rien d'autre.
 
-  La typographie tient à une seule collision, tenue partout : la même chasse
-  fixe, serrée à −0,035 em pour le chiffre du verdict, ouverte à +0,24 em pour
-  les œils-de-section. Le plus resserré et le plus écarté de la page sont de la
-  même famille. Aucune police distante — la démonstration doit tourner hors
-  ligne, et une police qui ne charge pas est un écran qui ne ressemble à rien.
+  Aucune police distante : la démonstration doit tourner hors ligne, et une
+  police qui ne charge pas est un écran qui ne ressemble à rien. La chasse fixe
+  système porte les titres et les données ; le grotesque système porte le texte
+  courant, qui est minoritaire.
 */
 
 :root {
@@ -20,31 +17,28 @@
     "Liberation Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* Encre de coque : le fond des bandes sombres, et tout le texte principal. */
-  --encre: #0f151b;
-  --encre-80: #1b242e;
-  --encre-60: #38434f;
-  /* Acier : les traits, les seconds rôles. */
-  --acier: #5a646f;
-  --acier-clair: #8d97a2;
-  /* Craie sur tôle : le fond de page. */
-  --craie: #e3e7ea;
-  --craie-trait: #ccd3d9;
-  --papier: #fbfcfd;
+  /* Le dégradé de bleu, du plus profond au plus clair. */
+  --void: #01040e;
+  --deep: #04102c;
+  --hull: #071b45;
+  --steel: #0c2a63;
+  --edge: #14407f;
+  --azure: #1b6bff;
 
-  /* Corten : ce qui ne passe pas. Antifouling : ce qui passe. */
-  --oxyde: #af3a21;
-  --oxyde-clair: #e06a4d;
-  --algue: #1e6b54;
-  --algue-clair: #4fb490;
-  /* Le seul accent chaud : interaction, Zoo, marge serrée. */
-  --cuivre: #b0682f;
-  --cuivre-clair: #dd9a5c;
+  /* Le néon. Rare, et jamais décoratif. */
+  --neon: #35e7ff;
+  --neon-dim: #1aa8c4;
 
-  --rayon: 2px;
-  --trait: 1px solid var(--craie-trait);
-  --marge-page: clamp(16px, 4.5vw, 60px);
-  --entree: 460ms;
+  --white: #ffffff;
+  --ice: #a9c8f2;
+  --mist: #6d8fc4;
+
+  /* La sortie : le seul rouge de la page. */
+  --redline: #ff2350;
+  --redline-hot: #ff5274;
+
+  --radius: 3px;
+  --pad: clamp(18px, 4.5vw, 68px);
 }
 
 *,
@@ -56,12 +50,10 @@
 /*
   `hidden` doit gagner, toujours.
 
-  La règle du navigateur — `[hidden] { display: none }` — a la même spécificité
-  qu'une classe, et perd donc contre toute classe déclarée après elle. Un
-  `.chargement { display: flex }` suffisait à rendre l'attribut inopérant :
-  `zone.hidden = true` s'exécutait, l'animation continuait de tourner par-dessus
-  la vue 3D, et le calque interceptait les clics — on ne pouvait plus faire
-  tourner la caisse. Le voile était bien « caché », et bien visible.
+  La règle du navigateur a la même spécificité qu'une classe et perd donc contre
+  toute classe déclarée après elle. Un `display: flex` posé sur un calque suffit
+  à rendre l'attribut inopérant : l'élément est « caché » et parfaitement
+  visible, et il intercepte les clics de ce qu'il recouvre.
 */
 [hidden] {
   display: none !important;
@@ -69,1140 +61,394 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  /*
-    La trame millimétrée du papier de calcul, très en retrait. Elle donne au
-    fond une texture de document mesuré plutôt que de page web, et c'est sur
-    elle que les blocs blancs se détachent.
-  */
-  background-color: var(--craie);
-  background-image:
-    linear-gradient(rgb(15 21 27 / 3.5%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(15 21 27 / 3.5%) 1px, transparent 1px);
-  background-size: 28px 28px;
-  color: var(--encre);
+  background: var(--void);
+  color: var(--white);
   font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── L'œil de section ───────────────────────────────────────────────────────
-   Le repère le plus écarté de la page. Il nomme la vue, comme sur un plan, et
-   ne dit jamais rien d'autre. */
+a {
+  color: var(--neon);
+}
 
-.oeil {
-  margin: 0;
+code {
   font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--acier);
-}
-
-.oeil-clair {
-  color: var(--acier-clair);
-}
-
-/* ── Cartouche ──────────────────────────────────────────────────────────── */
-
-.cartouche {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px 40px;
-  padding: clamp(22px, 3.5vw, 40px) var(--marge-page) clamp(18px, 2.6vw, 26px);
-  background: var(--encre);
-  color: var(--craie);
-}
-
-.cartouche-marque {
-  flex: 1 1 26rem;
-  min-width: 0;
-}
-
-.cartouche h1 {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: clamp(22px, 3vw, 32px);
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--papier);
-}
-
-.cartouche-accroche {
-  margin: 8px 0 0;
-  max-width: 54ch;
-  color: var(--acier-clair);
-  font-size: 14px;
-}
-
-.cartouche-credits {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 10.5px;
-}
-
-.cartouche-credits > div {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  justify-content: space-between;
-}
-
-.cartouche-credits dt {
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--acier);
-}
-
-.cartouche-credits dd {
-  margin: 0;
-  color: var(--craie);
-}
-
-/* ── Console ────────────────────────────────────────────────────────────────
-   Une ligne d'entrées, collante, au-dessus de ce qu'elle commande. Le trait de
-   cuivre sous la barre est le seul liseré de la page. */
-
-.console {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px clamp(14px, 1.8vw, 26px);
-  padding: 12px var(--marge-page) 13px;
-  background: var(--papier);
-  border-bottom: 2px solid var(--encre);
-  box-shadow: 0 1px 0 var(--cuivre), 0 10px 24px -18px rgb(15 21 27 / 55%);
-}
-
-.reglage {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.reglage > label,
-.reglage-titre {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--acier);
-}
-
-.console select,
-.console input[type="number"] {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--encre);
-  background: var(--craie);
-  border: 1px solid var(--craie-trait);
-  border-radius: var(--rayon);
-  padding: 6px 8px;
-  /* L'enfoncement de la gravure, sans ombre décorative. */
-  box-shadow: inset 0 1px 0 rgb(15 21 27 / 8%);
-}
-
-.console select:hover,
-.console input[type="number"]:hover {
-  border-color: var(--acier-clair);
-}
-
-.reglage-exemple {
-  flex: 1 1 15rem;
-  max-width: 26rem;
-}
-
-.reglage-exemple select {
-  width: 100%;
-}
-
-.console input[type="number"] {
-  width: 9ch;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.saisie-unite {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.unite {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--acier);
-}
-
-/*
-  Le dépôt de fichier : un bouton, pas un contrôle système à moitié stylé.
-
-  Le champ natif reste dans le document — il porte l'événement, le clavier et
-  le lecteur d'écran — mais il est réduit à rien derrière son étiquette. Le
-  « No file chosen » que le navigateur ajoute de lui-même n'apprend rien à
-  personne : le nom du fichier lu s'affiche sous la console, avec le nombre de
-  sommets, là où il veut dire quelque chose.
-*/
-.depot {
-  display: inline-flex;
-  align-items: center;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 8px 13px;
-  border: 1px solid var(--encre);
-  border-radius: var(--rayon);
-  background: var(--papier);
-  color: var(--encre);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.depot:hover {
-  background: var(--craie);
-}
-
-.depot:focus-within {
-  outline: 2px solid var(--cuivre);
-  outline-offset: 2px;
-}
-
-.depot input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.reglage-bascule {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-bottom: 7px;
-}
-
-.reglage-bascule input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--cuivre);
-  margin: 0;
-}
-
-.reglage-bascule label {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--acier);
-  cursor: pointer;
-}
-
-/* Réglages de lecture : présents, vérifiables, hors du chemin. */
-.reglage-repli {
-  position: relative;
-  padding-bottom: 7px;
-}
-
-.reglage-repli > summary {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--acier);
-  cursor: pointer;
-  list-style: none;
-  padding: 5px 0;
-}
-
-.reglage-repli > summary::-webkit-details-marker {
-  display: none;
-}
-
-.reglage-repli > summary::after {
-  content: " ▾";
-  color: var(--acier-clair);
-}
-
-.reglage-repli[open] > summary {
-  color: var(--cuivre);
-}
-
-.repli-panneau {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 5;
-  display: grid;
-  gap: 10px;
-  padding: 14px 16px;
-  min-width: 13rem;
-  background: var(--papier);
-  border: 1px solid var(--encre);
-  border-radius: var(--rayon);
-  box-shadow: 0 14px 30px -14px rgb(15 21 27 / 45%);
-}
-
-/* ── Boutons ────────────────────────────────────────────────────────────── */
-
-.bouton {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 10px 16px;
-  border: 1px solid var(--encre);
-  border-radius: var(--rayon);
-  background: var(--papier);
-  color: var(--encre);
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: background-color 140ms ease, color 140ms ease;
-}
-
-.bouton:hover:not(:disabled) {
-  background: var(--craie);
-}
-
-.bouton-zoo {
-  margin-left: auto;
-  background: var(--cuivre);
-  border-color: var(--cuivre);
-  color: var(--papier);
-}
-
-.bouton-zoo:hover:not(:disabled) {
-  background: #96551f;
-  border-color: #96551f;
-}
-
-.bouton:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 :where(a, button, select, input, summary):focus-visible {
-  outline: 2px solid var(--cuivre);
-  outline-offset: 2px;
+  outline: 2px solid var(--neon);
+  outline-offset: 3px;
 }
 
-.console-etat {
-  flex: 1 0 100%;
-  margin: 2px 0 0;
+/* ── L'œil de section ───────────────────────────────────────────────────────
+   Le repère le plus écarté de la page, en contrepoint du titre le plus serré.
+   Il nomme la section et ne dit jamais rien d'autre. */
+
+.eyebrow {
+  margin: 0;
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--acier);
-  min-height: 1.2em;
-}
-
-.console-etat:empty {
-  display: none;
-}
-
-/* ── La bande de verdict ────────────────────────────────────────────────────
-   Le seul aplat sombre de la page après le cartouche. La conclusion en
-   chiffres, et sous elle le dessin qui la démontre. */
-
-/*
-  Deux colonnes dès qu'il y a la place : la conclusion à gauche, la preuve à
-  droite. Empilées, le dessin tombe sous la ligne de flottaison — et un dessin
-  qu'il faut aller chercher ne démontre rien.
-*/
-.verdict-bande {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: clamp(26px, 4vw, 60px);
-  align-items: start;
-  padding: clamp(26px, 3.8vw, 46px) var(--marge-page) clamp(26px, 3.4vw, 42px);
-  background: var(--encre);
-  color: var(--craie);
-}
-
-@media (max-width: 1060px) {
-  .verdict-bande {
-    grid-template-columns: 1fr;
-  }
-}
-
-.verdict-tete {
-  max-width: 52ch;
-}
-
-.verdict-chiffre {
-  margin: 10px 0 0;
-  font-family: var(--mono);
-  font-size: clamp(42px, 5.4vw, 78px);
-  font-weight: 700;
-  /* Le contrepoint de l'œil : le plus resserré de la page. */
-  letter-spacing: -0.035em;
-  line-height: 0.94;
-  color: var(--papier);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: break-word;
-}
-
-.verdict-chiffre[data-ton="passe"] {
-  color: var(--algue-clair);
-}
-
-.verdict-chiffre[data-ton="bloque"] {
-  color: var(--oxyde-clair);
-}
-
-.verdict-phrase {
-  margin: 16px 0 0;
-  max-width: 62ch;
-  font-size: clamp(15px, 1.5vw, 18px);
-  line-height: 1.5;
-  color: var(--craie);
-}
-
-.verdict-phrase strong {
-  color: var(--papier);
   font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--neon);
+  text-shadow: 0 0 18px rgb(53 231 255 / 55%);
 }
 
-.verdict-second {
-  margin: 10px 0 0;
-  max-width: 68ch;
-  font-size: 13.5px;
-  color: var(--acier-clair);
+/* ── Fond ───────────────────────────────────────────────────────────────────
+   Une trame de banc d'essai et deux lueurs. Rien d'animé : une page qui pulse
+   en permanence est une page qu'on cesse de lire. */
+
+.landing {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--deep) 0%, var(--void) 46%, #020717 100%);
+  overflow-x: hidden;
 }
 
-.verdict-second:empty {
-  display: none;
+.halo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(58vw 44vw at 18% -6%, rgb(27 107 255 / 34%), transparent 68%),
+    radial-gradient(42vw 34vw at 92% 8%, rgb(53 231 255 / 16%), transparent 66%),
+    repeating-linear-gradient(0deg, rgb(53 231 255 / 4%) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(90deg, rgb(53 231 255 / 4%) 0 1px, transparent 1px 46px);
+  /* La trame s'efface vers le bas : elle situe le haut de page, elle ne
+     tapisse pas le document. */
+  mask-image: linear-gradient(180deg, #000 0%, #000 34%, transparent 78%);
 }
 
-/* Le relevé : ce que l'outil a mesuré, sous ce qu'il en conclut. */
-.releve {
-  display: grid;
-  gap: 0;
-  margin: clamp(22px, 3vw, 34px) 0 0;
-  max-width: 34rem;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
+.landing > *:not(.halo) {
+  position: relative;
+  z-index: 1;
 }
 
-.releve > div {
+/* ── Bandeau ────────────────────────────────────────────────────────────── */
+
+.top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 0;
-  border-top: 1px solid var(--encre-80);
+  padding: 20px var(--pad);
+  border-bottom: 1px solid rgb(53 231 255 / 14%);
 }
 
-.releve dt {
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 9.5px;
-  color: var(--acier);
-}
-
-.releve dd {
-  margin: 0;
-  color: var(--craie);
-  text-align: right;
-}
-
-.verdict-second strong {
-  color: var(--craie);
-  font-weight: 600;
-}
-
-/* ── Élément signature : la coupe au gabarit ────────────────────────────────
-   La section du conteneur et celle de la caisse, au même trait et à la même
-   échelle. C'est le seul dessin qui répond à « est-ce que ça rentre » sans
-   qu'on ait à lire un nombre : ou la caisse tient dans le rectangle, ou elle
-   en sort. Le reste de la page peut être lu ; celui-ci se regarde. */
-
-.coupes {
-  margin: 0;
-}
-
-@media (max-width: 1060px) {
-  .coupes {
-    margin-top: clamp(24px, 4vw, 36px);
-  }
-}
-
-.coupes-rang {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-  gap: clamp(14px, 1.8vw, 24px);
-  margin-top: 14px;
-}
-
-/* Une coupe seule ne doit pas s'étaler sur toute la largeur : un dessin étiré
-   pour remplir un vide cesse d'être à l'échelle de l'œil. */
-.coupes-rang--seule {
-  grid-template-columns: minmax(0, 380px);
-}
-
-.coupe {
-  display: grid;
-  gap: 12px;
-  padding: 18px 18px 16px;
-  border: 1px solid var(--encre-60);
-  border-radius: var(--rayon);
-  background: rgb(255 255 255 / 3%);
-}
-
-.coupe[data-verdict="passe"] {
-  border-color: rgb(79 180 144 / 45%);
-}
-
-.coupe[data-verdict="bloque"] {
-  border-color: rgb(224 106 77 / 45%);
-}
-
-/*
-  Titre puis étiquette, toujours sur deux lignes.
-
-  En les mettant côte à côte, l'étiquette la plus longue passait à la ligne dans
-  sa carte et pas dans l'autre : les deux dessins ne partaient plus de la même
-  hauteur, et deux coupes qui ne partagent pas leur ligne de sol ne se comparent
-  plus — c'est précisément ce que ce dessin existe pour permettre.
-*/
-.coupe-tete {
-  display: grid;
-  gap: 7px;
-  justify-items: start;
-  align-content: start;
-  min-height: 3.6em;
-}
-
-.coupe-pose {
-  margin: 0;
+.wordmark {
   font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--papier);
-}
-
-.coupe-etiquette {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 3px 7px;
-  border-radius: var(--rayon);
-  border: 1px solid currentcolor;
-}
-
-.coupe[data-verdict="passe"] .coupe-etiquette {
-  color: var(--algue-clair);
-}
-
-.coupe[data-verdict="bloque"] .coupe-etiquette {
-  color: var(--oxyde-clair);
-}
-
-.coupe svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-/* Le trait du dessin : celui d'un plan, pas d'une infographie. */
-/* Le gabarit est le cadre de référence : il doit rester lisible même quand la
-   caisse vient l'épouser à cinquante millimètres près. */
-.trait-gabarit {
-  fill: none;
-  stroke: #aab4bf;
-  stroke-width: 2;
-}
-
-.trait-porte {
-  fill: none;
-  stroke: var(--acier);
-  stroke-width: 1;
-  stroke-dasharray: 5 4;
-}
-
-.trait-sol {
-  stroke: var(--acier-clair);
-  stroke-width: 2.4;
-}
-
-.trait-caisse {
-  stroke-width: 1.8;
-  vector-effect: non-scaling-stroke;
-}
-
-.coupe[data-verdict="passe"] .trait-caisse {
-  stroke: var(--algue-clair);
-  fill: rgb(79 180 144 / 16%);
-}
-
-.coupe[data-verdict="bloque"] .trait-caisse {
-  stroke: var(--oxyde-clair);
-  fill: rgb(224 106 77 / 16%);
-}
-
-/* Le dépassement : hachuré, parce qu'il n'est pas une pièce de plus mais une
-   part de caisse qui n'a nulle part où aller.
-
-   Pas de `fill` ici : la trame est propre à chaque coupe — son `id` porte le
-   rang du panneau, sans quoi deux coupes sur la même page se disputent la même
-   définition. Une règle de feuille de style l'emporterait sur l'attribut de
-   présentation, et renverrait toutes les coupes vers un motif inexistant. */
-.trait-depassement {
-  stroke: none;
-}
-
-.cote-trait {
-  stroke: var(--cuivre-clair);
-  stroke-width: 1;
-}
-
-.cote-texte {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  fill: var(--cuivre-clair);
-}
-
-.repere-texte {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  fill: var(--acier);
-}
-
-/* La longueur, qui ne tient pas dans une coupe : une règle sous le dessin. */
-.coupe-longueur {
-  display: grid;
-  gap: 5px;
-}
-
-.longueur-rule {
-  position: relative;
-  height: 8px;
-  border: 1px solid var(--encre-60);
-  border-radius: 1px;
-  background: rgb(255 255 255 / 4%);
-  overflow: hidden;
-}
-
-.longueur-part {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--acier);
-}
-
-.coupe[data-verdict="passe"] .longueur-part {
-  background: rgb(79 180 144 / 55%);
-}
-
-.coupe[data-verdict="bloque"] .longueur-part {
-  background: rgb(224 106 77 / 55%);
-}
-
-.longueur-legende {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--acier);
-}
-
-.coupe-prix {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 11px;
-  border-top: 1px solid var(--encre-60);
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.coupe-prix-montant {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--papier);
-}
-
-/* Ce que les cartes ne portent pas : le poste qui n'appartient à aucune caisse.
-   Sans lui, deux prix affichés s'additionnent en un chiffre qui n'est pas
-   celui du bandeau. */
-.coupes-somme {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 12px;
-  margin: 14px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--encre-60);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--acier-clair);
-  font-variant-numeric: tabular-nums;
-}
-
-.coupes-somme:empty {
-  display: none;
-}
-
-.coupes-somme span:first-child {
-  flex: 1 1 auto;
-}
-
-.coupes-somme-total {
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--papier);
-}
-
-.coupe-prix-delai {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--acier-clair);
-}
-
-/* ── Blocs de lecture ───────────────────────────────────────────────────── */
-
-.bloc {
-  margin: clamp(18px, 2.4vw, 30px) var(--marge-page);
-  padding: clamp(16px, 2vw, 24px);
-  background: var(--papier);
-  border: var(--trait);
-  border-radius: var(--rayon);
-}
-
-.bloc-tete {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px 20px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-
-.bloc-note {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--acier);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Vue 3D ─────────────────────────────────────────────────────────────── */
-
-/*
-  Pas de `min-height` ici.
-
-  Avec `aspect-ratio`, une hauteur plancher se retourne en largeur plancher :
-  sur un écran de 390 px, les 300 px de hauteur imposaient 533 px de large, et
-  toute la page débordait horizontalement. Le rapport suffit — la largeur vient
-  du parent, la hauteur suit.
-*/
-.vue-scene {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background:
-    radial-gradient(120% 90% at 50% 0%, #f4f6f8 0%, #dfe4e9 100%);
-  border: var(--trait);
-  border-radius: var(--rayon);
-  overflow: hidden;
-}
-
-#scene {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* Une étiquette d'état épouse son texte : étirée sur toute la largeur, elle
-   lit comme une barre d'outils et cache la scène pour rien. */
-.vue-etat {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  max-width: calc(100% - 24px);
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 8px 11px;
-  background: rgb(15 21 27 / 90%);
-  color: var(--craie);
-  border-radius: var(--rayon);
-}
-
-.vue-etat:empty {
-  display: none;
-}
-
-.bloc-pied {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px 28px;
-  margin-top: 14px;
-}
-
-.reserve {
-  flex: 1 1 34rem;
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--acier);
-  border-left: 2px solid var(--craie-trait);
-  padding-left: 12px;
-}
-
-.telechargements {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.telechargements:empty {
-  display: none;
-}
-
-/* ── Chargement ─────────────────────────────────────────────────────────────
-   Les étapes affichées sont celles qui ont réellement lieu ; seule leur durée
-   d'affichage est plancher. Sans cela l'étude finit en quarante millisecondes
-   et on ne voit pas ce qui s'est passé. Une règle qui se remplit plutôt qu'un
-   rond qui tourne : c'est une mesure en cours, pas une attente. */
-
-.chargement {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  background: rgb(227 231 234 / 90%);
-  z-index: 2;
-}
-
-.chargement-rule {
-  width: min(240px, 60%);
-  height: 2px;
-  background: var(--craie-trait);
-  overflow: hidden;
-}
-
-.chargement-rule span {
-  display: block;
-  width: 40%;
-  height: 100%;
-  background: var(--cuivre);
-  animation: balayage 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-@keyframes balayage {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(250%);
-  }
-}
-
-.chargement-etape {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--encre-60);
-}
-
-/* ── Tableau des poses ──────────────────────────────────────────────────────
-   Le seul écran qui compte avec la vue 3D (PROJECT.md §13). Une ligne rouge qui
-   devient verte quand on couche la machine : compréhensible sans commentaire.
-   La couleur porte le verdict, mais jamais seule — le texte du gabarit le dit
-   aussi, pour rester lisible en niveaux de gris et en vidéoprojection. */
-
-.tableau-cadre {
-  overflow-x: auto;
-}
-
-.tableau-poses {
-  width: 100%;
-  min-width: 40rem;
-  border-collapse: collapse;
   font-size: 14px;
-}
-
-.tableau-poses th {
-  text-align: left;
-  font-family: var(--mono);
-  font-weight: 600;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: var(--acier);
-  padding: 0 10px 8px;
-  border-bottom: 1px solid var(--encre);
-  white-space: nowrap;
+  color: var(--white);
 }
 
-.tableau-poses td {
-  padding: 11px 10px;
-  border-bottom: 1px solid var(--craie);
-  cursor: pointer;
-}
-
-.tableau-poses .nombre {
-  text-align: right;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  /* Un montant coupé sur deux lignes se lit mal et se compare encore plus mal :
-     la colonne des coûts est celle que l'œil balaie en premier. */
-  white-space: nowrap;
-}
-
-.tableau-poses .cote {
-  font-family: var(--mono);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.tableau-poses td:first-child {
-  min-width: 14rem;
-}
-
-.tableau-poses tbody tr {
-  transition: background-color 130ms ease;
-}
-
-.tableau-poses tbody tr:hover td {
-  background: var(--craie);
-}
-
-.ligne-verte td:first-child {
-  box-shadow: inset 3px 0 0 var(--algue);
-}
-
-.ligne-rouge td:first-child {
-  box-shadow: inset 3px 0 0 var(--oxyde);
-}
-
-.ligne-autre td:first-child {
-  box-shadow: inset 3px 0 0 var(--cuivre);
-}
-
-.ligne-ecartee td {
-  color: var(--acier-clair);
-  text-decoration: line-through;
-}
-
-.ligne-ecartee td:first-child {
-  box-shadow: inset 3px 0 0 var(--acier-clair);
-  text-decoration: none;
-}
-
-.ligne-retenue td {
-  background: rgb(30 107 84 / 7%);
-  font-weight: 600;
-}
-
-/* La pose actuellement dans la vue 3D. Le lien entre le tableau et l'image doit
-   se voir : sans lui, on clique et on ne sait pas ce qui a changé. */
-.tableau-poses tr[aria-selected="true"] td:first-child {
-  box-shadow: inset 3px 0 0 var(--cuivre);
-}
-
-.tableau-poses tr[aria-selected="true"] td {
-  background: rgb(176 104 47 / 9%);
-}
-
-.cran {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--algue);
-  margin-left: 6px;
-  white-space: nowrap;
-}
-
-/* Marge serrée : la couleur ne remplace pas le texte, elle le double. */
-.cran-juste {
-  color: var(--cuivre);
-}
-
-.cran-autre {
-  color: var(--cuivre);
-}
-
-/* ── Hypothèses et mentions ─────────────────────────────────────────────── */
-
-.bloc-pied-page {
-  margin-bottom: clamp(40px, 6vw, 80px);
-}
-
-.repli > summary {
-  cursor: pointer;
+.top-tag {
   font-family: var(--mono);
   font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 60px);
+  padding: clamp(44px, 8vw, 104px) var(--pad) clamp(44px, 7vw, 88px);
+  max-width: 1500px;
+}
+
+.hero-text {
+  max-width: 64ch;
+}
+
+/* ── Le fil de fer ──────────────────────────────────────────────────────────
+   La caisse que l'outil fabrique : montants, patins, et la machine dedans.
+   Elle occupe la moitié droite du hero, où il n'y avait rien à dire. */
+
+.wireframe {
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+  justify-self: center;
+  filter: drop-shadow(0 0 26px rgb(53 231 255 / 34%));
+}
+
+.wf-face {
+  fill: rgb(53 231 255 / 5%);
+}
+
+.wf-edge {
+  fill: none;
+  stroke: var(--neon);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wf-stud {
+  stroke: rgb(53 231 255 / 34%);
+  stroke-width: 1.4;
+}
+
+.wf-skid {
+  fill: rgb(27 107 255 / 55%);
+  stroke: rgb(53 231 255 / 55%);
+  stroke-width: 1;
+}
+
+.wf-machine {
+  fill: rgb(123 243 255 / 55%);
+}
+
+.wf-machine-side {
+  fill: rgb(27 107 255 / 78%);
+}
+
+.wf-machine-side2 {
+  fill: rgb(12 42 99 / 92%);
+}
+
+.wf-machine-edge {
+  fill: none;
+  stroke: #7bf3ff;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 940px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .wireframe {
+    max-width: 420px;
+    order: -1;
+  }
+}
+
+.hero-title {
+  margin: 18px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(58px, 15vw, 190px);
+  font-weight: 700;
+  /* Le plus resserré de la page, contre l'œil le plus ouvert. */
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+  color: var(--white);
+  text-shadow:
+    0 0 26px rgb(53 231 255 / 42%),
+    0 0 74px rgb(27 107 255 / 42%);
+}
+
+.hero-lead {
+  margin: clamp(20px, 3vw, 30px) 0 0;
+  max-width: 26ch;
+  font-family: var(--mono);
+  font-size: clamp(17px, 2.1vw, 25px);
   font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--neon);
+  text-shadow: 0 0 24px rgb(53 231 255 / 34%);
+}
+
+.hero-body {
+  margin: 20px 0 0;
+  max-width: 62ch;
+  font-size: clamp(15px, 1.5vw, 17px);
+  color: var(--ice);
+}
+
+/* ── L'appel à l'action ─────────────────────────────────────────────────────
+   Le seul objet lumineux de la page. Sa lueur augmente au survol, ce qui est
+   la seule chose que le survol a besoin de dire. */
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: clamp(30px, 4.5vw, 46px);
+  padding: 17px 34px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--acier);
-  list-style: none;
-  padding: 2px 0;
+  text-decoration: none;
+  color: var(--void);
+  background: linear-gradient(135deg, var(--neon) 0%, #7bf3ff 52%, var(--neon) 100%);
+  border: 1px solid var(--neon);
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 1px rgb(53 231 255 / 30%),
+    0 0 30px -4px rgb(53 231 255 / 62%),
+    0 0 70px -14px rgb(27 107 255 / 78%);
+  transition: box-shadow 190ms ease, transform 190ms ease;
 }
 
-.repli > summary::-webkit-details-marker {
-  display: none;
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgb(53 231 255 / 55%),
+    0 0 42px -2px rgb(53 231 255 / 85%),
+    0 0 110px -10px rgb(27 107 255 / 90%);
 }
 
-.repli > summary::before {
-  content: "▸ ";
-  color: var(--acier-clair);
+.cta:active {
+  transform: translateY(0);
 }
 
-.repli[open] > summary::before {
-  content: "▾ ";
+/* ── Bandes de contenu ──────────────────────────────────────────────────── */
+
+.band {
+  padding: clamp(38px, 6vw, 84px) var(--pad);
+  border-top: 1px solid rgb(53 231 255 / 12%);
+  max-width: 1400px;
 }
 
-.hypotheses {
+.cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: 18px 28px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: clamp(16px, 2.2vw, 26px);
+  margin-top: 28px;
 }
 
-/* Valeur d'hypothèse : du texte, pas un champ. La table est en lecture seule,
-   et un cadre blanc invite à cliquer dedans pour rien. */
-.fiche {
-  display: grid;
-  gap: 3px;
-  align-content: start;
-  border-top: 1px solid var(--craie-trait);
-  padding-top: 10px;
+.card {
+  padding: 26px 24px 28px;
+  background: linear-gradient(165deg, rgb(12 42 99 / 62%), rgb(4 16 44 / 62%));
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(53 231 255 / 16%);
 }
 
-.fiche strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.valeur-hypothese {
+.card h2 {
+  margin: 0 0 10px;
   font-family: var(--mono);
-  font-size: 11.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cuivre);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--white);
 }
 
-.fiche p {
-  margin: 2px 0 0;
+.card p {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ice);
+}
+
+/* ── Les API Zoo ────────────────────────────────────────────────────────────
+   Le point de la page qu'un jury Zoo lira en premier. Les noms de commande sont
+   donnés tels qu'ils partent sur le fil : c'est vérifiable, et c'est le seul
+   niveau de détail qui vaille ici. */
+
+.apis {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.apis li {
+  display: grid;
+  grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+  gap: 6px clamp(20px, 3.5vw, 52px);
+  padding: 22px 0;
+  border-top: 1px solid rgb(53 231 255 / 12%);
+}
+
+.apis li:last-child {
+  border-bottom: 1px solid rgb(53 231 255 / 12%);
+}
+
+.apis h2 {
+  grid-column: 1;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--neon);
+  text-shadow: 0 0 20px rgb(53 231 255 / 40%);
+}
+
+.apis-calls {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 0;
+}
+
+.apis-calls code {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  color: var(--ice);
+  background: rgb(27 107 255 / 16%);
+  border: 1px solid rgb(53 231 255 / 22%);
+  border-radius: 2px;
+}
+
+.apis li > p:last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ice);
+}
+
+@media (max-width: 860px) {
+  .apis li {
+    grid-template-columns: 1fr;
+  }
+
+  .apis li > p:last-child {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 8px;
+  }
+}
+
+/* ── Clôture et pied ────────────────────────────────────────────────────── */
+
+.closing {
+  padding: clamp(30px, 4vw, 46px) var(--pad) clamp(34px, 4.5vw, 54px);
+  border-top: 1px solid rgb(53 231 255 / 12%);
+}
+
+/* Le second appel n'a pas de titre au-dessus de lui : sa marge haute ne doit
+   donc pas être celle d'une section qui en a un. */
+.closing .cta {
+  margin-top: 0;
+}
+
+.foot {
+  padding: 26px var(--pad) 46px;
+  border-top: 1px solid rgb(53 231 255 / 12%);
+}
+
+.foot p {
+  margin: 0;
+  max-width: 74ch;
   font-size: 12.5px;
-  color: var(--acier);
-}
-
-.mentions {
-  margin-top: 20px;
-  padding: 12px 14px;
-  background: var(--craie);
-  border-left: 3px solid var(--cuivre);
-  border-radius: 0 var(--rayon) var(--rayon) 0;
-  font-size: 12.5px;
-}
-
-.mentions p {
-  margin: 0 0 6px;
-}
-
-.mentions p:last-child {
-  margin-bottom: 0;
-}
-
-/* ── Entrée en page ─────────────────────────────────────────────────────────
-   Une seule séquence, au premier affichage : le document se pose de haut en
-   bas. Rien d'autre ne bouge ensuite — un instrument qui s'anime à chaque
-   lecture est un instrument qu'on cesse de lire. */
-
-[data-entree] {
-  animation: pose var(--entree) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
-}
-
-[data-entree="1"] { animation-delay: 0ms; }
-[data-entree="2"] { animation-delay: 70ms; }
-[data-entree="3"] { animation-delay: 140ms; }
-[data-entree="4"] { animation-delay: 210ms; }
-[data-entree="5"] { animation-delay: 260ms; }
-[data-entree="6"] { animation-delay: 310ms; }
-
-@keyframes pose {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-/* ── Adaptatif ──────────────────────────────────────────────────────────── */
-
-@media (max-width: 760px) {
-  .console {
-    position: static;
-  }
-
-  .bouton-zoo {
-    margin-left: 0;
-    flex: 1 0 100%;
-  }
-
-  .reglage-exemple {
-    flex-basis: 100%;
-    max-width: none;
-  }
-
-  .repli-panneau {
-    right: auto;
-    left: 0;
-  }
+  color: var(--mist);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {

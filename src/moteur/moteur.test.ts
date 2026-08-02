@@ -175,7 +175,7 @@ test('au-delà de la largeur réglementaire, c’est du convoi exceptionnel', ()
   const a = study({ poses: [{ pose: 'A', label: 'A', footprint: large, lying: false }], massKg: 12_000 });
   const b = study({ poses: [{ pose: 'A', label: 'A', footprint: etroit, lying: false }], massKg: 12_000 });
 
-  assert.match(a.fallbacks!.oversize.label, /[Cc]onvoi/);
+  assert.match(a.fallbacks!.oversize.label, /convoy/i);
   assert.ok(a.fallbacks!.oversize.leadTimeDays > b.fallbacks!.oversize.leadTimeDays);
 });
 
@@ -198,7 +198,7 @@ test('quand aucun conteneur ne passe, une solution routière est proposée avant
   assert.equal(pose.otherMode.gabarit.gabarit.id, 'semi');
   assert.ok(pose.otherMode.costing.totalEur < pose.costing.totalEur);
   assert.equal(result.otherMode.mode, 'route');
-  assert.equal(result.otherMode.gabaritLabel, 'Semi-remorque (route)');
+  assert.equal(result.otherMode.gabaritLabel, 'Road trailer');
   assert.ok(result.otherMode.marginMm > 0);
 
   // Et elle coûte bien moins que le hors gabarit qu'on aurait annoncé sinon.
@@ -341,8 +341,8 @@ test('les mentions obligatoires sont dans la sortie, pas seulement dans le disco
     massKg: 1_000,
   });
 
-  assert.ok(result.notices.some((n) => /NIMP-15/.test(n)));
-  assert.ok(result.notices.some((n) => /élingage/.test(n)));
+  assert.ok(result.notices.some((n) => /ISPM-15/.test(n)));
+  assert.ok(result.notices.some((n) => /lifting plan/.test(n)));
   assert.ok(result.assumptions.length > 0);
 });
 
@@ -360,7 +360,7 @@ test('une marge faible est annoncée comme serrée, pas comme un simple « passe
   assert.equal(juste.fits, true);
   assert.equal(juste.confidence, 'juste');
   assert.ok(juste.tightestMarginMm < 50);
-  assert.match(explain(juste), /justesse.*caisserie/);
+  assert.match(explain(juste), /just fits.*crate maker/);
 
   const confortable = checkGabarit(buildCrate({ lengthMm: 3000, widthMm: 1200, heightMm: 1200 }, 2_000), gabarit('40-std'));
   assert.equal(confortable.confidence, 'confortable');

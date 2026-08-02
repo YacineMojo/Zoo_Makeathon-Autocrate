@@ -73,7 +73,7 @@ export function buildPoses(
   const poses: PoseInput[] = [
     {
       pose: 'reference',
-      label: 'Repère CAO (naïf)',
+      label: 'CAD frame (naive)',
       footprint: { lengthMm: reference.lengthMm, widthMm: reference.widthMm, heightMm: reference.heightMm },
       lying: false,
     },
@@ -81,7 +81,7 @@ export function buildPoses(
       pose: (['A', 'B', 'C'] as const)[i]!,
       // Court : le tableau est lu de biais, pas étudié. L'axe reste indiqué
       // parce que c'est la seule information qui distingue deux poses couchées.
-      label: `Pose ${(['A', 'B', 'C'] as const)[i]} — ${i === 0 ? 'debout' : `couchée sur ${axis.toUpperCase()}`}`,
+      label: `Pose ${(['A', 'B', 'C'] as const)[i]}, ${i === 0 ? 'upright' : `laid on ${axis.toUpperCase()}`}`,
       footprint: {
         lengthMm: footprint.lengthMm,
         widthMm: footprint.widthMm,

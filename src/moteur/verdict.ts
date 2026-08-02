@@ -103,20 +103,24 @@ export function cheapestFit(
 export function explain(check: GabaritCheck): string {
   if (check.fits) {
     return check.confidence === 'juste'
-      ? `passe de justesse — ${check.tightestMarginMm} mm en ${check.tightestOn}, à confirmer avec la caisserie`
-      : `passe — marge la plus faible ${check.tightestMarginMm} mm en ${check.tightestOn}`;
+      ? `just fits: ${check.tightestMarginMm} mm on ${check.tightestOn}, confirm with the crate maker`
+      : `fits: tightest margin ${check.tightestMarginMm} mm on ${check.tightestOn}`;
   }
   const parts = check.reasons.map((r) => {
     switch (r) {
       case 'porte-largeur':
-        return 'trop large pour les portes';
+        return 'too wide for the doors';
       case 'porte-hauteur':
-        return 'trop haute pour les portes';
+        return 'too tall for the doors';
       case 'charge':
-        return 'charge utile dépassée';
+        return 'payload exceeded';
+      case 'longueur':
+        return 'too long';
+      case 'largeur':
+        return 'too wide';
       default:
-        return `${r} dépassée`;
+        return 'too tall';
     }
   });
-  return `refusé — ${parts.join(', ')}`;
+  return `rejected: ${parts.join(', ')}`;
 }

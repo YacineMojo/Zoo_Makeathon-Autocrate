@@ -1,0 +1,612 @@
+/*
+  Le studio : un logiciel, pas une page.
+
+  Hauteur d'écran fixe, deux volets, aucun défilement de document. Ce qui
+  déborde défile dans son volet, et les deux sorties restent ancrées en bas à
+  gauche : ce sont elles qu'on cherche une fois la caisse générée, et une sortie
+  qu'il faut aller chercher en faisant défiler n'est pas une sortie.
+*/
+
+.studio {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background:
+    radial-gradient(70vw 50vh at 78% 0%, rgb(27 107 255 / 20%), transparent 70%),
+    linear-gradient(180deg, var(--deep), var(--void));
+}
+
+/* ── Rail supérieur ─────────────────────────────────────────────────────── */
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 22px);
+  padding: 0 clamp(14px, 2vw, 22px);
+  height: 52px;
+  background: rgb(4 16 44 / 82%);
+  border-bottom: 1px solid rgb(53 231 255 / 18%);
+  box-shadow: 0 1px 0 rgb(53 231 255 / 10%);
+}
+
+.rail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ice);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+.rail-back:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+}
+
+.rail-mode {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--neon);
+  padding: 3px 9px;
+  border: 1px solid rgb(53 231 255 / 40%);
+  border-radius: var(--radius);
+}
+
+.rail-status {
+  margin: 0 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Établi : deux volets ───────────────────────────────────────────────── */
+
+.bench {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ── Volet des paramètres ───────────────────────────────────────────────── */
+
+.panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  background: rgb(4 16 44 / 66%);
+  border-right: 1px solid rgb(53 231 255 / 16%);
+}
+
+.panel-scroll {
+  overflow-y: auto;
+  padding: 16px 16px 18px;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.group-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--neon);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgb(53 231 255 / 18%);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ice);
+}
+
+.studio select,
+.studio input[type="number"] {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--white);
+  background: rgb(1 4 14 / 76%);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  max-width: 60%;
+}
+
+.studio select:hover,
+.studio input[type="number"]:hover {
+  border-color: var(--neon-dim);
+}
+
+/* `max-width` héritée de la règle groupée rognait le champ : « 2350 » s'y
+   affichait « 23 ». Une largeur en chiffres, et rien qui la contraigne. */
+.studio input[type="number"] {
+  width: 9ch;
+  max-width: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+}
+
+/* L'exemple est le champ le plus large : son nom de fichier est long, et le
+   tronquer sur trois caractères ne renseigne personne. */
+.field[for="mesh"] {
+  display: grid;
+  gap: 6px;
+}
+
+.field[for="mesh"] select {
+  max-width: none;
+  width: 100%;
+}
+
+/*
+  Le dépôt de fichier : un bouton, pas un contrôle système à moitié stylé. Le
+  champ natif reste dans le document, il porte l'événement et le clavier, mais
+  il est réduit à rien derrière son étiquette. Le « No file chosen » ajouté par
+  le navigateur n'apprend rien : le nom du fichier lu s'affiche dans le rail.
+*/
+.drop {
+  display: block;
+  text-align: center;
+  padding: 11px 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ice);
+  border: 1px dashed rgb(53 231 255 / 40%);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.drop:hover {
+  color: var(--neon);
+  border-color: var(--neon);
+  background: rgb(27 107 255 / 12%);
+}
+
+.drop:focus-within {
+  outline: 2px solid var(--neon);
+  outline-offset: 3px;
+}
+
+.drop input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ice);
+}
+
+.toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--neon);
+}
+
+/* ── Relevé ─────────────────────────────────────────────────────────────── */
+
+.readout {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgb(53 231 255 / 10%);
+}
+
+.readout dt {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mist);
+  white-space: nowrap;
+}
+
+.readout dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--white);
+  text-align: right;
+}
+
+.readout dd[data-state="pass"] {
+  color: var(--neon);
+}
+
+.readout dd[data-state="fail"] {
+  color: var(--redline-hot);
+}
+
+.readout-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--mist);
+}
+
+.readout-note:empty {
+  display: none;
+}
+
+/* ── Mentions ───────────────────────────────────────────────────────────── */
+
+.fineprint > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mist);
+  list-style: none;
+  padding: 8px 0;
+  border-top: 1px solid rgb(53 231 255 / 12%);
+}
+
+.fineprint > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fineprint > summary::before {
+  content: "+ ";
+}
+
+.fineprint[open] > summary::before {
+  content: "– ";
+}
+
+.fineprint-body {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 6px;
+}
+
+.assumptions {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.assumptions > div {
+  display: grid;
+  gap: 1px;
+}
+
+.assumptions dt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neon);
+}
+
+.assumptions dd {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--mist);
+}
+
+.assumptions .value {
+  display: block;
+  font-family: var(--mono);
+  color: var(--ice);
+}
+
+.notices p {
+  margin: 0 0 7px;
+  font-size: 11.5px;
+  color: var(--mist);
+}
+
+/* ── Sorties, ancrées en bas à gauche ───────────────────────────────────── */
+
+.outputs {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  background: rgb(1 4 14 / 72%);
+  border-top: 1px solid rgb(53 231 255 / 18%);
+}
+
+.generate {
+  width: 100%;
+  padding: 13px 16px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--void);
+  background: linear-gradient(135deg, var(--neon), #7bf3ff);
+  border: 1px solid var(--neon);
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow: 0 0 26px -6px rgb(53 231 255 / 75%);
+  transition: box-shadow 170ms ease;
+}
+
+.generate:hover:not(:disabled) {
+  box-shadow: 0 0 40px -4px rgb(53 231 255 / 95%);
+}
+
+.generate:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.downloads {
+  display: grid;
+  gap: 9px;
+}
+
+/*
+  Les deux gros boutons de sortie. Le seul rouge de l'interface, parce que
+  c'est la seule chose qui quitte l'outil.
+*/
+.download {
+  display: grid;
+  gap: 1px;
+  padding: 13px 16px;
+  text-decoration: none;
+  text-align: left;
+  border-radius: var(--radius);
+  border: 1px solid var(--redline);
+  background: linear-gradient(135deg, rgb(255 35 80 / 92%), rgb(203 16 55 / 92%));
+  color: var(--white);
+  box-shadow: 0 0 28px -8px rgb(255 35 80 / 85%);
+  transition: box-shadow 170ms ease, transform 170ms ease;
+}
+
+.download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 44px -6px rgb(255 35 80 / 100%);
+}
+
+.download-kicker {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.download-name {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* Tant que rien n'a été généré, il n'y a rien à télécharger. Le bouton garde sa
+   couleur, éteinte : il annonce ce qui va sortir sans prétendre être prêt. Le
+   passer au bleu du reste de l'interface lui ferait perdre ce qu'il est. */
+.download[aria-disabled="true"] {
+  pointer-events: none;
+  border-color: rgb(255 35 80 / 34%);
+  background: rgb(255 35 80 / 9%);
+  color: rgb(255 138 160 / 62%);
+  box-shadow: none;
+}
+
+/* ── Scène ──────────────────────────────────────────────────────────────── */
+
+.stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 14px 14px 16px;
+  gap: 10px;
+}
+
+.stage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.stage-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--white);
+}
+
+.stage-hint {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+.stage-view {
+  position: relative;
+  min-height: 0;
+  border: 1px solid rgb(53 231 255 / 22%);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(80% 70% at 50% 0%, rgb(20 64 127 / 55%), rgb(1 4 14 / 92%) 78%);
+  box-shadow: inset 0 0 60px -18px rgb(53 231 255 / 45%);
+  overflow: hidden;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stage-badge {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 7px 11px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ice);
+  background: rgb(1 4 14 / 88%);
+  border: 1px solid rgb(53 231 255 / 24%);
+  border-radius: var(--radius);
+}
+
+.stage-badge:empty {
+  display: none;
+}
+
+/* ── Chargement ─────────────────────────────────────────────────────────────
+   Les étapes affichées sont celles qui ont réellement lieu ; seule leur durée
+   d'affichage est plancher. Une règle qui balaie, pas un rond qui tourne :
+   c'est une mesure en cours, pas une attente. */
+
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgb(1 4 14 / 82%);
+}
+
+.loading-bar {
+  width: min(260px, 62%);
+  height: 2px;
+  background: rgb(53 231 255 / 18%);
+  overflow: hidden;
+}
+
+.loading-bar span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  background: var(--neon);
+  box-shadow: 0 0 14px var(--neon);
+  animation: sweep 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(265%);
+  }
+}
+
+.loading-step {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--neon);
+}
+
+/* ── Adaptatif ──────────────────────────────────────────────────────────────
+   Sous 860 px, deux volets côte à côte ne tiennent plus. On empile, la hauteur
+   redevient celle du document, et la scène garde un rapport lisible. */
+
+@media (max-width: 860px) {
+  .studio {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .bench {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    border-right: none;
+    border-bottom: 1px solid rgb(53 231 255 / 16%);
+  }
+
+  .panel-scroll {
+    overflow: visible;
+  }
+
+  .stage-view {
+    aspect-ratio: 16 / 10;
+  }
+
+  .rail-status {
+    display: none;
+  }
+}

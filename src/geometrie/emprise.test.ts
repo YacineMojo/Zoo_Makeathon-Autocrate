@@ -196,13 +196,13 @@ test('une unité imposée est respectée, même invraisemblable, mais signalée'
   const r = resolveUnit('mm', 2.5);
   assert.equal(r.unit, 'mm');
   assert.equal(r.plausible, false);
-  assert.match(r.note, /Vérifiez l’unité/);
+  assert.match(r.note, /Check the file unit/);
 });
 
 test('aucune interprétation vraisemblable : on le dit au lieu de deviner', () => {
   const r = resolveUnit('auto', 0.0001);
   assert.equal(r.plausible, false);
-  assert.match(r.note, /à la main/);
+  assert.match(r.note, /by hand/);
 });
 
 /* --------------------------------------------------------------------- poses */
@@ -220,7 +220,7 @@ test('la pose A est toujours la machine debout, même en Y-up', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 20), 'y');
   const a = result.poses.find((p) => p.pose === 'A')!;
   assert.equal(a.lying, false);
-  assert.match(a.label, /debout/);
+  assert.match(a.label, /upright/);
   assert.equal(result.poses.filter((p) => p.lying).length, 2);
 });
 

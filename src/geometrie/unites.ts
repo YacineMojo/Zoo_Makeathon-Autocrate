@@ -59,8 +59,8 @@ export function resolveUnit(choice: UnitChoice, largestRaw: number): UnitResolut
       largestMm,
       plausible: plausible(largestMm),
       note: plausible(largestMm)
-        ? `Unité ${choice} imposée. Plus grande dimension : ${Math.round(largestMm)} mm.`
-        : `Unité ${choice} imposée, mais la plus grande dimension vaut ${Math.round(largestMm)} mm — hors de la fenêtre ${PLAUSIBLE_MIN_MM}–${PLAUSIBLE_MAX_MM} mm. Vérifiez l’unité du fichier.`,
+        ? `Unit ${choice} forced. Largest dimension: ${Math.round(largestMm)} mm.`
+        : `Unit ${choice} forced, but the largest dimension comes to ${Math.round(largestMm)} mm, outside the ${PLAUSIBLE_MIN_MM} to ${PLAUSIBLE_MAX_MM} mm window. Check the file unit.`,
     };
   }
 
@@ -74,8 +74,8 @@ export function resolveUnit(choice: UnitChoice, largestRaw: number): UnitResolut
         plausible: true,
         note:
           unit === 'mm'
-            ? `Unité déduite : millimètre. Plus grande dimension : ${Math.round(largestMm)} mm.`
-            : `Unité déduite : ${unit === 'm' ? 'mètre' : 'pouce'} — la lecture en millimètres donnait ${largestRaw.toFixed(1)} mm, invraisemblable pour une machine. Plus grande dimension : ${Math.round(largestMm)} mm.`,
+            ? `Unit inferred: millimetre. Largest dimension: ${Math.round(largestMm)} mm.`
+            : `Unit inferred: ${unit === 'm' ? 'metre' : 'inch'}. Read as millimetres it came to ${largestRaw.toFixed(1)} mm, implausible for a machine. Largest dimension: ${Math.round(largestMm)} mm.`,
       };
     }
   }
@@ -87,6 +87,6 @@ export function resolveUnit(choice: UnitChoice, largestRaw: number): UnitResolut
     scale: 1,
     largestMm: largestRaw,
     plausible: false,
-    note: `Aucune unité vraisemblable : ${largestRaw.toFixed(1)} mm en lecture directe, ${(largestRaw / 1000).toFixed(3)} m, ${(largestRaw * 25.4).toFixed(0)} mm si pouces. Sélectionnez l’unité à la main.`,
+    note: `No plausible unit: ${largestRaw.toFixed(1)} mm read directly, ${(largestRaw / 1000).toFixed(3)} m, or ${(largestRaw * 25.4).toFixed(0)} mm if inches. Pick the unit by hand.`,
   };
 }

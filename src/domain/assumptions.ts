@@ -121,61 +121,61 @@ export const STACKABLE_MAX_SLENDERNESS = 1.6;
 export const ASSUMPTIONS: ReadonlyArray<Assumption> = [
   {
     id: 'clearance',
-    label: 'Jeu de calage latéral',
-    value: `${CLEARANCE_MM} mm par face — ${LISSE_MM} de lisse + ${TOLERANCE_POSE_MM} de tolérance`,
+    label: 'Side blocking clearance',
+    value: `${CLEARANCE_MM} mm per face: ${LISSE_MM} of rail plus ${TOLERANCE_POSE_MM} of tolerance`,
     rationale:
-      'Le jeu est la somme de ce qui l’occupe et de ce qui doit rester libre. Un calage logé dans la totalité de la garde ne laisse rien pour descendre la machine : sur le papier, elle ne rentre plus dans sa caisse.',
+      'The clearance is what the blocking occupies plus what has to stay free. Blocking that fills the whole gap leaves nothing to lower the machine through, and on paper it no longer fits its own crate.',
   },
   {
     id: 'top-clearance',
-    label: 'Jeu au-dessus de la machine',
-    value: `${TOP_CLEARANCE_MM} mm — ${TRAVERSE_MM} de traverse + ${TOLERANCE_POSE_MM} de tolérance`,
-    rationale: 'Même règle en hauteur : la traverse de maintien occupe sa part, la tolérance couvre la descente en caisse et le passage des élingues.',
+    label: 'Clearance above the machine',
+    value: `${TOP_CLEARANCE_MM} mm: ${TRAVERSE_MM} of cross member plus ${TOLERANCE_POSE_MM} of tolerance`,
+    rationale: 'Same rule vertically: the retaining cross member takes its share, and the tolerance covers lowering into the crate and passing the slings.',
   },
   {
     id: 'panel',
-    label: 'Épaisseur des panneaux',
-    value: `contreplaqué ${PANEL_THICKNESS_MM} mm`,
-    rationale: 'Contreplaqué de caisserie maritime. Dérivé du bois : hors périmètre NIMP-15.',
+    label: 'Panel thickness',
+    value: `${PANEL_THICKNESS_MM} mm plywood`,
+    rationale: 'Marine crating plywood. A wood product, so outside the scope of ISPM-15.',
   },
   {
     id: 'skid',
-    label: 'Hauteur de patin',
-    value: '75 à 200 mm selon la masse brute',
+    label: 'Skid height',
+    value: '75 to 200 mm depending on gross mass',
     rationale:
-      "S'ajoute intégralement à la hauteur hors tout. C'est le poste qui fait basculer un verdict de gabarit, et la raison pour laquelle on confronte la caisse au gabarit, jamais la machine.",
+      'Adds in full to the overall height. This is the item that tips a gauge verdict, and the reason the crate is checked against the gauge, never the machine.',
   },
   {
     id: 'floor',
-    label: 'Épaisseur de plancher',
-    value: '22 mm jusqu’à 3 t, 30 mm au-delà',
-    rationale: 'Plancher cloué sur patins, dimensionné à la masse brute.',
+    label: 'Floor thickness',
+    value: '22 mm up to 3 t, 30 mm above',
+    rationale: 'Floor nailed onto the skids, sized from the gross mass.',
   },
   {
     id: 'studs',
-    label: 'Montants',
-    value: `section ${STUD_SECTION_MM.thicknessMm} × ${STUD_SECTION_MM.depthMm} mm, entraxe 400 à 600 mm`,
+    label: 'Studs',
+    value: `${STUD_SECTION_MM.thicknessMm} × ${STUD_SECTION_MM.depthMm} mm section, 400 to 600 mm spacing`,
     rationale:
-      'Entraxe resserré selon la portée et la masse. Les panneaux étant cloués sur la face extérieure, l’épaisseur des montants s’ajoute à l’encombrement de chaque côté.',
+      'Spacing tightens with span and mass. Panels are nailed to the outer face, so the stud thickness adds to the overall size on each side.',
   },
   {
     id: 'calage',
-    label: 'Calage',
-    value: `butées ${BUTEE_HAUTEUR_MM} mm, traverses ${TRAVERSE_MM} mm, lisses ${LISSE_MM} mm`,
+    label: 'Blocking',
+    value: `${BUTEE_HAUTEUR_MM} mm stops, ${TRAVERSE_MM} mm cross members, ${LISSE_MM} mm rails`,
     rationale:
-      'Principe de calage : position et encombrement des cales, relevés contre l’emprise réelle de la machine tranche par tranche. Sans matière ni arbre d’assemblage, on ne peut pas désigner un point d’appui — on cale contre l’enveloppe, et la caisserie tranche.',
+      'A blocking principle: where the blocks sit and how much room they take, measured against the real envelope of the machine slice by slice. Without material and an assembly tree no bearing point can be named, so the blocking bears on the envelope and the crate maker decides.',
   },
   {
     id: 'stackable',
-    label: 'Gerbabilité',
-    value: `≤ ${(STACKABLE_MAX_GROSS_KG / 1000).toFixed(0)} t et élancement ≤ ${STACKABLE_MAX_SLENDERNESS}`,
+    label: 'Stackability',
+    value: `≤ ${(STACKABLE_MAX_GROSS_KG / 1000).toFixed(0)} t and slenderness ≤ ${STACKABLE_MAX_SLENDERNESS}`,
     rationale:
-      'Approximation d’avant-projet : au-delà, la reprise de charge du chapeau demande une étude que cet outil ne fait pas.',
+      'A preliminary approximation. Beyond that, load transfer through the cap needs a study this tool does not perform.',
   },
   {
     id: 'wood-density',
-    label: 'Masse volumique du bois',
-    value: `${WOOD_DENSITY_KG_M3} kg/m³ (résineux), ${PLYWOOD_DENSITY_KG_M3} kg/m³ (CP)`,
-    rationale: 'Sert à estimer la tare de la caisse, qui compte dans la charge utile du gabarit.',
+    label: 'Wood density',
+    value: `${WOOD_DENSITY_KG_M3} kg/m³ softwood, ${PLYWOOD_DENSITY_KG_M3} kg/m³ plywood`,
+    rationale: 'Used to estimate the crate tare, which counts against the gauge payload.',
   },
 ];

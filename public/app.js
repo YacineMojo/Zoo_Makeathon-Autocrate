@@ -4,29 +4,27 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 /**
- * L'atelier.
+ * Le studio.
  *
- * Trois écrans comptent, et trois seulement : la coupe au gabarit, le tableau
- * des poses, et la machine à l'intérieur de sa caisse. Tout le reste est du
- * texte.
- *
- * La coupe est l'écran de tête. Elle répond à la seule question posée — est-ce
- * que ça rentre — sans qu'on ait à lire un nombre : la section du conteneur et
- * celle de la caisse sont dessinées à la même échelle, et ou la seconde tient
- * dans la première, ou elle en sort.
+ * Deux volets : ce qu'on règle, et ce que ça produit. L'étude se relance à
+ * chaque changement — quatre millisecondes, aucun appel à Zoo — donc il n'y a
+ * pas de bouton « calculer ». Le seul bouton est celui qui coûte réellement
+ * quelque chose : la session Zoo qui construit la caisse en b-rep et rend les
+ * deux fichiers à télécharger.
  *
  * La caisse est d'abord dessinée localement à partir des pavés rendus par
- * l'étude — instantané, aucune session Zoo. Le bouton « Générer » la remplace
- * par la vraie géométrie b-rep du moteur. La distinction est visible à l'écran :
- * ce qui est gratuit et ce qui coûte une session ne se confondent pas.
+ * l'étude. « Générer » la remplace par la vraie géométrie du moteur. La
+ * distinction reste visible à l'écran : ce qui est gratuit et ce qui coûte une
+ * session ne se confondent pas.
  */
 
 const MM = 0.001;
 
 const $ = (id) => document.getElementById(id);
-const eur = (v) => `${Math.round(v).toLocaleString('fr-FR')} €`;
+const nb = (v) => Math.round(v).toLocaleString('en-GB');
+const eur = (v) => `€${nb(v)}`;
 const m = (v) => `${(v / 1000).toFixed(2)} m`;
-const mm = (v) => `${Math.round(v).toLocaleString('fr-FR')} mm`;
+const mm = (v) => `${nb(v)} mm`;
 
 let etude = null;
 let poseCourante = null;
@@ -54,13 +52,20 @@ canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 canvas.style.touchAction = 'none';
 controls.target.set(0, 0, 0.8);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa6b2, 2.1));
-const soleil = new THREE.DirectionalLight(0xffffff, 1.5);
+scene.add(new THREE.HemisphereLight(0xdff4ff, 0x0a2148, 2.2));
+const soleil = new THREE.DirectionalLight(0xffffff, 1.45);
 soleil.position.set(4, -6, 8);
 scene.add(soleil);
+// Une seconde source froide, côté opposé : sur fond bleu nuit, une caisse
+// éclairée d'un seul côté perd toutes ses arêtes dans l'ombre.
+const contre = new THREE.DirectionalLight(0x4fd8ff, 0.85);
+contre.position.set(-6, 5, 3);
+scene.add(contre);
 
-const grille = new THREE.GridHelper(30, 30, 0xc2ccd5, 0xdbe1e7);
+const grille = new THREE.GridHelper(30, 30, 0x35e7ff, 0x14407f);
 grille.rotation.x = Math.PI / 2;
+grille.material.transparent = true;
+grille.material.opacity = 0.28;
 scene.add(grille);
 
 let groupe = new THREE.Group();
@@ -88,11 +93,17 @@ function cadrer() {
   controls.update();
 }
 
+/**
+ * La scène occupe le volet, dont la hauteur est celle de l'écran.
+ *
+ * On mesure donc les deux côtés au lieu de déduire la hauteur de la largeur :
+ * dans un volet à hauteur fixe, une hauteur calculée déborde ou laisse un vide.
+ */
 function redimensionner() {
-  const r = canvas.getBoundingClientRect();
-  if (r.width < 2) return;
-  renderer.setSize(r.width, Math.round(r.width * 0.5625), false);
-  camera.aspect = 16 / 9;
+  const r = canvas.parentElement.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', redimensionner);
@@ -104,14 +115,14 @@ renderer.setAnimationLoop(() => {
 
 /* -------------------------------------------------------------- matériaux */
 
-// Le bois massif et les panneaux se distinguent : c'est la mention NIMP-15 qui
+// Le bois massif et les panneaux se distinguent : c'est la mention ISPM-15 qui
 // ne porte que sur le premier, et un lecteur doit pouvoir la vérifier à l'œil.
 const MATIERES = {
   patin: { color: 0xb98b4e, opacity: 1 },
   plancher: { color: 0xc9a06a, opacity: 1 },
   montant: { color: 0xd8b483, opacity: 1 },
-  panneau: { color: 0xe6d3b3, opacity: 0.22 },
-  chapeau: { color: 0xe6d3b3, opacity: 0.16 },
+  panneau: { color: 0xe6d3b3, opacity: 0.2 },
+  chapeau: { color: 0xe6d3b3, opacity: 0.14 },
   // Le calage se distingue de la caisse : c'est ce qui tient la machine, et le
   // lecteur doit pouvoir le lire d'un coup d'œil.
   calage: { color: 0x9c6b3f, opacity: 1 },
@@ -157,7 +168,7 @@ function dessinerCaisse(boxes) {
       groupe.add(
         new THREE.LineSegments(
           new THREE.EdgesGeometry(geo),
-          new THREE.LineBasicMaterial({ color: 0x6b5636 })
+          new THREE.LineBasicMaterial({ color: 0x8a6a3c })
         ).translateX(maille.position.x).translateY(maille.position.y).translateZ(maille.position.z)
       );
     }
@@ -177,7 +188,7 @@ async function chargerMachine(nom) {
   const objet = chargeurObj.parse(texte);
   objet.traverse((o) => {
     if (o.isMesh) {
-      o.material = new THREE.MeshStandardMaterial({ color: 0xb2b400, roughness: 0.55, metalness: 0.15 });
+      o.material = new THREE.MeshStandardMaterial({ color: 0x35e7ff, roughness: 0.42, metalness: 0.3 });
     }
   });
 
@@ -206,7 +217,6 @@ function poserMachine(objet, placement, scale) {
 async function afficherPose(poseId, gltfNom) {
   if (!etude) return;
   poseCourante = poseId;
-  marquerLigne(poseId);
 
   viderGroupe();
 
@@ -220,10 +230,15 @@ async function afficherPose(poseId, gltfNom) {
     // rendre translucide ce qui est clair, c'est-à-dire les panneaux.
     gltf.scene.traverse((o) => {
       if (!o.isMesh || !o.material) return;
+      // Le moteur colorie chaque ouvrage selon sa famille : le seuil ne trie
+      // donc plus « coloré ou gris » mais « franchement clair ou non », c'est-à-
+      // dire les panneaux et le chapeau, et eux seuls. Avec un seuil plus bas,
+      // les patins et les montants passaient translucides avec les panneaux et
+      // la caisse rendue par Zoo apparaissait délavée.
       const c = o.material.color;
-      const clair = c ? (c.r + c.g + c.b) / 3 > 0.6 : true;
+      const clair = c ? (c.r + c.g + c.b) / 3 > 0.78 : true;
       o.material.transparent = clair;
-      o.material.opacity = clair ? 0.3 : 1;
+      o.material.opacity = clair ? 0.26 : 1;
       o.material.depthWrite = !clair;
       o.material.side = THREE.DoubleSide;
     });
@@ -240,7 +255,7 @@ async function afficherPose(poseId, gltfNom) {
 
   // Quand un découpage est proposé, l'image doit le dire aussi : le plan de
   // coupe, et les corps qui partent à part. Annoncer une coupe en montrant une
-  // caisse entière est la même contradiction que celle du tableau.
+  // caisse entière est la même contradiction que celle du relevé.
   const d = etude.study.decoupe;
   if (d && poseId === (etude.study.poses.find((p) => !p.forbidden && p.pose !== 'reference') ?? {}).pose) {
     dessinerDecoupe(d, etude.study.poses.find((p) => p.pose === poseId));
@@ -251,9 +266,10 @@ async function afficherPose(poseId, gltfNom) {
 
   const pose = etude.study.poses.find((p) => p.pose === poseId);
   $('legende').textContent = pose
-    ? `${pose.label} · caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ` +
-      `${m(pose.crate.outer.heightMm)} · tare ${pose.crate.tareKg} kg`
-    : '';
+    ? `${pose.label} · crate ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(
+        pose.crate.outer.heightMm
+      )}`
+    : '3D preview';
 }
 
 /**
@@ -268,10 +284,9 @@ function dessinerDecoupe(d, pose) {
   const L = pose.crate.outer.lengthMm * MM;
   const l = pose.crate.outer.widthMm * MM;
 
-  // Le plan de coupe, en travers de la caisse.
   const plan = new THREE.Mesh(
     new THREE.PlaneGeometry(L * 1.15, l * 1.15),
-    new THREE.MeshBasicMaterial({ color: 0xaf3a21, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ color: 0xff2350, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
   );
   for (const niveau of d.plansMm) {
     const p = plan.clone();
@@ -279,13 +294,12 @@ function dessinerDecoupe(d, pose) {
     groupe.add(p);
   }
 
-  // Les corps qui dépassent, cerclés de rouge.
   for (const b of d.caisses.slice(1).flatMap((c) => c.boites)) {
     const taille = [0, 1, 2].map((a) => Math.max(1, b.max[a] - b.min[a]) * MM);
     const geo = new THREE.BoxGeometry(...taille);
     const arete = new THREE.LineSegments(
       new THREE.EdgesGeometry(geo),
-      new THREE.LineBasicMaterial({ color: 0xaf3a21 })
+      new THREE.LineBasicMaterial({ color: 0xff2350 })
     );
     arete.position.set(
       ((b.min[0] + b.max[0]) / 2) * MM,
@@ -307,18 +321,21 @@ function dessinerDecoupe(d, pose) {
  */
 async function afficherDecoupe(r, gltfNom) {
   viderGroupe();
-  marquerLigne(null);
 
   if (gltfNom) {
-    // Géométrie b-rep réelle, sortie du moteur Zoo.
     const gltf = await chargeurGltf.loadAsync(`/out/${gltfNom}`);
     gltf.scene.rotation.x = Math.PI / 2;
     gltf.scene.traverse((o) => {
       if (!o.isMesh || !o.material) return;
+      // Le moteur colorie chaque ouvrage selon sa famille : le seuil ne trie
+      // donc plus « coloré ou gris » mais « franchement clair ou non », c'est-à-
+      // dire les panneaux et le chapeau, et eux seuls. Avec un seuil plus bas,
+      // les patins et les montants passaient translucides avec les panneaux et
+      // la caisse rendue par Zoo apparaissait délavée.
       const c = o.material.color;
-      const clair = c ? (c.r + c.g + c.b) / 3 > 0.6 : true;
+      const clair = c ? (c.r + c.g + c.b) / 3 > 0.78 : true;
       o.material.transparent = clair;
-      o.material.opacity = clair ? 0.3 : 1;
+      o.material.opacity = clair ? 0.26 : 1;
       o.material.depthWrite = !clair;
       o.material.side = THREE.DoubleSide;
     });
@@ -327,9 +344,8 @@ async function afficherDecoupe(r, gltfNom) {
     dessinerCaisse(r.boxes);
   }
 
-  // Une couleur par caisse : la première garde le jaune machine, les suivantes
-  // s'en détachent — c'est ce qui rend la répartition lisible d'un coup d'œil.
-  const teintes = [0xb2b400, 0xaf3a21, 0x2a6f9e, 0x7c4f96];
+  // Une couleur par caisse : la répartition doit se lire d'un coup d'œil.
+  const teintes = [0x35e7ff, 0xff2350, 0x7cff9b, 0xc08cff];
 
   for (const [i, fichier] of r.fichiers.entries()) {
     const texte = await fetch(`/out/${fichier}`).then((x) => x.text());
@@ -339,8 +355,8 @@ async function afficherDecoupe(r, gltfNom) {
       if (o.isMesh) {
         o.material = new THREE.MeshStandardMaterial({
           color: teintes[i % teintes.length],
-          roughness: 0.55,
-          metalness: 0.15,
+          roughness: 0.45,
+          metalness: 0.28,
         });
       }
     });
@@ -351,588 +367,122 @@ async function afficherDecoupe(r, gltfNom) {
   redimensionner();
 
   $('legende').textContent = r.decoupe.caisses
-    .map((c, i) => `Caisse ${i + 1} ${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)}`)
+    .map((c, i) => `Crate ${i + 1} ${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)}`)
     .join('  ·  ');
 }
 
-/* ─────────────────────────────── la coupe au gabarit ──────────────────────
- *
- * L'élément de tête. Deux rectangles à la même échelle : la section utile du
- * gabarit, et celle de la caisse posée sur son plancher. Ou la seconde tient
- * dans la première, ou elle en sort — et ce qui sort est hachuré, parce que ce
- * n'est pas une pièce de plus, c'est une part de caisse qui n'a nulle part où
- * aller.
- *
- * La cote portée sur le dessin n'est jamais choisie pour faire joli : c'est
- * **la contrainte qui décide**, celle que le moteur a désignée comme la plus
- * serrée. Sur une caisse trop haute elle est verticale ; sur une caisse trop
- * large elle est horizontale. Coter la hauteur d'une caisse refusée en largeur
- * serait un dessin exact et un mensonge.
- */
-
-/** Hauteur de dessin visée, en unités du viewBox. */
-const COUPE_HAUTEUR = 250;
-const MARGE = { gauche: 22, droite: 82, haut: 18, bas: 46 };
+/* ----------------------------------------------------------------- relevé */
 
 const echapper = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-/** La contrainte se joue-t-elle sur une hauteur, une largeur, autre chose ? */
-function axeDeLaCote(on) {
-  if (on === 'hauteur' || on === 'porte-hauteur') return 'vertical';
-  if (on === 'largeur' || on === 'porte-largeur') return 'horizontal';
-  return 'ailleurs';
-}
-
-const NOM_CONTRAINTE = {
-  hauteur: 'hauteur',
-  largeur: 'largeur',
-  longueur: 'longueur',
-  'porte-hauteur': 'hauteur de porte',
-  'porte-largeur': 'largeur de porte',
-  charge: 'charge utile',
+const CONTRAINTE = {
+  hauteur: 'height',
+  largeur: 'width',
+  longueur: 'length',
+  'porte-hauteur': 'door height',
+  'porte-largeur': 'door width',
+  charge: 'payload',
 };
 
 /**
- * Une coupe. `echelle` et le cadre sont imposés du dehors : deux coupes côte à
- * côte qui ne partagent pas leur échelle ne se comparent pas, elles se
- * ressemblent — c'est exactement l'erreur que ce dessin existe pour éviter.
- */
-function coupeSvg(panneau, cadre, indice) {
-  const { crate, check } = panneau;
-  const { k, largeurDessin, hauteurDessin } = cadre;
-  const g = check.gabarit;
-
-  const W = MARGE.gauche + largeurDessin + MARGE.droite;
-  const H = MARGE.haut + hauteurDessin + MARGE.bas;
-  const sol = MARGE.haut + hauteurDessin;
-  const cx = MARGE.gauche + largeurDessin / 2;
-
-  const gW = g.maxWidthMm * k;
-  const gH = g.maxHeightMm * k;
-  const cW = crate.outer.widthMm * k;
-  const cH = crate.outer.heightMm * k;
-
-  const gX = cx - gW / 2;
-  const gY = sol - gH;
-  const cX = cx - cW / 2;
-  const cY = sol - cH;
-
-  const id = `coupe${indice}`;
-  const morceaux = [];
-
-  morceaux.push(`
-    <defs>
-      <pattern id="hachure-${id}" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-        <line x1="0" y1="0" x2="0" y2="7" stroke="#e06a4d" stroke-width="2.6" />
-      </pattern>
-      <mask id="hors-${id}">
-        <rect x="${cX}" y="${cY}" width="${cW}" height="${cH}" fill="#fff" />
-        <rect x="${gX}" y="${gY}" width="${gW}" height="${gH}" fill="#000" />
-      </mask>
-    </defs>`);
-
-  // La section utile du gabarit, et l'ouverture de porte quand elle en diffère.
-  morceaux.push(`<rect class="trait-gabarit" x="${gX}" y="${gY}" width="${gW}" height="${gH}" />`);
-  if (g.doorWidthMm && g.doorHeightMm && (g.doorWidthMm !== g.maxWidthMm || g.doorHeightMm !== g.maxHeightMm)) {
-    const dW = g.doorWidthMm * k;
-    const dH = g.doorHeightMm * k;
-    morceaux.push(
-      `<rect class="trait-porte" x="${cx - dW / 2}" y="${sol - dH}" width="${dW}" height="${dH}" />`
-    );
-  }
-
-  // Le plancher, qui déborde de la section : c'est le quai, pas une arête.
-  morceaux.push(
-    `<line class="trait-sol" x1="${cx - largeurDessin / 2 - 8}" y1="${sol}" x2="${cx + largeurDessin / 2 + 8}" y2="${sol}" />`
-  );
-
-  // La caisse, puis ce qu'elle laisse dehors.
-  morceaux.push(`<rect class="trait-caisse" x="${cX}" y="${cY}" width="${cW}" height="${cH}" />`);
-  if (cH > gH + 0.5 || cW > gW + 0.5) {
-    morceaux.push(
-      `<rect class="trait-depassement" x="${cX}" y="${cY}" width="${cW}" height="${cH}" mask="url(#hors-${id})" fill="url(#hachure-${id})" />`
-    );
-  }
-
-  // La cote : celle de la contrainte qui décide, et elle seule. Une marge de
-  // charge utile se compte en kilos — la coter en millimètres serait un dessin
-  // exact et une légende fausse.
-  const axe = axeDeLaCote(check.tightestOn);
-  const signe = check.tightestMarginMm >= 0 ? '+' : '−';
-  const ampleur = Math.abs(check.tightestMarginMm);
-  const texte =
-    check.tightestOn === 'charge'
-      ? `${signe}${Math.round(ampleur).toLocaleString('fr-FR')} kg`
-      : `${signe}${mm(ampleur)}`;
-
-  // La valeur se lit toujours dans la même colonne, à droite du dessin. Une
-  // marge de cinquante millimètres à cette échelle mesure trois pixels : posée
-  // contre son propre crochet, elle passe pour un défaut d'impression.
-  const xTexte = cx + largeurDessin / 2 + 18;
-
-  if (axe === 'vertical') {
-    const limite = check.tightestOn === 'porte-hauteur' && g.doorHeightMm ? sol - g.doorHeightMm * k : gY;
-    const [y1, y2] = [Math.min(limite, cY), Math.max(limite, cY)];
-    morceaux.push(`
-      <line class="cote-trait" x1="${xTexte}" y1="${y1}" x2="${xTexte}" y2="${y2}" />
-      <line class="cote-trait" x1="${xTexte - 5}" y1="${y1}" x2="${xTexte + 5}" y2="${y1}" />
-      <line class="cote-trait" x1="${xTexte - 5}" y1="${y2}" x2="${xTexte + 5}" y2="${y2}" />
-      <line class="cote-trait" x1="${cX + cW}" y1="${cY}" x2="${xTexte}" y2="${cY}" stroke-dasharray="3 3" />
-      <text class="cote-texte" x="${xTexte + 9}" y="${(y1 + y2) / 2 + 4}">${texte}</text>`);
-  } else if (axe === 'horizontal') {
-    const limite = check.tightestOn === 'porte-largeur' && g.doorWidthMm ? (g.doorWidthMm * k) / 2 : gW / 2;
-    const y = sol + 15;
-    const [x1, x2] = [cx + Math.min(limite, cW / 2), cx + Math.max(limite, cW / 2)];
-    morceaux.push(`
-      <line class="cote-trait" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" />
-      <line class="cote-trait" x1="${x1}" y1="${y - 5}" x2="${x1}" y2="${y + 5}" />
-      <line class="cote-trait" x1="${x2}" y1="${y - 5}" x2="${x2}" y2="${y + 5}" />
-      <line class="cote-trait" x1="${x2}" y1="${y}" x2="${xTexte}" y2="${y}" stroke-dasharray="3 3" />
-      <text class="cote-texte" x="${xTexte + 9}" y="${y + 4}">${texte}</text>`);
-  } else {
-    morceaux.push(`<text class="cote-texte" x="${xTexte + 9}" y="${sol - 6}">${texte}</text>`);
-  }
-
-  // La section de la caisse, sous le plancher. Le nom du gabarit n'est pas
-  // répété ici : l'étiquette du panneau le porte déjà, et un dessin qui redit
-  // son propre titre a moins de place pour ce qu'il est seul à montrer.
-  morceaux.push(
-    `<text class="repere-texte" x="${cx}" y="${sol + 34}" text-anchor="middle">${Math.round(
-      crate.outer.widthMm
-    ).toLocaleString('fr-FR')} × ${mm(crate.outer.heightMm)}</text>`
-  );
-
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${echapper(panneau.titre)} : caisse ${mm(
-    crate.outer.widthMm
-  )} de large sur ${mm(crate.outer.heightMm)} de haut, dans ${echapper(g.label)} — ${
-    check.fits ? 'elle passe' : 'elle ne passe pas'
-  }, ${NOM_CONTRAINTE[check.tightestOn] ?? check.tightestOn} ${texte}">${morceaux.join('')}</svg>`;
-}
-
-/** La longueur ne tient pas dans une coupe : elle se lit sur une règle. */
-function longueurHtml(crate, gabarit) {
-  const part = Math.min(100, (crate.outer.lengthMm / gabarit.maxLengthMm) * 100);
-  return `
-    <div class="coupe-longueur">
-      <div class="longueur-rule"><div class="longueur-part" style="width:${part.toFixed(1)}%"></div></div>
-      <div class="longueur-legende">
-        <span>Longueur ${m(crate.outer.lengthMm)}</span>
-        <span>Utile ${m(gabarit.maxLengthMm)}</span>
-      </div>
-    </div>`;
-}
-
-function coupeHtml(panneau, cadre, indice) {
-  const { titre, etiquette, check, costing } = panneau;
-  const verdict = check.fits ? 'passe' : 'bloque';
-  return `
-    <article class="coupe" data-verdict="${verdict}">
-      <div class="coupe-tete">
-        <p class="coupe-pose">${echapper(titre)}</p>
-        <span class="coupe-etiquette">${echapper(etiquette)}</span>
-      </div>
-      ${coupeSvg(panneau, cadre, indice)}
-      ${longueurHtml(panneau.crate, check.gabarit)}
-      ${
-        costing
-          ? `<div class="coupe-prix">
-               <span class="coupe-prix-montant">${eur(costing.totalEur)}</span>
-               <span class="coupe-prix-delai">${costing.leadTimeDays} jours</span>
-             </div>`
-          : ''
-      }
-    </article>`;
-}
-
-function rendreCoupes({ panneaux, appoint }) {
-  const rang = $('coupes-rang');
-  const somme = $('coupes-somme');
-  if (!panneaux.length) {
-    rang.innerHTML = '';
-    somme.innerHTML = '';
-    $('coupes').hidden = true;
-    return;
-  }
-  $('coupes').hidden = false;
-
-  // La somme des cartes n'est pas le total, et l'écart doit se voir. Un lecteur
-  // qui additionne deux prix affichés et tombe à côté du chiffre du bandeau
-  // cesse de croire les deux.
-  somme.innerHTML = appoint
-    ? `<span>${echapper(appoint.label)}</span><span>${eur(appoint.montantEur)}</span>
-       <span class="coupes-somme-total">Total ${eur(appoint.totalEur)}</span>`
-    : '';
-
-  // Une seule échelle et un seul cadre pour toute la rangée. C'est la condition
-  // pour que deux coupes se comparent au lieu de se ressembler.
-  const hauteurMax = Math.max(
-    ...panneaux.map((p) => Math.max(p.check.gabarit.maxHeightMm, p.crate.outer.heightMm))
-  );
-  const largeurMax = Math.max(
-    ...panneaux.map((p) => Math.max(p.check.gabarit.maxWidthMm, p.crate.outer.widthMm))
-  );
-  const k = COUPE_HAUTEUR / hauteurMax;
-  const cadre = { k, hauteurDessin: COUPE_HAUTEUR, largeurDessin: largeurMax * k };
-
-  rang.classList.toggle('coupes-rang--seule', panneaux.length === 1);
-  rang.innerHTML = panneaux.map((p, i) => coupeHtml(p, cadre, i)).join('');
-}
-
-/**
- * Quelles coupes montrer, et contre quel gabarit.
+ * Ce que l'étude a trouvé, en quelques lignes.
  *
- * Quand il y a un arbitrage, les deux coupes sont confrontées au **même**
- * gabarit : c'est ce qui rend le dessin démonstratif. Deux conteneurs
- * différents côte à côte, et le lecteur ne sait plus si c'est la machine qui a
- * tourné ou la boîte qui a grandi.
+ * Le studio n'est pas une note de synthèse : il montre la caisse et rend deux
+ * fichiers. Le relevé dit le strict nécessaire pour que les deux fichiers
+ * veuillent dire quelque chose — quelle caisse, dans quel gabarit, avec quelle
+ * marge — et la ligne de note porte le seul cas où l'outil refuse.
  */
-function panneauxCoupe(s) {
-  const gabaritParLabel = (label) =>
-    s.poses.flatMap((p) => p.checks).find((c) => c.gabarit.label === label)?.gabarit;
-  const checkPour = (pose, id) => pose.checks.find((c) => c.gabarit.id === id);
-  const ref = s.poses.find((p) => p.pose === 'reference');
+function rendreRelevé(s) {
+  const lignes = [];
+  let note = '';
 
-  // Découpage : une coupe par caisse, chacune dans le gabarit qui la porte.
   if (s.decoupe) {
-    const panneaux = s.decoupe.caisses
-      .map((c, i) => {
-        const check = c.retained ?? c.checks[0];
-        if (!check) return null;
-        return {
-          titre: `Caisse ${i + 1}`,
-          etiquette: check.fits ? check.gabarit.label : 'hors gabarit',
-          crate: c.crate,
-          check,
-          costing: c.costing,
-        };
-      })
-      .filter(Boolean);
-    const caisses = panneaux.reduce((a, p) => a + p.costing.totalEur, 0);
-    return {
-      panneaux,
-      appoint: {
-        label: 'Ingénierie de démontage et reconditionnement',
-        montantEur: s.decoupe.totalEur - caisses,
-        totalEur: s.decoupe.totalEur,
-      },
-    };
-  }
-
-  // Refus par charge utile : l'encombrement n'est pas en cause, et le dessin ne
-  // doit pas laisser croire le contraire. Une seule coupe, celle du gabarit le
-  // plus capable, et la cote porte sur la masse.
-  if (s.overloaded) {
-    const gabarit = gabaritParLabel(s.overloaded.gabaritLabel);
-    const pose = s.best ?? ref;
-    const check = gabarit ? checkPour(pose, gabarit.id) : undefined;
-    if (!check) return { panneaux: [] };
-    return {
-      panneaux: [
-      {
-        titre: pose.label,
-        etiquette: 'charge utile dépassée',
-        crate: pose.crate,
-        check: { ...check, fits: false, tightestOn: 'charge', tightestMarginMm: s.overloaded.maxPayloadKg - s.overloaded.grossKg },
-        costing: pose.costing,
-      },
-      ],
-    };
-  }
-
-  // L'arbitrage : la même boîte, deux orientations. C'est la démonstration.
-  if (s.best && s.arbitrage === 'gabarit' && ref) {
-    const gabarit = s.best.retained.gabarit;
-    const checkRef = checkPour(ref, gabarit.id);
-    const panneaux = [];
-    if (checkRef) {
-      panneaux.push({
-        titre: ref.label,
-        etiquette: checkRef.fits ? gabarit.label : 'hors gabarit',
-        crate: ref.crate,
-        check: checkRef,
-        costing: ref.costing,
-      });
-    }
-    panneaux.push({
-      titre: s.best.label,
-      etiquette: gabarit.label,
-      crate: s.best.crate,
-      check: s.best.retained,
-      costing: s.best.costing,
-    });
-    return { panneaux };
-  }
-
-  // Rien à arbitrer : une coupe, celle qu'on retient.
-  if (s.best) {
-    return {
-      panneaux: [
-        {
-          titre: s.best.label,
-          etiquette: s.best.retained.gabarit.label,
-          crate: s.best.crate,
-          check: s.best.retained,
-          costing: s.best.costing,
-        },
-      ],
-    };
-  }
-
-  // Aucun gabarit dans ce mode, mais un dans l'autre : les deux, côte à côte.
-  if (s.otherMode) {
-    const pose = s.poses.find((p) => p.pose === s.otherMode.pose) ?? ref;
-    const gabarit = gabaritParLabel(s.otherMode.gabaritLabel);
-    const check = gabarit ? checkPour(pose, gabarit.id) : undefined;
-    const panneaux = [];
-    if (ref && ref.checks[0]) {
-      panneaux.push({
-        titre: `${ref.label} — mode demandé`,
-        etiquette: 'hors gabarit',
-        crate: ref.crate,
-        check: ref.checks[0],
-        costing: ref.costing,
-      });
-    }
-    if (check) {
-      panneaux.push({
-        titre: `${pose.label} — autre mode`,
-        etiquette: gabarit.label,
-        crate: pose.crate,
-        check,
-        costing: s.otherMode.costing,
-      });
-    }
-    return { panneaux };
-  }
-
-  // Rien ne passe : on montre la pose la moins mauvaise contre le gabarit
-  // qu'elle rate de moins. Le dessin dit de combien, et c'est l'information.
-  const candidats = s.poses
-    .filter((p) => !p.forbidden)
-    .flatMap((p) => p.checks.map((c) => ({ pose: p, check: c })));
-  if (!candidats.length) return { panneaux: [] };
-  const moinsPire = candidats.reduce((a, b) => (b.check.tightestMarginMm > a.check.tightestMarginMm ? b : a));
-  return {
-    panneaux: [
-      {
-        titre: moinsPire.pose.label,
-        etiquette: 'hors gabarit',
-        crate: moinsPire.pose.crate,
-        check: moinsPire.check,
-        costing: moinsPire.pose.costing,
-      },
-    ],
-  };
-}
-
-/* ---------------------------------------------------------------- verdict */
-
-/**
- * Le chiffre, puis la phrase.
- *
- * Le delta est le produit : « ça ne passe pas » vaut zéro, « couchée ça passe,
- * et voilà ce que ça économise » vaut le déplacement (§15). Le chiffre porte la
- * conclusion, la phrase porte la raison, le tableau porte le détail.
- */
-function rendreVerdict(s) {
-  let chiffre = '';
-  let ton = '';
-  let phrase = '';
-  let second = '';
-
-  if (s.overloaded) {
-    // Un refus par charge utile est invariant par orientation. Afficher un
-    // tableau de poses laisserait croire qu'une orientation sauverait la mise.
-    chiffre = `${s.overloaded.grossKg.toLocaleString('fr-FR')} kg`;
-    ton = 'bloque';
-    phrase =
-      `<strong>Refus par charge utile</strong>, pour ${s.overloaded.maxPayloadKg.toLocaleString('fr-FR')} kg ` +
-      `admissibles sur le gabarit le plus capable (${s.overloaded.gabaritLabel}). Aucune orientation n'y change rien : ` +
-      `c'est un problème de masse, pas d'encombrement.`;
-    // Répartir la masse, elle, y change quelque chose — et c'est ce que montrent
-    // les coupes. Le dire ici évite qu'un bandeau qui refuse surplombe un dessin
-    // où tout passe.
-    second = s.decoupe
-      ? `Répartie en <strong>${s.decoupe.caisses.length} caisses</strong>, la masse repasse sous la limite : ${eur(
-          s.decoupe.totalEur
-        )} en ${s.decoupe.leadTimeDays} jours. L'outil ne découpe pas — il désigne les corps qui portent la charge, l'ingénierie tranche.`
-      : `Le hors gabarit n'y change rien non plus : un flat rack porte l'encombrement, pas la tonne.`;
-  } else if (s.best && s.arbitrage === 'aucun') {
-    // Rien à arbitrer : autant le dire en une ligne et laisser le tableau parler.
-    chiffre = eur(s.best.costing.totalEur);
-    ton = 'passe';
-    phrase = `Toutes les poses passent en <strong>${s.best.retained.gabarit.label}</strong>, en ${s.best.costing.leadTimeDays} jours. Il n'y a rien à arbitrer.`;
-  } else if (s.best) {
-    const ref = s.poses.find((p) => p.pose === 'reference');
-    const eco = ref.costing.totalEur - s.best.costing.totalEur;
-    const jours = ref.costing.leadTimeDays - s.best.costing.leadTimeDays;
-    chiffre = eur(eco);
-    ton = 'passe';
-    const serre = s.best.retained.confidence === 'juste';
-    // « Pose C — couchée sur Y » est le nom de la ligne du tableau. Dans une
-    // phrase, c'est le geste qui compte : couchée sur Y.
-    const geste = s.best.label.replace(/^Pose\s+[A-Z]\s*—\s*/i, '');
-    phrase =
-      `et <strong>${jours} jours</strong> économisés en la posant <strong>${geste}</strong> plutôt qu'au repère CAO : ` +
-      `<strong>${s.best.retained.gabarit.label}</strong> au lieu du hors gabarit` +
-      (serre
-        ? `, mais <strong>de justesse</strong> — ${mm(s.best.retained.tightestMarginMm)} en ${
-            NOM_CONTRAINTE[s.best.retained.tightestOn] ?? s.best.retained.tightestOn
-          }, à confirmer avec la caisserie.`
-        : '.');
-
-    const notes = [];
-    // Découpage demandé alors qu'une caisse unique suffit : la comparaison est
-    // justement ce qui a été demandé, on la donne.
-    if (s.decoupe) {
-      const ecart = s.decoupe.totalEur - s.best.costing.totalEur;
-      notes.push(
-        `En ${s.decoupe.caisses.length} caisses : ${eur(s.decoupe.totalEur)} en ${s.decoupe.leadTimeDays} jours, ` +
-          `${ecart >= 0 ? eur(ecart) + ' de plus' : eur(-ecart) + ' de moins'} qu'en une seule.`
-      );
-    }
-    // Le groupage est presque toujours le moins cher et presque toujours le
-    // plus lent. Trancher en silence sur le prix contredirait la thèse : pour
-    // un constructeur, rater une fenêtre d'expédition coûte plus que le fret.
-    if (s.faster) {
-      const gagnes = s.best.costing.leadTimeDays - s.faster.costing.leadTimeDays;
-      const surcout = s.faster.costing.totalEur - s.best.costing.totalEur;
-      notes.push(
-        `Plus rapide : <strong>${s.faster.gabaritLabel}</strong>, ${eur(s.faster.costing.totalEur)} en ${
-          s.faster.costing.leadTimeDays
-        } jours — ${gagnes} jours de moins pour ${eur(surcout)}.`
-      );
-    }
-    second = notes.join(' ');
-  } else if (s.otherMode) {
-    chiffre = eur(s.otherMode.costing.totalEur);
-    ton = '';
-    phrase = `Aucun gabarit ${$('mode').value === 'maritime' ? 'maritime' : 'routier'} ne porte cette machine. En revanche « ${
-      s.otherMode.label
-    } » passe en <strong>${s.otherMode.gabaritLabel}</strong> avec ${mm(s.otherMode.marginMm)} de marge, en ${
-      s.otherMode.costing.leadTimeDays
-    } jours.`;
-    second = `Changer de mode d'acheminement est votre décision, pas celle de l'outil : une machine qui part en Asie ne part pas par la route.`;
-  } else if (s.decoupe) {
-    // Le §6.5 dit « l'outil ne découpe pas ». Il ne découpe toujours pas : il
-    // désigne les corps qui portent le dépassement et chiffre l'hypothèse.
     const d = s.decoupe;
-    chiffre = eur(d.totalEur);
-    ton = '';
-    phrase = `en <strong>${d.caisses.length} caisses</strong>, coupées ${
-      d.axe === 2 ? 'en hauteur' : 'en largeur'
-    } à ${d.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}, en ${d.leadTimeDays} jours — contre ${eur(
-      s.fallbacks.oversize.totalEur
-    )} en ${s.fallbacks.oversize.leadTimeDays} jours hors gabarit.`;
-    second = `L'outil ne découpe pas : un corps distinct dans un maillage n'est pas une pièce démontable. Il dit lesquels coûtent, l'ingénierie tranche.`;
-  } else {
-    chiffre = eur(s.fallbacks.oversize.totalEur);
-    ton = 'bloque';
-    phrase = `Aucune pose ne passe. <strong>${s.fallbacks.oversize.label}</strong>, en ${s.fallbacks.oversize.leadTimeDays} jours.`;
-    second = `Ou démontage en deux caisses : <strong>${eur(s.fallbacks.split.totalEur)}</strong> en ${
-      s.fallbacks.split.leadTimeDays
-    } jours. L'outil ne découpe pas : il chiffre les deux et laisse choisir.`;
-  }
-
-  $('verdict-chiffre').textContent = chiffre;
-  $('verdict-chiffre').dataset.ton = ton;
-  $('verdict').innerHTML = phrase;
-  $('verdict-second').innerHTML = second;
-
-  // La mesure dont tout le reste découle. Elle n'est pas décorative : c'est
-  // elle qu'un caissier recopiera, et c'est par elle qu'on vérifie le verdict.
-  const assise = s.best ?? s.poses.find((p) => p.pose === 'reference');
-  $('releve').innerHTML = assise
-    ? [
-        ['Enveloppe mesurée', `${m(assise.footprint.lengthMm)} × ${m(assise.footprint.widthMm)} × ${m(assise.footprint.heightMm)}`],
-        ['Masse machine', `${s.massKg.toLocaleString('fr-FR')} kg`],
-        ['Caisse — tare, brut', `${assise.crate.tareKg.toLocaleString('fr-FR')} kg, ${assise.crate.grossKg.toLocaleString('fr-FR')} kg`],
-      ]
-        .map(([clef, valeur]) => `<div><dt>${clef}</dt><dd>${valeur}</dd></div>`)
-        .join('')
-    : '';
-}
-
-/* ---------------------------------------------------------------- tableau */
-
-function marquerLigne(poseId) {
-  for (const tr of document.querySelectorAll('.tableau-poses tr[data-pose]')) {
-    tr.setAttribute('aria-selected', String(tr.dataset.pose === poseId));
-  }
-}
-
-function rendreTableau(s) {
-  const lignes = s.poses
-    .map((p) => {
-      const passe = Boolean(p.retained);
-      // Le badge « retenue » ne s'affiche que s'il y a réellement quelque chose
-      // à arbitrer. Le poser pour 38 € de contreplaqué apprend au lecteur à
-      // ignorer nos recommandations, y compris le jour où elles comptent.
-      const meilleure = s.best && s.best.pose === p.pose && s.arbitrage === 'gabarit';
-      // Une pose qui ne passe pas dans le mode demandé mais passe dans l'autre
-      // n'est pas « hors gabarit » : elle est hors **de ce mode-ci**. La
-      // nuance vaut plusieurs milliers d'euros, et le tableau doit la porter.
-      const autre = !passe && !p.forbidden && p.otherMode;
-      const classe = p.forbidden ? 'ligne-ecartee' : passe ? 'ligne-verte' : autre ? 'ligne-autre' : 'ligne-rouge';
-      const serre = passe && p.retained.confidence === 'juste';
-      return `
-        <tr class="${classe} ${meilleure ? 'ligne-retenue' : ''}" data-pose="${p.pose}" tabindex="0"
-            title="Voir cette pose en 3D">
-          <td>${echapper(p.label)}${meilleure ? ' <span class="cran">retenue</span>' : ''}</td>
-          <td class="cote">${m(p.crate.outer.lengthMm)} × ${m(p.crate.outer.widthMm)} × ${m(p.crate.outer.heightMm)}</td>
-          <td>${
-            p.forbidden
-              ? 'écartée'
-              : passe
-                ? echapper(p.retained.gabarit.label)
-                : autre
-                  ? `${echapper(p.otherMode.gabarit.gabarit.label)} <span class="cran cran-autre">autre mode</span>`
-                  : 'hors gabarit'
-          }${serre ? ` <span class="cran cran-juste">${mm(p.retained.tightestMarginMm)}</span>` : ''}</td>
-          <td class="nombre">${p.forbidden ? '—' : eur(autre ? p.otherMode.costing.totalEur : p.costing.totalEur)}</td>
-          <td class="nombre">${
-            p.forbidden ? '—' : `${(autre ? p.otherMode.costing : p.costing).leadTimeDays} j`
-          }</td>
-        </tr>`;
-    })
-    .join('');
-
-  $('tableau').innerHTML = `
-    <table class="tableau-poses">
-      <thead>
-        <tr><th>Pose</th><th>Caisse L × l × h</th><th>Gabarit</th><th>Coût</th><th>Délai</th></tr>
-      </thead>
-      <tbody>${lignes}</tbody>
-    </table>`;
-
-  for (const tr of $('tableau').querySelectorAll('tr[data-pose]')) {
-    const voir = () => void afficherPose(tr.dataset.pose === 'reference' ? 'A' : tr.dataset.pose, null);
-    tr.addEventListener('click', voir);
-    tr.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        voir();
-      }
+    lignes.push(['Shipment', `${d.caisses.length} crates`]);
+    d.caisses.forEach((c, i) => {
+      const check = c.retained ?? c.checks[0];
+      lignes.push([
+        `Crate ${i + 1}`,
+        `${m(c.crate.outer.lengthMm)} × ${m(c.crate.outer.widthMm)} × ${m(c.crate.outer.heightMm)}`,
+      ]);
+      if (check) lignes.push([`Gauge ${i + 1}`, check.fits ? check.gabarit.label : 'out of gauge', check.fits]);
     });
+    lignes.push(['Total', `${eur(d.totalEur)} · ${d.leadTimeDays} days`]);
+    note = `Split ${d.axe === 2 ? 'by height' : 'by width'} at ${d.plansMm
+      .map((v) => (v / 1000).toFixed(2) + ' m')
+      .join(' and ')}. The tool does not decide the breakdown: a separate body in a mesh is not a
+      removable part. It names the bodies that carry the overrun and prices the assumption.`;
+  } else if (s.overloaded) {
+    lignes.push(['Gross mass', `${nb(s.overloaded.grossKg)} kg`, false]);
+    lignes.push(['Max payload', `${nb(s.overloaded.maxPayloadKg)} kg`]);
+    lignes.push(['Gauge', s.overloaded.gabaritLabel]);
+    note = `Rejected on payload, not on size. No orientation changes that, and neither does going
+      out of gauge: a flat rack carries the volume, not the tonnage.`;
+  } else if (s.best) {
+    const p = s.best;
+    lignes.push(['Pose', p.label]);
+    lignes.push([
+      'Crate',
+      `${m(p.crate.outer.lengthMm)} × ${m(p.crate.outer.widthMm)} × ${m(p.crate.outer.heightMm)}`,
+    ]);
+    lignes.push(['Gauge', p.retained.gabarit.label, true]);
+    lignes.push([
+      'Tightest margin',
+      `${mm(p.retained.tightestMarginMm)} on ${CONTRAINTE[p.retained.tightestOn] ?? p.retained.tightestOn}`,
+      p.retained.confidence !== 'juste',
+    ]);
+    lignes.push(['Tare · gross', `${nb(p.crate.tareKg)} kg · ${nb(p.crate.grossKg)} kg`]);
+    lignes.push(['Cost · lead time', `${eur(p.costing.totalEur)} · ${p.costing.leadTimeDays} days`]);
+    if (p.retained.confidence === 'juste') {
+      note = 'This one just fits. Confirm the margin with the crate maker before ordering.';
+    }
+  } else if (s.otherMode) {
+    lignes.push(['Requested mode', 'no gauge fits', false]);
+    lignes.push(['Other mode', s.otherMode.gabaritLabel, true]);
+    lignes.push(['Pose', s.otherMode.label]);
+    lignes.push(['Margin', mm(s.otherMode.marginMm)]);
+    lignes.push([
+      'Cost · lead time',
+      `${eur(s.otherMode.costing.totalEur)} · ${s.otherMode.costing.leadTimeDays} days`,
+    ]);
+    note = 'Switching routing mode is your call, not the tool’s: a machine bound for Asia does not travel by road.';
+  } else if (s.fallbacks) {
+    lignes.push(['Verdict', 'no pose fits', false]);
+    lignes.push([
+      s.fallbacks.oversize.label,
+      `${eur(s.fallbacks.oversize.totalEur)} · ${s.fallbacks.oversize.leadTimeDays} days`,
+    ]);
+    lignes.push([
+      s.fallbacks.split.label,
+      `${eur(s.fallbacks.split.totalEur)} · ${s.fallbacks.split.leadTimeDays} days`,
+    ]);
+    note = 'The tool does not choose: it prices both routes out and leaves the decision to you.';
   }
-  marquerLigne(poseCourante);
+
+  $('readout').innerHTML = lignes
+    .map(
+      ([clef, valeur, etat]) =>
+        `<div><dt>${echapper(clef)}</dt><dd${
+          etat === undefined ? '' : ` data-state="${etat ? 'pass' : 'fail'}"`
+        }>${echapper(valeur)}</dd></div>`
+    )
+    .join('');
+  $('readout-note').textContent = note.replace(/\s+/g, ' ').trim();
+  $('groupe-resultat').hidden = false;
 }
 
-function rendreHypotheses(s) {
-  // Valeurs en texte, pas dans un cadre qui ressemble à un champ de saisie :
-  // la table est en lecture seule (§10), autant que ça se voie. Une fausse
-  // affordance est pire qu'une absence d'affordance.
+function rendreMentions(s) {
   $('hypotheses').innerHTML = s.assumptions
     .map(
       (a) =>
-        `<div class="fiche"><strong>${echapper(a.label)}</strong><span class="valeur-hypothese">${echapper(
+        `<div><dt>${echapper(a.label)}</dt><dd><span class="value">${echapper(
           a.value
-        )}</span><p>${echapper(a.rationale)}</p></div>`
+        )}</span>${echapper(a.rationale)}</dd></div>`
     )
     .join('');
-
-  $('mentions').innerHTML = s.notices.map((n) => `<p>${n}</p>`).join('');
+  $('mentions').innerHTML = s.notices.map((n) => `<p>${echapper(n)}</p>`).join('');
+  $('groupe-mentions').hidden = false;
 }
 
 /* --------------------------------------------------------------- chargement */
@@ -940,25 +490,24 @@ function rendreHypotheses(s) {
 /**
  * Déroulé des étapes pendant un calcul.
  *
- * Les étapes affichées sont celles qui ont réellement lieu — lecture du
- * maillage, balayage du lacet, verdicts, calage, rendu. La seule chose ajoutée
- * est une **durée plancher** : sans elle, l'étude finit en quarante
+ * Les étapes affichées sont celles qui ont réellement lieu. La seule chose
+ * ajoutée est une **durée plancher** : sans elle, l'étude finit en quarante
  * millisecondes et l'écran change si vite qu'on ne voit pas ce qui s'est passé.
  * Montrer le travail n'est pas l'inventer.
  */
 const ETAPES_ETUDE = [
-  'lecture du maillage',
-  'enveloppe convexe et balayage du lacet',
-  'trois poses, cinq gabarits',
-  'structure de caisse et calage',
-  'rendu',
+  'reading the mesh',
+  'convex hull and yaw sweep',
+  'three poses, five gauges',
+  'crate structure and blocking',
+  'rendering',
 ];
 
 const ETAPES_ZOO = [
-  'ouverture de la session Zoo',
-  'import de la machine en b-rep',
-  'construction de la caisse',
-  'export STEP et glTF',
+  'opening the Zoo session',
+  'importing the machine as b-rep',
+  'building the crate',
+  'exporting STEP and glTF',
 ];
 
 /**
@@ -971,10 +520,10 @@ const ETAPES_ZOO = [
 let execution = 0;
 let minuterie;
 
-function demarrerChargement(etapes, dureeMs = 2400) {
+function demarrerChargement(etapes, dureeMs = 2200) {
   const id = ++execution;
   const zone = $('chargement');
-  const etiquette = zone.querySelector('.chargement-etape');
+  const etiquette = zone.querySelector('.loading-step');
   const debut = performance.now();
   let i = 0;
 
@@ -1032,37 +581,50 @@ function saisie() {
   };
 }
 
-function montrerPanneaux() {
-  for (const id of ['panneau-verdict', 'panneau-vue', 'panneau-poses', 'panneau-hypotheses']) {
-    $(id).hidden = false;
+/**
+ * Les sorties ne survivent pas à un changement de réglage.
+ *
+ * Un STEP téléchargeable sous des paramètres qui ne sont plus ceux affichés est
+ * pire qu'un bouton grisé : c'est un fichier faux qui part chez le caissier.
+ */
+function reinitialiserSorties() {
+  for (const id of ['dl-step', 'dl-gltf']) {
+    const a = $(id);
+    a.setAttribute('aria-disabled', 'true');
+    a.removeAttribute('href');
   }
+}
+
+function armerSortie(id, fichier) {
+  const a = $(id);
+  if (!fichier) return;
+  a.href = `/out/${fichier}`;
+  a.setAttribute('aria-disabled', 'false');
 }
 
 async function etudier() {
   const fini = demarrerChargement(ETAPES_ETUDE);
   const monTour = execution;
+  reinitialiserSorties();
   try {
     const recu = await poster('/api/etude', saisie());
     // Une étude plus récente a été lancée pendant celle-ci : la sienne fait
-    // foi. Écraser l'écran avec un résultat périmé afficherait le verdict d'un
+    // foi. Écraser l'écran avec un résultat périmé afficherait le relevé d'un
     // fichier et le nom d'un autre.
     if (monTour !== execution) return;
     etude = recu;
 
-    montrerPanneaux();
     $('generer').disabled = false;
-    $('generer').textContent = etude.study.decoupe
-      ? `Générer les ${etude.study.decoupe.caisses.length} caisses`
-      : 'Générer la caisse';
+    $('generer-texte').textContent = etude.study.decoupe
+      ? `Generate ${etude.study.decoupe.caisses.length} crates with Zoo`
+      : 'Generate with Zoo';
 
-    rendreVerdict(etude.study);
-    rendreCoupes(panneauxCoupe(etude.study));
-    rendreTableau(etude.study);
-    rendreHypotheses(etude.study);
+    rendreRelevé(etude.study);
+    rendreMentions(etude.study);
 
     // La vue montre ce que l'outil recommande. Si un découpage est proposé,
     // c'est **lui** la recommandation : afficher une caisse unique pendant que
-    // le bandeau parle de trois caisses laisse croire que rien ne se passe.
+    // le relevé parle de trois caisses laisse croire que rien ne se passe.
     if (etude.study.decoupe) {
       const r = await poster('/api/decoupe', saisie());
       if (monTour !== execution) return;
@@ -1071,13 +633,12 @@ async function etudier() {
       await afficherPose(etude.study.best?.pose ?? etude.study.otherMode?.pose ?? 'A', null);
     }
 
-    // Une ligne. Le détail vit dans les hypothèses, pas sous la console.
     $('etat-calcul').textContent =
-      `${etude.vertices.toLocaleString('fr-FR')} sommets · ${etude.ms} ms · unité ${etude.unit.unit}` +
-      (etude.unit.plausible ? '' : ' ⚠ unité douteuse');
-    $('vue-etat').textContent = 'aperçu local';
+      `${nb(etude.vertices)} vertices · ${etude.ms} ms · unit ${etude.unit.unit}` +
+      (etude.unit.plausible ? '' : ' · unit looks wrong');
+    $('vue-etat').textContent = 'Local preview';
   } catch (err) {
-    if (monTour === execution) $('etat-calcul').textContent = `Échec : ${err.message}`;
+    if (monTour === execution) $('etat-calcul').textContent = `Failed: ${err.message}`;
   } finally {
     await fini();
   }
@@ -1094,31 +655,23 @@ for (const champ of ['mesh', 'massKg', 'up', 'unit', 'mode', 'caisses', 'forbidL
   $(champ).addEventListener('change', () => void etudier());
 }
 
-// Le repli de lecture se referme quand on clique ailleurs : un panneau flottant
-// laissé ouvert masque la page qu'il commande.
-document.addEventListener('click', (e) => {
-  const repli = $('repli-lecture');
-  if (repli.open && !repli.contains(e.target)) repli.open = false;
-});
-
 $('generer').addEventListener('click', async () => {
-  $('vue-etat').textContent = 'session Zoo en cours…';
+  $('vue-etat').textContent = 'Zoo session running…';
   const fini = demarrerChargement(ETAPES_ZOO, 2500);
+  reinitialiserSorties();
 
-  // Un découpage proposé, ce sont N caisses à construire — pas une.
+  // Un découpage proposé, ce sont N caisses à construire, pas une.
   if (etude?.study.decoupe) {
     try {
       const r = await poster('/api/scene-decoupe', saisie());
       const local = await poster('/api/decoupe', saisie());
       await afficherDecoupe(local, r.gltf);
       $('vue-etat').textContent =
-        `${r.caisses} caisses · ${r.solides} solides b-rep · session ${(r.sessionMs / 1000).toFixed(1)} s`;
-      $('telechargements').innerHTML = [
-        r.step ? `<a class="bouton" href="/out/${r.step}" download>STEP — les ${r.caisses} caisses</a>` : '',
-        r.gltf ? `<a class="bouton" href="/out/${r.gltf}" download>glTF — la scène</a>` : '',
-      ].join('');
+        `${r.caisses} crates · ${r.solides} b-rep solids · Zoo session ${(r.sessionMs / 1000).toFixed(1)} s`;
+      armerSortie('dl-step', r.step);
+      armerSortie('dl-gltf', r.gltf);
     } catch (err) {
-      $('vue-etat').textContent = `Échec : ${err.message}`;
+      $('vue-etat').textContent = `Failed: ${err.message}`;
     } finally {
       await fini();
     }
@@ -1130,22 +683,18 @@ $('generer').addEventListener('click', async () => {
     await afficherPose(r.pose, r.gltf);
     const ok = r.controle.ecartMm !== undefined && r.controle.ecartMm < 1;
     $('vue-etat').textContent =
-      `${r.solides} solides b-rep · session ${(r.sessionMs / 1000).toFixed(1)} s · ` +
+      `${r.solides} b-rep solids · Zoo session ${(r.sessionMs / 1000).toFixed(1)} s · ` +
       (ok
-        ? `encombrement conforme au verdict${r.machineIncluse ? ', machine comprise' : ''}`
-        : `⚠ écart de ${Math.round(r.controle.ecartMm)} mm avec le verdict`) +
-      (r.note ? ` — ${r.note}` : '');
+        ? `size matches the verdict${r.machineIncluse ? ', machine included' : ''}`
+        : `off by ${Math.round(r.controle.ecartMm)} mm against the verdict`) +
+      (r.note ? ` · ${r.note}` : '');
 
     // Un caissier ne peut rien faire d'une scène qu'il ne peut pas ouvrir : le
     // STEP est l'artefact qui sort de l'outil et rentre dans son PLM.
-    $('telechargements').innerHTML = [
-      r.step
-        ? `<a class="bouton" href="/out/${r.step}" download>STEP — ${r.machineIncluse ? 'machine + caisse' : 'caisse seule'}</a>`
-        : '',
-      r.gltf ? `<a class="bouton" href="/out/${r.gltf}" download>glTF — la scène</a>` : '',
-    ].join('');
+    armerSortie('dl-step', r.step);
+    armerSortie('dl-gltf', r.gltf);
   } catch (err) {
-    $('vue-etat').textContent = `Échec : ${err.message}`;
+    $('vue-etat').textContent = `Failed: ${err.message}`;
   } finally {
     await fini();
   }
@@ -1157,8 +706,8 @@ $('fichier').addEventListener('change', async (e) => {
 
   const estObj = /\.obj$/i.test(fichier.name);
   $('etat-calcul').textContent = estObj
-    ? `Lecture de ${fichier.name}…`
-    : `${fichier.name} — conversion par Zoo, cela peut prendre plusieurs minutes…`;
+    ? `Reading ${fichier.name}…`
+    : `${fichier.name} · converting through Zoo, this can take minutes…`;
   try {
     const base64 = await new Promise((resolve, reject) => {
       const lecteur = new FileReader();
@@ -1170,9 +719,9 @@ $('fichier').addEventListener('change', async (e) => {
     const r = await poster('/api/conversion', { name: fichier.name, base64 });
     await remplirMaillages(r.mesh);
     void etudier();
-    if (!r.direct) $('etat-calcul').textContent = `Converti par Zoo en ${(r.ms / 1000).toFixed(1)} s`;
+    if (!r.direct) $('etat-calcul').textContent = `Converted by Zoo in ${(r.ms / 1000).toFixed(1)} s`;
   } catch (err) {
-    $('etat-calcul').textContent = `Conversion refusée : ${err.message}`;
+    $('etat-calcul').textContent = `Conversion refused: ${err.message}`;
   }
 });
 
@@ -1180,7 +729,7 @@ async function remplirMaillages(selection) {
   const { meshes } = await fetch('/api/maillages').then((r) => r.json());
   $('mesh').innerHTML = meshes.map((f) => `<option value="${echapper(f)}">${echapper(f)}</option>`).join('');
   // Par défaut, la machine de démonstration : c'est la seule dont la licence
-  // est nôtre, et la seule qui joue la démonstration du §16 en entier.
+  // est nôtre, et la seule qui joue la démonstration en entier.
   if (selection && meshes.includes(selection)) $('mesh').value = selection;
   else if (meshes.some((f) => f.includes('machine-demo'))) $('mesh').value = meshes.find((f) => f.includes('machine-demo'));
   return meshes;
@@ -1191,9 +740,8 @@ redimensionner();
 
 // Une étude au chargement : sans elle, l'exemple déjà sélectionné ne déclenche
 // aucun `change`, et l'écran reste vide tant qu'on n'a pas changé de fichier.
-// « Ça ne marche qu'avec un import » venait de là.
 //
 // Et s'il n'y a aucun exemple, on le dit. Un menu vide au-dessus d'une page
 // vide laisse croire que l'outil est cassé, alors qu'il attend un fichier.
 if (disponibles.length) void etudier();
-else $('etat-calcul').textContent = 'Aucun exemple disponible : déposez un STEP ou un OBJ pour commencer.';
+else $('etat-calcul').textContent = 'No example available. Upload a STEP or OBJ file to start.';

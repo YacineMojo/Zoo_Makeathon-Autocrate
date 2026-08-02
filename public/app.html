@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Caisse Studio — crate generator</title>
+    <meta name="description" content="Set the machine and the shipping constraints, preview the crate in 3D, and export the STEP and glTF built by the Zoo Engine." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/studio.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three/build/three.module.js",
+          "three/addons/": "/vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body class="studio">
+    <header class="rail">
+      <a class="rail-back" href="/">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15">
+          <path d="M20 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Back</span>
+      </a>
+      <span class="wordmark">Caisse</span>
+      <span class="rail-mode">Studio</span>
+      <p class="rail-status" id="etat-calcul" role="status"></p>
+    </header>
+
+    <!-- Deux volets, et rien d'autre : les paramètres à gauche, ce qu'ils
+         produisent à droite. Les deux boutons de sortie restent ancrés en bas
+         du volet gauche, hors du défilement : ce sont eux qu'on cherche une
+         fois la caisse générée. -->
+    <main class="bench">
+      <form class="panel" id="formulaire" novalidate>
+        <div class="panel-scroll">
+          <section class="group">
+            <p class="group-title">Machine</p>
+
+            <label class="field" for="mesh">
+              <span class="field-label">Example</span>
+              <select id="mesh" name="mesh"></select>
+            </label>
+
+            <label class="drop" for="fichier">
+              <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" />
+              <span>Upload STEP or OBJ</span>
+            </label>
+
+            <label class="field" for="massKg">
+              <span class="field-label">Mass</span>
+              <span class="field-unit">
+                <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
+                <span class="unit">kg</span>
+              </span>
+            </label>
+          </section>
+
+          <section class="group">
+            <p class="group-title">Shipping</p>
+
+            <label class="field" for="mode">
+              <span class="field-label">Routing</span>
+              <select id="mode" name="mode">
+                <option value="maritime" selected>Ocean</option>
+                <option value="route">Road</option>
+              </select>
+            </label>
+
+            <label class="field" for="caisses">
+              <span class="field-label">Split into</span>
+              <select id="caisses" name="caisses">
+                <option value="">As needed</option>
+                <option value="2">2 crates</option>
+                <option value="3">3 crates</option>
+                <option value="4">4 crates</option>
+              </select>
+            </label>
+
+            <label class="toggle" for="forbidLying">
+              <input id="forbidLying" name="forbidLying" type="checkbox" />
+              <span>Keep upright</span>
+            </label>
+          </section>
+
+          <section class="group">
+            <p class="group-title">Reading</p>
+
+            <label class="field" for="up">
+              <span class="field-label">Up axis</span>
+              <select id="up" name="up">
+                <option value="z" selected>Z</option>
+                <option value="y">Y</option>
+                <option value="x">X</option>
+              </select>
+            </label>
+
+            <label class="field" for="unit">
+              <span class="field-label">Unit</span>
+              <select id="unit" name="unit">
+                <option value="auto" selected>Auto</option>
+                <option value="mm">mm</option>
+                <option value="m">m</option>
+                <option value="in">inch</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="group" id="groupe-resultat" hidden>
+            <p class="group-title">Result</p>
+            <dl class="readout" id="readout"></dl>
+            <p class="readout-note" id="readout-note"></p>
+          </section>
+
+          <details class="fineprint" id="groupe-mentions" hidden>
+            <summary>Assumptions and notices</summary>
+            <div class="fineprint-body">
+              <dl class="assumptions" id="hypotheses"></dl>
+              <div class="notices" id="mentions"></div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Le coin inférieur gauche : ce que l'outil rend. Le bouton qui coûte
+             une session Zoo est au-dessus des deux qui n'en coûtent aucune. -->
+        <div class="outputs">
+          <button class="generate" id="generer" type="button" disabled>
+            <span id="generer-texte">Generate with Zoo</span>
+          </button>
+          <div class="downloads">
+            <a class="download" id="dl-step" href="#" download aria-disabled="true">
+              <span class="download-kicker">Download</span>
+              <span class="download-name">.STEP file</span>
+            </a>
+            <a class="download" id="dl-gltf" href="#" download aria-disabled="true">
+              <span class="download-kicker">Download</span>
+              <span class="download-name">.GLTF scene</span>
+            </a>
+          </div>
+        </div>
+      </form>
+
+      <section class="stage">
+        <div class="stage-head">
+          <p class="stage-title" id="legende">3D preview</p>
+          <p class="stage-hint">Drag to orbit · scroll to zoom</p>
+        </div>
+        <div class="stage-view">
+          <canvas id="scene"></canvas>
+          <p class="stage-badge" id="vue-etat"></p>
+          <div class="loading" id="chargement" hidden>
+            <div class="loading-bar"><span></span></div>
+            <p class="loading-step"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

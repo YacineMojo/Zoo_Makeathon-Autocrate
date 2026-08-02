@@ -1,200 +1,180 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Caisse — la caisse d'expédition d'une machine, et le gabarit qui la porte</title>
+    <title>Caisse — automatic crate generation for oversized machines</title>
     <meta
       name="description"
-      content="Déposez le STEP d'une machine : son emprise est mesurée, sa caisse d'expédition dimensionnée, et le gabarit de transport qui la porte désigné — avant que la caisse soit commandée."
+      content="Zoo API Makeathon demonstrator. Drop in a machine's STEP file: Caisse measures its envelope, builds the shipping crate as real b-rep geometry, and splits the shipment when no single crate fits."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "/vendor/three/build/three.module.js",
-          "three/addons/": "/vendor/three/examples/jsm/"
-        }
-      }
-    </script>
-    <script type="module" src="/app.js"></script>
   </head>
-  <body>
-    <!-- ── Cartouche ───────────────────────────────────────────────────────
-         Le cartouche d'un plan : qui, quoi, avec quoi. Il ne vend rien, il
-         identifie le document. -->
-    <header class="cartouche" data-entree="1">
-      <div class="cartouche-marque">
-        <h1>Caisse</h1>
-        <p class="cartouche-accroche">
-          Le STEP d'une machine entre. Sa caisse d'expédition, le gabarit qui la porte
-          et ce qu'elle coûte en sortent.
-        </p>
-      </div>
-      <dl class="cartouche-credits">
-        <div><dt>Lecture du STEP</dt><dd>Zoo File Format API</dd></div>
-        <div><dt>Caisse b-rep</dt><dd>Zoo Engine API</dd></div>
-      </dl>
+  <body class="landing">
+    <!-- La lueur de fond. Purement décorative, donc hors de l'arbre
+         d'accessibilité et hors du flux : elle ne doit ni se lire, ni pousser
+         quoi que ce soit. -->
+    <div class="halo" aria-hidden="true"></div>
+
+    <header class="top">
+      <span class="wordmark">Caisse</span>
+      <span class="top-tag">Zoo API Makeathon 2026</span>
     </header>
 
-    <!-- ── Console ─────────────────────────────────────────────────────────
-         Les entrées tiennent sur une ligne, au-dessus de ce qu'elles
-         commandent. L'étude se relance à chaque changement : quatre
-         millisecondes, aucun appel à Zoo, donc aucun bouton « calculer » —
-         il n'y a rien à attendre. Le seul bouton qui reste est celui qui
-         coûte réellement quelque chose : la session Zoo. -->
-    <form class="console" id="formulaire" novalidate data-entree="2">
-      <div class="reglage reglage-fichier">
-        <span class="reglage-titre" id="fichier-titre">Machine</span>
-        <label class="depot" for="fichier">
-          <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" aria-labelledby="fichier-titre" />
-          <span>Déposer un STEP</span>
-        </label>
-      </div>
-
-      <div class="reglage reglage-exemple">
-        <label for="mesh">ou un exemple</label>
-        <select id="mesh" name="mesh"></select>
-      </div>
-
-      <div class="reglage">
-        <label for="massKg">Masse</label>
-        <span class="saisie-unite">
-          <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
-          <span class="unite">kg</span>
-        </span>
-      </div>
-
-      <div class="reglage">
-        <label for="mode">Acheminement</label>
-        <select id="mode" name="mode">
-          <option value="maritime" selected>maritime</option>
-          <option value="route">route</option>
-        </select>
-      </div>
-
-      <div class="reglage">
-        <label for="caisses">Découper en</label>
-        <select id="caisses" name="caisses">
-          <option value="">au besoin</option>
-          <option value="2">2 caisses</option>
-          <option value="3">3 caisses</option>
-          <option value="4">4 caisses</option>
-        </select>
-      </div>
-
-      <div class="reglage reglage-bascule">
-        <input id="forbidLying" name="forbidLying" type="checkbox" />
-        <label for="forbidLying">Couchage interdit</label>
-      </div>
-
-      <!-- Les garde-fous. Ils comptent, mais leur valeur automatique est bonne
-           dans l'immense majorité des cas, et les afficher revient à demander
-           au lecteur de trancher ce qu'il ne sait pas encore. -->
-      <details class="reglage-repli" id="repli-lecture">
-        <summary aria-label="Réglages de lecture du fichier">Lecture</summary>
-        <div class="repli-panneau">
-          <div class="reglage">
-            <label for="up">Axe vertical</label>
-            <select id="up" name="up">
-              <option value="z" selected>Z</option>
-              <option value="y">Y</option>
-              <option value="x">X</option>
-            </select>
-          </div>
-          <div class="reglage">
-            <label for="unit">Unité</label>
-            <select id="unit" name="unit">
-              <option value="auto" selected>auto</option>
-              <option value="mm">mm</option>
-              <option value="m">m</option>
-              <option value="in">pouce</option>
-            </select>
-          </div>
-        </div>
-      </details>
-
-      <button class="bouton bouton-zoo" id="generer" type="button" disabled>
-        Générer la caisse
-      </button>
-
-      <p class="console-etat" id="etat-calcul" role="status"></p>
-    </form>
-
     <main>
-      <!-- ── Le verdict, et la coupe qui le prouve ─────────────────────────
-           La conclusion en chiffres, puis le dessin qui la démontre : la
-           section du gabarit, à l'échelle, avec la caisse dedans. C'est la
-           seule image qui répond à la question posée — est-ce que ça rentre —
-           sans qu'on ait à lire un nombre. -->
-      <section class="verdict-bande" id="panneau-verdict" hidden data-entree="3">
-        <div class="verdict-tete">
-          <p class="oeil">Verdict</p>
-          <p class="verdict-chiffre" id="verdict-chiffre"></p>
-          <p class="verdict-phrase" id="verdict"></p>
-          <p class="verdict-second" id="verdict-second"></p>
-
-          <!-- La mesure sur laquelle tout le reste repose. Un verdict sans la
-               cote qui l'a produit demande qu'on lui fasse confiance ; avec
-               elle, il se vérifie. -->
-          <dl class="releve" id="releve"></dl>
-        </div>
-
-        <figure class="coupes" id="coupes">
-          <figcaption class="oeil oeil-clair">Coupe au gabarit — à l'échelle</figcaption>
-          <div class="coupes-rang" id="coupes-rang"></div>
-          <p class="coupes-somme" id="coupes-somme"></p>
-        </figure>
-      </section>
-
-      <!-- ── La caisse ────────────────────────────────────────────────────── -->
-      <section class="bloc" id="panneau-vue" hidden data-entree="4">
-        <div class="bloc-tete">
-          <p class="oeil">La caisse</p>
-          <p class="bloc-note" id="legende"></p>
-        </div>
-
-        <div class="vue-scene">
-          <canvas id="scene"></canvas>
-          <p class="vue-etat" id="vue-etat"></p>
-          <div class="chargement" id="chargement" hidden>
-            <div class="chargement-rule"><span></span></div>
-            <p class="chargement-etape"></p>
-          </div>
-        </div>
-
-        <div class="bloc-pied">
-          <!-- La limite qu'un jury verra en premier s'il dépose une voiture :
-               la caisse s'appuiera sur le rétroviseur. Autant la dire avant
-               qu'on la découvre. -->
-          <p class="reserve">
-            L'outil ne connaît ni la matière des pièces, ni leur résistance. Il cale contre
-            l'enveloppe : sur une voiture, une butée peut prendre appui sur un rétroviseur
-            sans savoir qu'il ne porte pas deux tonnes. Le calage est un principe de position,
-            à valider par la caisserie.
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Zoo API Makeathon 2026 · demonstrator</p>
+          <h1 class="hero-title">CAISSE</h1>
+          <p class="hero-lead">
+            Automatic shipping crate generation for oversized industrial machines.
           </p>
-          <div class="telechargements" id="telechargements"></div>
+          <p class="hero-body">
+            Drop in the STEP file of a machine. Caisse measures its real envelope, dimensions a
+            crate around it, builds that crate as true b-rep geometry in the Zoo Engine, and names
+            the transport gauge that will carry it. When no single crate fits, it splits the
+            shipment along planes that follow the engineering breakdown, and never cuts a body in
+            two.
+          </p>
+          <a class="cta" href="/app.html">
+            <span>Try it now</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+              <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        </div>
+
+        <!-- Ce que l'outil fabrique : une caisse, ses montants, ses patins, et
+             la machine dedans. Décoratif, donc hors de l'arbre d'accessibilité,
+             mais pas arbitraire : c'est l'objet du projet, pas une forme. -->
+        <svg class="wireframe" viewBox="0 0 640 560" aria-hidden="true">
+          <polygon class="wf-face" points="310.0,176.0 479.7,274.0 344.6,352.0 174.9,254.0"/>
+          <polygon class="wf-edge" points="310.0,322.0 479.7,420.0 344.6,498.0 174.9,400.0"/>
+          <polygon class="wf-edge" points="310.0,176.0 479.7,274.0 344.6,352.0 174.9,254.0"/>
+          <line class="wf-edge" x1="310.0" y1="322.0" x2="310.0" y2="176.0"/>
+          <line class="wf-edge" x1="479.7" y1="420.0" x2="479.7" y2="274.0"/>
+          <line class="wf-edge" x1="344.6" y1="498.0" x2="344.6" y2="352.0"/>
+          <line class="wf-edge" x1="174.9" y1="400.0" x2="174.9" y2="254.0"/>
+          <line class="wf-stud" x1="366.0" y1="354.3" x2="366.0" y2="208.3"/>
+          <line class="wf-stud" x1="230.9" y1="432.3" x2="230.9" y2="286.3"/>
+          <line class="wf-stud" x1="265.4" y1="347.7" x2="265.4" y2="201.7"/>
+          <line class="wf-stud" x1="435.2" y1="445.7" x2="435.2" y2="299.7"/>
+          <line class="wf-stud" x1="422.0" y1="386.7" x2="422.0" y2="240.7"/>
+          <line class="wf-stud" x1="286.9" y1="464.7" x2="286.9" y2="318.7"/>
+          <line class="wf-stud" x1="220.8" y1="373.5" x2="220.8" y2="227.5"/>
+          <line class="wf-stud" x1="390.6" y1="471.5" x2="390.6" y2="325.5"/>
+          <polygon class="wf-machine" points="315.9,261.4 427.9,326.1 338.8,377.6 226.7,312.9"/>
+          <polygon class="wf-machine-side" points="427.9,407.8 338.8,459.3 338.8,377.6 427.9,326.1"/>
+          <polygon class="wf-machine-side2" points="338.8,459.3 226.7,394.6 226.7,312.9 338.8,377.6"/>
+          <polygon class="wf-machine-edge" points="315.9,343.2 427.9,407.8 338.8,459.3 226.7,394.6"/>
+          <polygon class="wf-machine-edge" points="315.9,261.4 427.9,326.1 338.8,377.6 226.7,312.9"/>
+          <line class="wf-machine-edge" x1="315.9" y1="343.2" x2="315.9" y2="261.4"/>
+          <line class="wf-machine-edge" x1="427.9" y1="407.8" x2="427.9" y2="326.1"/>
+          <line class="wf-machine-edge" x1="338.8" y1="459.3" x2="338.8" y2="377.6"/>
+          <line class="wf-machine-edge" x1="226.7" y1="394.6" x2="226.7" y2="312.9"/>
+          <polygon class="wf-skid" points="288.4,334.5 458.1,432.5 458.1,440.5 288.4,342.5"/>
+          <polygon class="wf-skid" points="242.5,361.0 412.2,459.0 412.2,467.0 242.5,369.0"/>
+          <polygon class="wf-skid" points="196.5,387.5 366.3,485.5 366.3,493.5 196.5,395.5"/>
+        </svg>
+      </section>
+
+      <section class="band">
+        <p class="eyebrow">How it works</p>
+        <div class="cards">
+          <article class="card">
+            <h2>Measure the real envelope</h2>
+            <p>
+              A convex hull and a yaw sweep find the tightest footprint, not the axis aligned
+              bounding box of the CAD file. Unit and up axis are inferred from the geometry, and
+              can be overridden when the guess is wrong.
+            </p>
+          </article>
+          <article class="card">
+            <h2>Build a crate, not a box</h2>
+            <p>
+              Skids, floor, studs, panels and blocking are dimensioned from the envelope and the
+              gross mass, then built as real solids in the engine. The crate is what gets checked
+              against the gauge, never the bare machine.
+            </p>
+          </article>
+          <article class="card">
+            <h2>Split when nothing fits</h2>
+            <p>
+              Cutting planes are searched across every allowed pose. A body that straddles a plane
+              travels whole with the group above it. The tool proposes and prices the split.
+              Engineering decides.
+            </p>
+          </article>
         </div>
       </section>
 
-      <!-- ── Les poses ────────────────────────────────────────────────────── -->
-      <section class="bloc" id="panneau-poses" hidden data-entree="5">
-        <div class="bloc-tete">
-          <p class="oeil">Les poses</p>
-          <p class="bloc-note">Cliquez une ligne pour la voir en 3D.</p>
-        </div>
-        <div class="tableau-cadre" id="tableau"></div>
+      <section class="band">
+        <p class="eyebrow">Zoo APIs used</p>
+        <ul class="apis">
+          <li>
+            <h2>File Format API</h2>
+            <p class="apis-calls"><code>create_file_conversion_options</code> <code>get_async_operation</code></p>
+            <p>
+              The customer's STEP file is converted to a mesh through the asynchronous route and
+              polled to completion. The synchronous variant times out past a minute, whatever the
+              file size.
+            </p>
+          </li>
+          <li>
+            <h2>Engine API · modeling session</h2>
+            <p class="apis-calls"><code>start_path</code> <code>move_path_pen</code> <code>extend_path</code> <code>close_path</code> <code>extrude</code></p>
+            <p>
+              A single WebSocket carrying MessagePack. Every skid, stud, panel and block is
+              sketched and extruded into a b-rep solid, not approximated by a mesh.
+            </p>
+          </li>
+          <li>
+            <h2>Engine API · scene assembly</h2>
+            <p class="apis-calls"><code>import_files</code> <code>set_object_transform</code> <code>object_set_material_params_pbr</code> <code>modeling_cmd_batch_req</code></p>
+            <p>
+              The machine is imported as b-rep and placed at exactly the pose the study computed,
+              so one STEP file holds the machine and its crate together. Blocking is coloured
+              engine side, and commands travel in batches.
+            </p>
+          </li>
+          <li>
+            <h2>Engine API · export</h2>
+            <p class="apis-calls"><code>export</code> <code>set_scene_units</code> <code>default_scene</code></p>
+            <p>
+              STEP for the crate maker's PLM, glTF for the viewer, both with explicit units and
+              coordinate handedness so nothing arrives lying on its side.
+            </p>
+          </li>
+          <li>
+            <h2>Text-to-CAD API</h2>
+            <p class="apis-calls"><code>create_text_to_cad</code></p>
+            <p>
+              Generated the demo machine shipped with the repository. It is the one model whose
+              licence is ours, which is why the demo runs offline with no third party CAD.
+            </p>
+          </li>
+        </ul>
       </section>
 
-      <!-- ── Ce sur quoi l'outil s'appuie ─────────────────────────────────── -->
-      <section class="bloc bloc-pied-page" id="panneau-hypotheses" hidden data-entree="6">
-        <details class="repli">
-          <summary>Hypothèses et mentions</summary>
-          <div class="hypotheses" id="hypotheses"></div>
-          <div class="mentions" id="mentions"></div>
-        </details>
+      <section class="closing">
+        <a class="cta" href="/app.html">
+          <span>Try it now</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+            <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </a>
       </section>
     </main>
+
+    <footer class="foot">
+      <p>
+        Caisse is a Makeathon demonstrator. It produces a preliminary crate study: not a
+        fabrication drawing, and not a lifting plan. Gauge dimensions and the price grid are
+        indicative and listed in the assumptions.
+      </p>
+    </footer>
   </body>
 </html>

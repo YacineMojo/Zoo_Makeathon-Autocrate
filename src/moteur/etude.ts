@@ -110,13 +110,13 @@ function evaluatePose(
 /** Mentions obligatoires en sortie, et pas seulement dans le discours (§7.5, §7.6). */
 function notices(anySolidWood: boolean): string[] {
   const list = [
-    'Avant-projet de caisse. Ne vaut ni plan de fabrication, ni plan d’élingage.',
-    'Le calage est un principe : position et encombrement des cales. Il ne dit pas où la machine accepte d’être poussée — cela demande la matière et l’arbre d’assemblage, que l’outil n’a pas.',
-    'Les cotes de gabarit et la grille de prix sont indicatives et affichées dans les hypothèses. Un devis de transitaire reste un devis de transitaire.',
+    'Preliminary crate study. Not a fabrication drawing, and not a lifting plan.',
+    'Blocking is a principle: where the blocks sit and how much room they take. It does not say where the machine accepts being pushed, which would need the material and the assembly tree, and the tool has neither.',
+    'Gauge dimensions and the price grid are indicative and listed in the assumptions. A forwarder quote is still a forwarder quote.',
   ];
   if (anySolidWood) {
     list.push(
-      'Bois massif — patins, plancher, montants : traitement NIMP-15 requis à l’export. Les panneaux dérivés en sont exemptés.'
+      'Solid wood in skids, floor and studs: ISPM-15 treatment is required for export. Panel products are exempt.'
     );
   }
   return list;

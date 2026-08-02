@@ -5,7 +5,9 @@ shipping crate fits in a container — and what it costs if it doesn't.**
 
 Built for the [Zoo API Makeathon](https://zoo.dev) (22 July → 5 August 2026).
 
-![The workshop: pose table and 3D view](docs/atelier.png)
+![The landing page: what the tool does, and which Zoo APIs it uses](docs/accueil.png)
+
+![The studio: parameters on the left, the generated crate in 3D, and the two exports](docs/atelier.png)
 
 ---
 
