@@ -146,11 +146,16 @@ parameterised and displayed on screen as assumptions. Never a timber
 calculation note.
 
 **Blocking, against where the machine actually is.** A bounding box is not
-enough: laid on its side, our demo machine touches the floor over a 160 mm strip
-at one end, and chocks placed against the box would float in mid-air next to the
-part. So the placed mesh is sliced — just above the floor, just under the roof —
-and the blocking is set against what is really there: floor stops, side rails,
-top battens, corner chocks.
+enough — and neither is a single slice. Laid on its side, our demo machine
+touches the floor over a 160 mm strip at one end: a stop placed anywhere else
+along that same wall bears on the crate and on nothing else. It looks like a
+chock and is not one.
+
+So the placed mesh is cut into **columns**, and each column is measured
+separately. A stop is only placed in a column where the machine is actually
+present at that height, and it runs from the wall to the machine *as measured in
+that column*. Where the machine is not, there is no chock. Verified on the demo
+machine: eight stops out of eight touch the part, to within 5 mm.
 
 This is a **blocking principle**: position and envelope, nothing else. No bill of
 materials, no nailing pattern, no section justified by a calculation. And it

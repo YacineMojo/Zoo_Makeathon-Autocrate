@@ -1,6 +1,7 @@
 import type { Box } from './box.js';
 import type { Crate } from '../domain/types.js';
-import type { MachineSlices } from '../geometrie/tranches.js';
+import type { Column, MachineProfile } from '../geometrie/tranches.js';
+import { COLONNE_MM } from '../geometrie/tranches.js';
 import { STUD_SECTION_MM } from '../domain/assumptions.js';
 
 /**
@@ -8,45 +9,59 @@ import { STUD_SECTION_MM } from '../domain/assumptions.js';
  *
  * Jusqu'ici, « calage » désignait 60 mm de vide autour de la machine. Ces 60 mm
  * gardent leur sens — c'est l'épaisseur d'une cale — mais le vide devient des
- * pièces, posées contre la machine là où elle est réellement.
+ * pièces.
  *
- * **Ce que ces pièces sont, et ce qu'elles ne sont pas.** C'est un *principe de
+ * **Une cale qui ne touche pas la pièce n'est pas une cale.** C'est la règle qui
+ * gouverne tout ce fichier, et elle a coûté une réécriture : une première
+ * version mesurait une seule boîte pour toute la tranche basse, et posait des
+ * butées là où la machine n'était pas. Elles s'appuyaient sur la paroi et sur
+ * rien d'autre — elles avaient l'air de cales sans en être.
+ *
+ * Chaque butée est désormais posée dans une **colonne** où la machine est
+ * réellement présente à cette hauteur, et va de la paroi jusqu'à la machine
+ * mesurée *dans cette colonne*. Là où la machine n'est pas, il n'y a pas de cale.
+ *
+ * **Ce que ces pièces sont, et ce qu'elles ne sont pas.** Un *principe de
  * calage* : position et encombrement, rien d'autre. Pas de nomenclature, pas de
  * clouage, pas de section justifiée par un calcul. La caisserie reste dans la
- * boucle, et le §3 tient sur cette phrase — l'outil cadre la discussion, il ne
- * remplace pas le métier.
+ * boucle, et le §3 tient sur cette phrase.
  *
  * **Ce qu'on ne sait pas, et qu'on n'invente pas.** Où la machine accepte
  * d'être poussée. Un carter de tôle et un bâti fonte se ressemblent dans un
- * maillage. Sans matière ni arbre d'assemblage, on cale contre l'enveloppe, et
- * on le dit.
- *
- * Quatre familles, par ordre de solidité :
- *
- *   butées au sol           contre l'emprise réelle de la machine au plancher
- *   lisses de rive          raidisseurs de paroi, pure géométrie de caisse
- *   traverses de maintien   contre le dessus de la machine
- *   cales de coin           anti-glissement, aux quatre angles du plancher
+ * maillage. Sans matière ni arbre d'assemblage, on cale contre l'enveloppe.
  *
  * **Pas de diagonale.** Un contreventement digne de ce nom est oblique, et notre
  * modèle ne produit que des pavés alignés sur les axes. Plutôt que de baptiser
  * « contreventement » une pièce horizontale, on pose ce qu'on pose vraiment :
- * une lisse de rive à mi-hauteur, qui raidit le panneau. C'est moins flatteur et
- * c'est exact.
+ * une lisse de rive à mi-hauteur, qui raidit le panneau.
  */
 
-/** Section d'une butée, dans le sens de la paroi. */
-const BUTEE_LONGUEUR_MM = 300;
-/** Hauteur d'une butée au sol. */
+/** Hauteur maximale d'une butée au sol. */
 const BUTEE_HAUTEUR_MM = 150;
+/** Hauteur minimale en dessous de laquelle une butée ne vaut pas la peine. */
+const BUTEE_HAUTEUR_MINI_MM = 40;
 /** Section d'une lisse de rive. */
 const LISSE_MM = 60;
-/** Au-delà de cette portée, on double les butées d'un côté. */
-const PORTEE_DOUBLE_BUTEE_MM = 2_000;
+/** Section d'une traverse de maintien haut. */
+const TRAVERSE_MM = 70;
 /** En deçà de ce jeu, il n'y a rien à caler : la machine touche déjà. */
 const JEU_MINIMAL_MM = 15;
+/** Nombre maximum de butées par paroi. Au-delà, on encombre sans rien tenir de plus. */
+const BUTEES_PAR_PAROI = 3;
 
-export function blockingBoxes(crate: Crate, slices: MachineSlices): Box[] {
+/**
+ * Place un pavé de largeur `taille` autour de `centre`, sans sortir du volume.
+ *
+ * Les colonnes extrêmes tombent au ras des faces intérieures : une cale centrée
+ * dessus déborde, et le bornage final la rabotait jusqu'à la faire disparaître.
+ * Deux traverses de maintien ont ainsi été perdues en silence — la caisse était
+ * juste, et la machine n'était plus tenue par le haut.
+ */
+function caler(centre: number, taille: number, min: number, max: number): number {
+  return Math.min(Math.max(centre - taille / 2, min), max - taille);
+}
+
+export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
   const { outer, inner, skid, panelThicknessMm: t, floorThicknessMm: floor } = crate;
   const st = STUD_SECTION_MM.thicknessMm;
 
@@ -64,77 +79,99 @@ export function blockingBoxes(crate: Crate, slices: MachineSlices): Box[] {
 
   const boxes: Box[] = [];
 
-  /* ── butées au sol ──────────────────────────────────────────────────────── */
+  /* ── butées au sol, contre les deux grands côtés ────────────────────────── */
 
-  if (slices.bas) {
-    const s = slices.bas;
+  retenir(profile.basParX).forEach((c, i) => {
+    const hauteur = hauteurButee(c, zFloorTop);
 
-    // Le long des deux grands côtés : on cale en Y, sur toute l'épaisseur du
-    // jeu entre la machine et la paroi.
-    const posX = repartir(s.minX, s.maxX, s.maxX - s.minX > PORTEE_DOUBLE_BUTEE_MM ? 3 : 2);
-    for (const [cote, jeu, y] of [
-      ['a', s.minY - interieur.minY, interieur.minY],
-      ['b', interieur.maxY - s.maxY, s.maxY],
-    ] as const) {
-      if (jeu < JEU_MINIMAL_MM) continue;
-      posX.forEach((x, i) => {
-        boxes.push({
-          name: `butee_long_${cote}_${i + 1}`,
-          x: x - BUTEE_LONGUEUR_MM / 2,
-          y,
-          z: zFloorTop,
-          width: BUTEE_LONGUEUR_MM,
-          depth: jeu,
-          height: BUTEE_HAUTEUR_MM,
-        });
+    // Côté « a » : de la paroi jusqu'au bord de la machine **dans cette
+    // colonne**. Si la machine y est loin de la paroi, la cale est épaisse.
+    // Si elle n'y est pas du tout, la colonne n'existe pas et on ne passe
+    // jamais ici.
+    const jeuA = c.min - interieur.minY;
+    if (jeuA >= JEU_MINIMAL_MM) {
+      boxes.push({
+        name: `butee_long_a_${i + 1}`,
+        x: caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX),
+        y: interieur.minY,
+        z: zFloorTop,
+        width: COLONNE_MM,
+        depth: jeuA,
+        height: hauteur,
       });
     }
 
-    // Et de même sur les deux pignons, en X.
-    const posY = repartir(s.minY, s.maxY, s.maxY - s.minY > PORTEE_DOUBLE_BUTEE_MM ? 3 : 2);
-    for (const [cote, jeu, x] of [
-      ['a', s.minX - interieur.minX, interieur.minX],
-      ['b', interieur.maxX - s.maxX, s.maxX],
-    ] as const) {
-      if (jeu < JEU_MINIMAL_MM) continue;
-      posY.forEach((y, i) => {
-        boxes.push({
-          name: `butee_pignon_${cote}_${i + 1}`,
-          x,
-          y: y - BUTEE_LONGUEUR_MM / 2,
-          z: zFloorTop,
-          width: jeu,
-          depth: BUTEE_LONGUEUR_MM,
-          height: BUTEE_HAUTEUR_MM,
-        });
+    const jeuB = interieur.maxY - c.max;
+    if (jeuB >= JEU_MINIMAL_MM) {
+      boxes.push({
+        name: `butee_long_b_${i + 1}`,
+        x: caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX),
+        y: c.max,
+        z: zFloorTop,
+        width: COLONNE_MM,
+        depth: jeuB,
+        height: hauteur,
       });
     }
-  }
+  });
+
+  /* ── butées au sol, contre les deux pignons ─────────────────────────────── */
+
+  retenir(profile.basParY).forEach((c, i) => {
+    const hauteur = hauteurButee(c, zFloorTop);
+
+    const jeuA = c.min - interieur.minX;
+    if (jeuA >= JEU_MINIMAL_MM) {
+      boxes.push({
+        name: `butee_pignon_a_${i + 1}`,
+        x: interieur.minX,
+        y: caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY),
+        z: zFloorTop,
+        width: jeuA,
+        depth: COLONNE_MM,
+        height: hauteur,
+      });
+    }
+
+    const jeuB = interieur.maxX - c.max;
+    if (jeuB >= JEU_MINIMAL_MM) {
+      boxes.push({
+        name: `butee_pignon_b_${i + 1}`,
+        x: c.max,
+        y: caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY),
+        z: zFloorTop,
+        width: jeuB,
+        depth: COLONNE_MM,
+        height: hauteur,
+      });
+    }
+  });
 
   /* ── traverses de maintien haut ─────────────────────────────────────────── */
 
-  const jeuHaut = zRoof - slices.topMm;
-  if (slices.haut && jeuHaut >= JEU_MINIMAL_MM) {
-    const s = slices.haut;
-    // Positionnées au droit de la matière, pas au milieu de la caisse : une
-    // traverse qui n'appuie sur rien ne maintient rien.
-    repartir(s.minX, s.maxX, 2).forEach((x, i) => {
-      boxes.push({
-        name: `traverse_haute_${i + 1}`,
-        x: x - STUD_SECTION_MM.depthMm / 2,
-        y: interieur.minY,
-        z: slices.topMm,
-        width: STUD_SECTION_MM.depthMm,
-        depth: interieur.maxY - interieur.minY,
-        height: jeuHaut,
-      });
+  // Chaque traverse descend jusqu'à la cote où la machine s'arrête **sous
+  // elle**, et non jusqu'au sommet global : au droit d'une partie basse, une
+  // traverse calée sur le point le plus haut ne toucherait rien.
+  retenir(
+    profile.hautParX.filter((c) => zRoof - c.topMm >= JEU_MINIMAL_MM && c.topMm > zFloorTop),
+    2
+  ).forEach((c, i) => {
+    boxes.push({
+      name: `traverse_haute_${i + 1}`,
+      x: caler(c.center, TRAVERSE_MM, interieur.minX, interieur.maxX),
+      y: interieur.minY,
+      z: c.topMm,
+      width: TRAVERSE_MM,
+      depth: interieur.maxY - interieur.minY,
+      height: zRoof - c.topMm,
     });
-  }
+  });
 
   /* ── lisses de rive ─────────────────────────────────────────────────────── */
 
   // Une lisse à mi-hauteur par grand côté, contre les montants. Elle ne dépend
-  // que de la caisse : aucune hypothèse sur la machine.
+  // que de la caisse : aucune hypothèse sur la machine, et donc aucun risque de
+  // la caler contre du vide.
   for (const [cote, y] of [
     ['a', interieur.minY],
     ['b', interieur.maxY - LISSE_MM],
@@ -150,38 +187,35 @@ export function blockingBoxes(crate: Crate, slices: MachineSlices): Box[] {
     });
   }
 
-  /* ── cales de coin ──────────────────────────────────────────────────────── */
-
-  if (slices.bas) {
-    const s = slices.bas;
-    for (const [nom, x, y] of [
-      ['aa', s.minX, s.minY],
-      ['ab', s.maxX - BUTEE_LONGUEUR_MM, s.minY],
-      ['ba', s.minX, s.maxY - BUTEE_LONGUEUR_MM],
-      ['bb', s.maxX - BUTEE_LONGUEUR_MM, s.maxY - BUTEE_LONGUEUR_MM],
-    ] as const) {
-      boxes.push({
-        name: `cale_coin_${nom}`,
-        x,
-        y,
-        z: zFloorTop,
-        width: BUTEE_LONGUEUR_MM,
-        depth: BUTEE_LONGUEUR_MM,
-        height: BUTEE_HAUTEUR_MM / 2,
-      });
-    }
-  }
-
-  // Bornage final au volume intérieur.
-  //
-  // Une machine couchée peut ne reposer que sur une bande étroite tout au bord
-  // du plancher : une cale de coin partant de cette bande sortait alors de la
-  // caisse, et le contrôle d'encombrement l'a attrapée à 25 mm. Plutôt que de
-  // corriger chaque famille de cale au cas par cas, on borne une fois pour
-  // toutes — le calage est intérieur par définition.
+  // Bornage final au volume intérieur. Une machine couchée peut ne reposer que
+  // sur une bande tout au bord du plancher : sans ce garde-fou, une cale en
+  // sortirait. Le contrôle d'encombrement l'avait attrapée à 25 mm.
   return boxes
     .map((b) => intersecter(b, interieur, zFloorTop, zRoof))
     .filter((b): b is Box => b !== undefined);
+}
+
+/**
+ * Hauteur d'une butée dans une colonne donnée.
+ *
+ * Inutile de monter plus haut que la machine : une butée qui dépasse la pièce
+ * qu'elle retient ne retient rien de plus, et se voit dans le rendu.
+ */
+function hauteurButee(c: Column, zFloorTop: number): number {
+  return Math.max(BUTEE_HAUTEUR_MINI_MM, Math.min(BUTEE_HAUTEUR_MM, c.topMm - zFloorTop));
+}
+
+/**
+ * Retient au plus `n` colonnes, réparties sur l'étendue occupée.
+ *
+ * Poser une cale dans chaque colonne encombrerait sans rien tenir de plus. On
+ * garde les extrêmes — c'est là que la machine risque de partir — et on répartit
+ * le reste.
+ */
+function retenir(colonnes: Column[], n = BUTEES_PAR_PAROI): Column[] {
+  if (colonnes.length <= n) return colonnes;
+  const pas = (colonnes.length - 1) / (n - 1);
+  return Array.from({ length: n }, (_, i) => colonnes[Math.round(i * pas)]!);
 }
 
 /** Intersection d'un pavé avec le volume intérieur. `undefined` s'il n'en reste rien. */
@@ -201,14 +235,6 @@ function intersecter(
 
   // Une cale réduite à un trait ne cale rien : autant ne pas la produire.
   return width > 1 && depth > 1 && height > 1 ? { ...b, x, y, z, width, depth, height } : undefined;
-}
-
-/** `n` positions réparties entre deux bornes, sans coller aux extrémités. */
-function repartir(min: number, max: number, n: number): number[] {
-  if (n <= 1) return [(min + max) / 2];
-  const marge = (max - min) / (2 * n);
-  const utile = max - min - 2 * marge;
-  return Array.from({ length: n }, (_, i) => min + marge + (i * utile) / (n - 1));
 }
 
 /** Les cales sont en bois massif : elles comptent pour la mention NIMP-15 (§7.5). */

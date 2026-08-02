@@ -10,7 +10,7 @@ import type { UnitChoice } from './geometrie/unites.js';
 import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
 import { blockingBoxes } from './engine/calage.js';
-import { machineSlices } from './geometrie/tranches.js';
+import { machineProfile } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
 import type { ShippingMode } from './domain/types.js';
 
@@ -162,7 +162,7 @@ async function etude(body: EtudeBody) {
         placement,
         // Les tranches servent au calage : elles disent où la machine occupe
         // réellement l'espace, pas seulement quelle boîte elle remplit.
-        slices: machineSlices(cloud, axis.axis, placement, geometry.unit.scale, floorTop),
+        profile: machineProfile(cloud, axis.axis, placement, geometry.unit.scale, floorTop),
       };
     });
 
@@ -184,8 +184,8 @@ async function etude(body: EtudeBody) {
       result.poses
         .filter((p) => p.pose !== 'reference')
         .map((p) => {
-          const slices = placements.find((x) => x.pose === p.pose)?.slices;
-          return [p.pose, [...crateBoxes(p.crate), ...(slices ? blockingBoxes(p.crate, slices) : [])]];
+          const profile = placements.find((x) => x.pose === p.pose)?.profile;
+          return [p.pose, [...crateBoxes(p.crate), ...(profile ? blockingBoxes(p.crate, profile) : [])]];
         })
     ),
   };
@@ -230,8 +230,8 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   const pose = data.study.poses.find((p) => p.pose === poseId);
   if (!pose) throw new Error(`Pose inconnue : ${poseId}.`);
 
-  const slices = data.placements.find((p) => p.pose === poseId)?.slices;
-  const boxes = [...crateBoxes(pose.crate), ...(slices ? blockingBoxes(pose.crate, slices) : [])];
+  const profile = data.placements.find((p) => p.pose === poseId)?.profile;
+  const boxes = [...crateBoxes(pose.crate), ...(profile ? blockingBoxes(pose.crate, profile) : [])];
   const t0 = performance.now();
 
   const session = await EngineSession.open();

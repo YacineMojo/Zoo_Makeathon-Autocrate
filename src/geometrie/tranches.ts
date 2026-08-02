@@ -4,59 +4,70 @@ import { alignedCloud, type Axis } from './emprise.js';
 import { rotate } from './placement.js';
 
 /**
- * Où la machine occupe vraiment l'espace, hauteur par hauteur.
+ * Où la machine occupe vraiment l'espace, position par position.
  *
- * Pour caler une machine, sa boîte englobante ne suffit pas : une machine
- * couchée ne touche le plancher que par une partie de son emprise, et poser des
- * cales contre la boîte les ferait flotter dans le vide à côté de la pièce.
+ * Pour caler une machine, sa boîte englobante ne suffit pas — mais **une seule
+ * boîte pour toute la tranche basse ne suffit pas non plus**. Couchée, la
+ * machine de démonstration ne touche le plancher que sur une bande de 160 mm à
+ * une extrémité : une butée posée ailleurs le long de la même paroi s'appuie
+ * sur la caisse et sur rien d'autre. Elle a l'air d'une cale et n'en est pas.
  *
- * On tranche donc le nuage **une fois placé** — pose et lacet appliqués, machine
- * posée sur son plancher — et on relève l'étendue occupée dans la tranche. C'est
- * grossier, et c'est assumé : un avant-projet de calage dit où mettre les cales,
- * pas comment les clouer.
+ * On découpe donc la tranche en **colonnes**, et on relève dans chacune ce que
+ * la machine y occupe réellement. Une colonne vide ne reçoit pas de cale.
+ *
+ * C'est toujours grossier, et c'est toujours assumé : un avant-projet de calage
+ * dit où mettre les cales, pas comment les clouer.
  */
 
-/** Étendue occupée dans une tranche horizontale, en coordonnées caisse. */
-export interface Slice {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-  /** Nombre de sommets dans la tranche. En dessous d'une poignée, la mesure ne vaut rien. */
+/** Une colonne du profil : ce que la machine occupe dans cette bande. */
+export interface Column {
+  /** Centre de la colonne, sur l'axe de découpe. */
+  center: number;
+  /** Étendue occupée sur l'axe transverse. */
+  min: number;
+  max: number;
+  /** Cote la plus haute atteinte par la machine dans cette colonne. */
+  topMm: number;
   count: number;
 }
 
-export interface MachineSlices {
-  /** Juste au-dessus du plancher : c'est là que se posent les butées. */
-  bas?: Slice;
-  /** Juste sous le chapeau : c'est là que se posent les traverses de maintien. */
-  haut?: Slice;
+export interface MachineProfile {
+  /**
+   * Colonnes le long de X, mesurées dans la bande basse.
+   * Servent aux butées contre les deux grands côtés.
+   */
+  basParX: Column[];
+  /**
+   * Colonnes le long de Y, mesurées dans la bande basse.
+   * Servent aux butées contre les deux pignons.
+   */
+  basParY: Column[];
+  /**
+   * Colonnes le long de X, sur toute la hauteur.
+   * Servent aux traverses de maintien : chacune sait à quelle cote la machine
+   * s'arrête sous elle.
+   */
+  hautParX: Column[];
   /** Cote du dessus de la machine, en coordonnées caisse. */
   topMm: number;
 }
 
-/**
- * Tranche le nuage placé entre deux cotes.
- *
- * `undefined` si la tranche est trop pauvre pour qu'on en tire quoi que ce
- * soit : mieux vaut ne pas proposer de cale que d'en proposer une contre trois
- * sommets isolés.
- */
-function slice(
+/** Hauteur de la bande basse examinée : c'est la hauteur utile d'une butée. */
+export const BANDE_BASSE_MM = 200;
+/** Largeur d'une colonne. Une colonne, une cale candidate. */
+export const COLONNE_MM = 300;
+/** En deçà, la colonne est trop pauvre pour qu'on y appuie quoi que ce soit. */
+const SOMMETS_MINIMUM = 3;
+
+/** Applique pose, lacet et translation, et rend les sommets en coordonnées caisse. */
+function placedPoints(
   cloud: VertexCloud,
   up: Axis,
   placement: Placement,
-  scale: number,
-  zMin: number,
-  zMax: number
-): Slice | undefined {
+  scale: number
+): Float64Array {
   const aligned = alignedCloud(cloud, up, scale);
-
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  let count = 0;
+  const out = new Float64Array(aligned.xyz.length);
 
   for (let i = 0; i < aligned.xyz.length; i += 3) {
     const [x, y, z] = rotate(
@@ -64,43 +75,74 @@ function slice(
       [0, 0, 1],
       placement.yawDeg
     );
-
-    const wx = x + placement.translateMm[0];
-    const wy = y + placement.translateMm[1];
-    const wz = z + placement.translateMm[2];
-
-    if (wz < zMin || wz > zMax) continue;
-
-    count++;
-    if (wx < minX) minX = wx;
-    if (wx > maxX) maxX = wx;
-    if (wy < minY) minY = wy;
-    if (wy > maxY) maxY = wy;
+    out[i] = x + placement.translateMm[0];
+    out[i + 1] = y + placement.translateMm[1];
+    out[i + 2] = z + placement.translateMm[2];
   }
 
-  return count >= 4 ? { minX, maxX, minY, maxY, count } : undefined;
+  return out;
 }
 
-/** Épaisseur des tranches examinées, en bas et en haut. */
-export const SLICE_MM = 250;
+/**
+ * Découpe un nuage placé en colonnes le long d'un axe.
+ *
+ * `axe` vaut 0 pour découper suivant X — la colonne relève alors l'étendue en Y —
+ * et 1 pour découper suivant Y.
+ */
+function colonnes(
+  points: Float64Array,
+  axe: 0 | 1,
+  zMin: number,
+  zMax: number,
+  largeurMm = COLONNE_MM
+): Column[] {
+  const transverse = axe === 0 ? 1 : 0;
+  const bacs = new Map<number, { min: number; max: number; topMm: number; count: number }>();
+
+  for (let i = 0; i < points.length; i += 3) {
+    const z = points[i + 2] as number;
+    if (z < zMin || z > zMax) continue;
+
+    const a = points[i + axe] as number;
+    const t = points[i + transverse] as number;
+    const clef = Math.floor(a / largeurMm);
+
+    const bac = bacs.get(clef);
+    if (!bac) {
+      bacs.set(clef, { min: t, max: t, topMm: z, count: 1 });
+    } else {
+      if (t < bac.min) bac.min = t;
+      if (t > bac.max) bac.max = t;
+      if (z > bac.topMm) bac.topMm = z;
+      bac.count++;
+    }
+  }
+
+  return [...bacs.entries()]
+    .filter(([, b]) => b.count >= SOMMETS_MINIMUM)
+    .map(([clef, b]) => ({ center: (clef + 0.5) * largeurMm, min: b.min, max: b.max, topMm: b.topMm, count: b.count }))
+    .sort((a, b) => a.center - b.center);
+}
 
 /**
- * Relève les deux tranches qui servent au calage.
+ * Relève le profil qui sert au calage.
  *
  * `floorTopMm` est la cote du dessus du plancher : la machine y repose.
  */
-export function machineSlices(
+export function machineProfile(
   cloud: VertexCloud,
   up: Axis,
   placement: Placement,
   scale: number,
   floorTopMm: number
-): MachineSlices {
+): MachineProfile {
+  const points = placedPoints(cloud, up, placement, scale);
   const topMm = floorTopMm + placement.size[2];
 
   return {
-    bas: slice(cloud, up, placement, scale, floorTopMm, floorTopMm + SLICE_MM),
-    haut: slice(cloud, up, placement, scale, topMm - SLICE_MM, topMm),
+    basParX: colonnes(points, 0, floorTopMm, floorTopMm + BANDE_BASSE_MM),
+    basParY: colonnes(points, 1, floorTopMm, floorTopMm + BANDE_BASSE_MM),
+    hautParX: colonnes(points, 0, floorTopMm, topMm),
     topMm,
   };
 }
