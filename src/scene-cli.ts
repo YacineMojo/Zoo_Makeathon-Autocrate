@@ -4,6 +4,8 @@ import type { InputFormat3d, System } from '@kittycad/lib';
 import { EngineSession } from './engine/session.js';
 import { createBoxesBatched } from './engine/scene.js';
 import { crateBoxes, boxesEnvelope } from './engine/caisse.js';
+import { blockingBoxes, isBlocking } from './engine/calage.js';
+import { machineSlices } from './geometrie/tranches.js';
 import { parseObjVertices } from './mesh/obj.js';
 import { compactObj, BSON_MAX_BYTES } from './mesh/compacter.js';
 import { gltfSizeMm } from './mesh/gltf.js';
@@ -74,17 +76,23 @@ const poseIndex = ['A', 'B', 'C'].indexOf(pose.pose);
 const axis = geometry.oriented[poseIndex === -1 ? 0 : poseIndex]!;
 
 const crate = pose.crate;
-const boxes = crateBoxes(crate);
-const envelope = boxesEnvelope(boxes);
-
 const floorTopMm = crate.skid.heightMm + crate.floorThicknessMm;
 const placement = placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, floorTopMm);
+
+// Le calage se relève sur la machine placée : c'est là qu'on sait où elle
+// touche vraiment, et pas seulement quelle boîte elle remplit.
+const slices = machineSlices(cloud, axis.axis, placement, geometry.unit.scale, floorTopMm);
+const boxes = [...crateBoxes(crate), ...blockingBoxes(crate, slices)];
+const envelope = boxesEnvelope(boxes);
 
 console.log(`${path} — ${cloud.count.toLocaleString('fr-FR')} sommets`);
 console.log(`${geometry.unit.note}`);
 console.log(`\nPose retenue : ${pose.label}`);
 console.log(`  machine  ${placement.size.map((v) => Math.round(v)).join(' × ')} mm`);
-console.log(`  caisse   ${envelope.size.map((v) => Math.round(v)).join(' × ')} mm  (${boxes.length} pavés)`);
+console.log(
+  `  caisse   ${envelope.size.map((v) => Math.round(v)).join(' × ')} mm  ` +
+    `(${boxes.length} pavés, dont ${blockingBoxes(crate, slices).length} de calage)`
+);
 console.log(
   `  verdict  ${pose.retained ? pose.retained.gabarit.label : 'hors gabarit'} — ${pose.costing.totalEur.toLocaleString('fr-FR')} €, ${pose.costing.leadTimeDays} j`
 );
@@ -217,6 +225,22 @@ try {
   const crateIds = await createBoxesBatched(session, boxes);
   entityIds.push(...crateIds);
   console.log(`  caisse construite          ${s(performance.now() - t)}  ${crateIds.length} solides`);
+
+  // Le calage en bois plus foncé : dans une vue écorchée, il faut pouvoir
+  // distinguer ce qui tient la machine de ce qui l'enferme.
+  await session.sendBatch(
+    boxes
+      .map((b, i) => (isBlocking(b.name) ? crateIds[i]! : undefined))
+      .filter((id): id is string => id !== undefined)
+      .map((object_id) => ({
+        type: 'object_set_material_params_pbr' as const,
+        object_id,
+        color: { r: 0.61, g: 0.42, b: 0.25, a: 1 },
+        metalness: 0.02,
+        roughness: 0.9,
+        ambient_occlusion: 0.5,
+      }))
+  );
 
   /**
    * Exporte des entités, en repliant sur la caisse seule si le moteur refuse.

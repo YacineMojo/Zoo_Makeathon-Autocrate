@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crateBoxes, boxesEnvelope } from './caisse.js';
+import { blockingBoxes } from './calage.js';
 import { buildCrate } from '../moteur/structure.js';
 import { placeForPose } from '../geometrie/placement.js';
 import type { VertexCloud } from '../mesh/obj.js';
@@ -80,4 +81,79 @@ test('la machine placée tient dans le volume intérieur de sa caisse', () => {
   assert.ok(placement.size[0] / 2 < halfL, 'la machine déborde en longueur');
   assert.ok(placement.size[1] / 2 < halfW, 'la machine déborde en largeur');
   assert.ok(floorTop + placement.size[2] < crate.outer.heightMm, 'la machine touche le chapeau');
+});
+
+/* ------------------------------------------------------------------ calage */
+
+/** Tranches d'une machine qui ne repose que sur une partie de son emprise. */
+const tranches = {
+  bas: { minX: -1200, maxX: 1200, minY: -600, maxY: 600, count: 400 },
+  haut: { minX: -900, maxX: 900, minY: -500, maxY: 500, count: 200 },
+  topMm: crate.skid.heightMm + crate.floorThicknessMm + 1303,
+};
+
+test('les cales remplissent le jeu entre la machine et la paroi', () => {
+  const cales = blockingBoxes(crate, tranches);
+  const butees = cales.filter((b) => b.name.startsWith('butee_long_'));
+  assert.ok(butees.length >= 4, `attendu au moins quatre butées longitudinales, obtenu ${butees.length}`);
+
+  // Une butée doit toucher la paroi d'un côté et la machine de l'autre : elle
+  // ne sert à rien si elle flotte entre les deux.
+  const interieurY = crate.outer.widthMm / 2 - crate.panelThicknessMm - 45;
+  for (const b of butees) {
+    const contreParoi = Math.abs(b.y + b.depth - -interieurY) < 1 || Math.abs(b.y - interieurY) < 1;
+    const contreMachine = Math.abs(b.y - tranches.bas.maxY) < 1 || Math.abs(b.y + b.depth - tranches.bas.minY) < 1;
+    assert.ok(contreParoi || contreMachine, `${b.name} ne touche ni paroi ni machine`);
+  }
+});
+
+test('aucune cale ne sort de la caisse ni ne traverse le plancher', () => {
+  const { outer, skid, floorThicknessMm } = crate;
+  for (const b of blockingBoxes(crate, tranches)) {
+    assert.ok(b.x >= -outer.lengthMm / 2 - 1e-6 && b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} en X`);
+    assert.ok(b.y >= -outer.widthMm / 2 - 1e-6 && b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} en Y`);
+    assert.ok(b.z >= skid.heightMm + floorThicknessMm - 1e-6, `${b.name} traverse le plancher`);
+    assert.ok(b.z + b.height <= outer.heightMm + 1e-6, `${b.name} traverse le chapeau`);
+  }
+});
+
+test('le calage n’agrandit jamais la caisse', () => {
+  // C'est la propriété qui compte : le verdict a été rendu sur l'encombrement
+  // extérieur, et le calage est intérieur par construction.
+  const avant = boxesEnvelope(crateBoxes(crate));
+  const apres = boxesEnvelope([...crateBoxes(crate), ...blockingBoxes(crate, tranches)]);
+  assert.deepEqual(apres.size, avant.size);
+});
+
+test('pas de tranche exploitable, pas de butée inventée', () => {
+  // Mieux vaut ne rien proposer que de caler contre trois sommets isolés.
+  const cales = blockingBoxes(crate, { topMm: tranches.topMm });
+  assert.equal(cales.filter((b) => b.name.startsWith('butee_')).length, 0);
+  assert.ok(cales.some((b) => b.name.startsWith('lisse_')), 'les lisses, elles, ne dépendent que de la caisse');
+});
+
+test('une machine qui ne repose que sur une bande au bord ne fait pas sortir les cales', () => {
+  // Cas réel, attrapé par le contrôle d'encombrement : couchée, la machine de
+  // démonstration ne touche le plancher que sur 160 mm, tout au bord. La cale
+  // de coin partait de là vers l'extérieur et sortait de la caisse de 25 mm.
+  const auBord = {
+    ...tranches,
+    bas: { minX: 1390, maxX: 1550, minY: -1000, maxY: 1000, count: 16 },
+  };
+
+  const { outer } = crate;
+  for (const b of blockingBoxes(crate, auBord)) {
+    assert.ok(b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} sort en X`);
+    assert.ok(b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} sort en Y`);
+  }
+});
+
+test('une machine qui touche déjà la paroi ne reçoit pas de cale de zéro d’épaisseur', () => {
+  const colle = {
+    ...tranches,
+    bas: { minX: -1200, maxX: 1200, minY: -crate.outer.widthMm / 2, maxY: crate.outer.widthMm / 2, count: 400 },
+  };
+  for (const b of blockingBoxes(crate, colle)) {
+    assert.ok(b.depth > 0 && b.width > 0, `${b.name} dégénérée`);
+  }
 });

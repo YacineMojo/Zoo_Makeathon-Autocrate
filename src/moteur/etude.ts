@@ -96,6 +96,7 @@ function evaluatePose(
 function notices(anySolidWood: boolean): string[] {
   const list = [
     'Avant-projet de caisse. Ne vaut ni plan de fabrication, ni plan d’élingage.',
+    'Le calage est un principe : position et encombrement des cales. Il ne dit pas où la machine accepte d’être poussée — cela demande la matière et l’arbre d’assemblage, que l’outil n’a pas.',
     'Les cotes de gabarit et la grille de prix sont indicatives et affichées dans les hypothèses. Un devis de transitaire reste un devis de transitaire.',
   ];
   if (anySolidWood) {

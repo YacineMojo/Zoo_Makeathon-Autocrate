@@ -121,6 +121,13 @@ export const ASSUMPTIONS: ReadonlyArray<Assumption> = [
       'Entraxe resserré selon la portée et la masse. Les panneaux étant cloués sur la face extérieure, l’épaisseur des montants s’ajoute à l’encombrement de chaque côté.',
   },
   {
+    id: 'calage',
+    label: 'Calage',
+    value: 'butées, traverses, lisses et cales de coin',
+    rationale:
+      'Principe de calage : position et encombrement des cales, relevés contre l’emprise réelle de la machine tranche par tranche. Sans matière ni arbre d’assemblage, on ne peut pas désigner un point d’appui — on cale contre l’enveloppe, et la caisserie tranche.',
+  },
+  {
     id: 'stackable',
     label: 'Gerbabilité',
     value: `≤ ${(STACKABLE_MAX_GROSS_KG / 1000).toFixed(0)} t et élancement ≤ ${STACKABLE_MAX_SLENDERNESS}`,

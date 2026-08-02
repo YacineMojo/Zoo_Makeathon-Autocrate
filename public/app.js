@@ -101,9 +101,16 @@ const MATIERES = {
   montant: { color: 0xd8b483, opacity: 1 },
   panneau: { color: 0xe6d3b3, opacity: 0.22 },
   chapeau: { color: 0xe6d3b3, opacity: 0.16 },
+  // Le calage se distingue de la caisse : c'est ce qui tient la machine, et le
+  // lecteur doit pouvoir le lire d'un coup d'œil.
+  calage: { color: 0x9c6b3f, opacity: 1 },
 };
 
 function matiere(nom) {
+  if (/^(butee_|traverse_|cale_|lisse_)/.test(nom)) {
+    const { color } = MATIERES.calage;
+    return new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.02 });
+  }
   const clef = nom.startsWith('patin')
     ? 'patin'
     : nom.startsWith('plancher')

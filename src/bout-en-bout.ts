@@ -8,6 +8,8 @@ import { buildPoses } from './geometrie/poses.js';
 import { placeForPose } from './geometrie/placement.js';
 import { study, savings } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
+import { blockingBoxes } from './engine/calage.js';
+import { machineSlices } from './geometrie/tranches.js';
 import { EngineSession } from './engine/session.js';
 import { createBoxesBatched } from './engine/scene.js';
 import { gltfSizeMm } from './mesh/gltf.js';
@@ -78,14 +80,12 @@ const result = await mesurer('caisse, verdicts, coûts', 'nous', () =>
 const pose = result.best ?? result.poses[1]!;
 const index = ['A', 'B', 'C'].indexOf(pose.pose);
 const axis = geometry.oriented[index === -1 ? 0 : index]!;
-const boxes = crateBoxes(pose.crate);
-const placement = placeForPose(
-  cloud,
-  axis.axis,
-  axis.footprint.yawDeg,
-  geometry.unit.scale,
-  pose.crate.skid.heightMm + pose.crate.floorThicknessMm
-);
+const floorTop = pose.crate.skid.heightMm + pose.crate.floorThicknessMm;
+const placement = placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, floorTop);
+const boxes = [
+  ...crateBoxes(pose.crate),
+  ...blockingBoxes(pose.crate, machineSlices(cloud, axis.axis, placement, geometry.unit.scale, floorTop)),
+];
 
 /* 3 ─ Zoo construit la caisse et ressort le STEP --------------------------- */
 

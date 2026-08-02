@@ -141,9 +141,26 @@ points up. Flipping 180° changes no dimension. Plus **one reference line** — 
 naive box in the CAD frame. That is not a fourth pose, it is the *before*.
 
 **The crate.** Skids sized to the mass, floor, stud spacing by span, plywood
-panels, blocking. Boxes only — no booleans, no fillets, no real joinery. Rules
-of thumb, parameterised and displayed on screen as assumptions. Never a timber
+panels. Boxes only — no booleans, no fillets, no real joinery. Rules of thumb,
+parameterised and displayed on screen as assumptions. Never a timber
 calculation note.
+
+**Blocking, against where the machine actually is.** A bounding box is not
+enough: laid on its side, our demo machine touches the floor over a 160 mm strip
+at one end, and chocks placed against the box would float in mid-air next to the
+part. So the placed mesh is sliced — just above the floor, just under the roof —
+and the blocking is set against what is really there: floor stops, side rails,
+top battens, corner chocks.
+
+This is a **blocking principle**: position and envelope, nothing else. No bill of
+materials, no nailing pattern, no section justified by a calculation. And it
+does not say where the machine may be pushed against — a sheet-metal cover and a
+cast-iron frame look alike in a mesh. Without material and an assembly tree you
+block against the envelope, and you say so. The crate maker stays in the loop.
+
+No diagonal bracing either: real bracing is oblique, and our model only produces
+axis-aligned boxes. Rather than calling a horizontal member "bracing", we place
+what we actually place — a mid-height side rail that stiffens the panel.
 
 **Yaw minimises width, not area.** This is not a detail. The verdict never
 depends on floor area: it depends on one dimension, the one that touches the

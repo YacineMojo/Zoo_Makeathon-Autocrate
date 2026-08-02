@@ -9,6 +9,8 @@ import type { Axis } from './geometrie/emprise.js';
 import type { UnitChoice } from './geometrie/unites.js';
 import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
+import { blockingBoxes } from './engine/calage.js';
+import { machineSlices } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
 import type { ShippingMode } from './domain/types.js';
 
@@ -153,10 +155,14 @@ async function etude(body: EtudeBody) {
     .map((p, i) => {
       const axis = geometry.oriented[i]!;
       const floorTop = p.crate.skid.heightMm + p.crate.floorThicknessMm;
+      const placement = placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, floorTop);
       return {
         pose: p.pose,
         axis: axis.axis,
-        placement: placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, floorTop),
+        placement,
+        // Les tranches servent au calage : elles disent où la machine occupe
+        // réellement l'espace, pas seulement quelle boîte elle remplit.
+        slices: machineSlices(cloud, axis.axis, placement, geometry.unit.scale, floorTop),
       };
     });
 
@@ -174,7 +180,14 @@ async function etude(body: EtudeBody) {
       })),
     },
     placements,
-    boxes: Object.fromEntries(result.poses.filter((p) => p.pose !== 'reference').map((p) => [p.pose, crateBoxes(p.crate)])),
+    boxes: Object.fromEntries(
+      result.poses
+        .filter((p) => p.pose !== 'reference')
+        .map((p) => {
+          const slices = placements.find((x) => x.pose === p.pose)?.slices;
+          return [p.pose, [...crateBoxes(p.crate), ...(slices ? blockingBoxes(p.crate, slices) : [])]];
+        })
+    ),
   };
 }
 
@@ -217,7 +230,8 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   const pose = data.study.poses.find((p) => p.pose === poseId);
   if (!pose) throw new Error(`Pose inconnue : ${poseId}.`);
 
-  const boxes = crateBoxes(pose.crate);
+  const slices = data.placements.find((p) => p.pose === poseId)?.slices;
+  const boxes = [...crateBoxes(pose.crate), ...(slices ? blockingBoxes(pose.crate, slices) : [])];
   const t0 = performance.now();
 
   const session = await EngineSession.open();
