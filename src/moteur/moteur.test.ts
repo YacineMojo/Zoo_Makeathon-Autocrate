@@ -1,12 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCrate, isStackable } from './structure.js';
+import { buildCrate, isStackable, blockingAllowanceMm3 } from './structure.js';
+import { blockingBoxes } from '../engine/calage.js';
+import { WOOD_DENSITY_KG_M3 } from '../domain/assumptions.js';
 import { checkGabarit, checkAll, cheapestFit, explain } from './verdict.js';
 import { study, savings, type PoseInput } from './etude.js';
 import { GABARITS } from '../domain/gabarits.js';
 import type { Triplet } from '../domain/types.js';
 
 const gabarit = (id: string) => GABARITS.find((g) => g.id === id)!;
+
+/**
+ * Hauteur de machine donnant une caisse d'une hauteur voulue.
+ *
+ * Les tests de seuil doivent porter sur le seuil, pas sur la valeur du moment
+ * des jeux de calage. On déduit donc l'écart caisse/machine du moteur lui-même :
+ * si une hypothèse change, le test suit au lieu de casser.
+ */
+function machinePourCaisse(hauteurCaisseMm: number, massKg: number): number {
+  const sonde = buildCrate({ lengthMm: 2000, widthMm: 1500, heightMm: 1000 }, massKg);
+  return hauteurCaisseMm - (sonde.outer.heightMm - 1000);
+}
+
+/** Idem en largeur. */
+function machinePourCaisseLargeur(largeurCaisseMm: number, massKg: number): number {
+  const sonde = buildCrate({ lengthMm: 2000, widthMm: 1500, heightMm: 1000 }, massKg);
+  return largeurCaisseMm - (sonde.outer.widthMm - 1500);
+}
 
 /* ------------------------------------------------------------------ caisse */
 
@@ -92,8 +112,9 @@ test('trois centimètres font basculer le verdict et multiplient la facture', ()
   // C'est la thèse du projet (§2) : « le coût réel n'est pas le m³ d'air
   // transporté, c'est le franchissement de seuil ».
   const base = { lengthMm: 2000, widthMm: 1500 };
-  const dessous = buildCrate({ ...base, heightMm: 2538 }, 2_000);
-  const dessus = buildCrate({ ...base, heightMm: 2568 }, 2_000);
+  const juste = machinePourCaisse(gabarit('semi').maxHeightMm, 2_000);
+  const dessous = buildCrate({ ...base, heightMm: juste }, 2_000);
+  const dessus = buildCrate({ ...base, heightMm: juste + 30 }, 2_000);
 
   assert.equal(dessus.outer.heightMm - dessous.outer.heightMm, 30);
 
@@ -113,8 +134,9 @@ test('le franchissement de seuil coûte un facteur, pas un pourcentage', () => {
 
   // Mode route : c'est le gabarit au plafond le plus haut (2,75 m), donc le
   // dernier seuil avant le hors gabarit. C'est là que la marche est la plus nette.
-  const dessous = study({ poses: poses(2538), massKg: 2_000, mode: 'route' });
-  const dessus = study({ poses: poses(2568), massKg: 2_000, mode: 'route' });
+  const juste = machinePourCaisse(gabarit('semi').maxHeightMm, 2_000);
+  const dessous = study({ poses: poses(juste), massKg: 2_000, mode: 'route' });
+  const dessus = study({ poses: poses(juste + 30), massKg: 2_000, mode: 'route' });
 
   assert.ok(dessous.best, 'sous le seuil, une pose passe');
   assert.equal(dessus.best, undefined, 'au-dessus, aucune');
@@ -329,7 +351,10 @@ test('les mentions obligatoires sont dans la sortie, pas seulement dans le disco
 test('une marge faible est annoncée comme serrée, pas comme un simple « passe »', () => {
   // 19 mm de marge, c'est un panneau qui gondole. L'annoncer sans nuance est le
   // genre de chose qui fait revenir une caisse du port.
-  const large = buildCrate({ lengthMm: 3000, widthMm: 2100, heightMm: 1200 }, 2_000);
+  // Vingt millimètres sous l'ouverture de porte : la marge est serrée par
+  // construction, quelles que soient les épaisseurs de calage du moment.
+  const largeur = machinePourCaisseLargeur(gabarit('40-std').doorWidthMm! - 20, 2_000);
+  const large = buildCrate({ lengthMm: 3000, widthMm: largeur, heightMm: 1200 }, 2_000);
   const juste = checkGabarit(large, gabarit('40-std'));
 
   assert.equal(juste.fits, true);
@@ -391,4 +416,32 @@ test('il y a un arbitrage dès que le gabarit ou le délai change', () => {
 
   assert.equal(result.arbitrage, 'gabarit');
   assert.ok(savings(result)!.eur > 0);
+});
+
+test('le calage est compté dans la tare, et l’estimation reste conservatrice', () => {
+  // La tare entre dans la charge utile du gabarit : un calage non pesé
+  // sous-estimait la masse brute de près d'un tiers.
+  const machine: Triplet = { lengthMm: 3100, widthMm: 2000, heightMm: 1900 };
+  const crate = buildCrate(machine, 4_000);
+
+  const sansCalage =
+    crate.tareKg - (blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e9) * WOOD_DENSITY_KG_M3;
+  assert.ok(sansCalage < crate.tareKg, 'la tare doit inclure le calage');
+  assert.ok(crate.grossKg === Math.round(4_000 + crate.tareKg));
+
+  // Et l'estimation doit majorer ce qui sera réellement dessiné.
+  const dessine = blockingBoxes(crate, {
+    basParX: [
+      { center: -1000, min: -700, max: 700, topMm: 500, count: 40 },
+      { center: 1000, min: -700, max: 700, topMm: 500, count: 40 },
+    ],
+    basParY: [{ center: 0, min: -1400, max: 1400, topMm: 500, count: 40 }],
+    hautParX: [{ center: 0, min: -700, max: 700, topMm: 2000, count: 40 }],
+    topMm: 2000,
+  }).reduce((a, b) => a + b.width * b.depth * b.height, 0);
+
+  assert.ok(
+    dessine <= blockingAllowanceMm3(crate.inner, crate.clearanceMm),
+    `${Math.round(dessine / 1e6)} dm³ dessinés pour ${Math.round(blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e6)} dm³ estimés`
+  );
 });

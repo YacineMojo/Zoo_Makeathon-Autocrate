@@ -39,15 +39,15 @@ On the demo machine — 2.0 × 1.9 × 3.1 m, 2 350 kg:
 
 | Orientation | Crate L × W × H | Gauge | Cost | Lead time |
 |---|---|---|---|---|
-| CAD frame (naive) | 2.23 × 2.13 × 3.31 m | **out of gauge** | 13 545 € | 21 days |
-| A — upright | 2.23 × 2.13 × 3.31 m | **out of gauge** | 13 545 € | 21 days |
-| B — laid on X | 3.86 × 1.96 × 2.21 m | 20' standard | 5 521 € | 5 days |
-| **C — laid on Y** | **3.33 × 2.23 × 2.11 m** | **LCL groupage** | **3 650 €** | **12 days** |
+| CAD frame (naive) | 2.25 × 2.15 × 3.33 m | **out of gauge** | 13 639 € | 21 days |
+| A — upright | 2.25 × 2.15 × 3.33 m | **out of gauge** | 13 639 € | 21 days |
+| B — laid on X | 3.88 × 1.98 × 2.23 m | 20' standard | 5 618 € | 5 days |
+| **C — laid on Y** | **3.35 × 2.25 × 2.13 m** | **LCL groupage** | **3 766 €** | **12 days** |
 
-**9 895 € and 9 days saved per machine.** And because the cheapest option is
+**9 873 € and 9 days saved per machine.** And because the cheapest option is
 also the slowest, the tool refuses to decide for you:
 
-> Faster: 20' standard, 5 376 € in 5 days — seven days less for 1 726 € more.
+> Faster: 20' standard, 5 472 € in 5 days — seven days less for 1 706 € more.
 > Up to you what the shipping window is worth.
 
 The interesting part is *where* the money is. Comparing the naive box against
@@ -155,7 +155,23 @@ So the placed mesh is cut into **columns**, and each column is measured
 separately. A stop is only placed in a column where the machine is actually
 present at that height, and it runs from the wall to the machine *as measured in
 that column*. Where the machine is not, there is no chock. Verified on the demo
-machine: eight stops out of eight touch the part, to within 5 mm.
+machine: every stop that should bear on the part does, to within 5 mm.
+
+**Clearance is a sum, and the sum is shown.** 70 mm per face is 45 mm of side
+rail plus 25 mm of placement tolerance; 95 mm above is 70 mm of top batten plus
+the same 25 mm. Blocking that fills the entire clearance leaves nothing to lower
+the machine through — on paper it no longer fits its own crate. That mistake
+was in the code for a day.
+
+**And the blocking is weighed and priced.** Wood in the chocks is roughly 40 kg
+on the demo machine and the tare feeds the payload check, so leaving it out
+understated the gross mass. The estimate used for the tare is deliberately
+conservative — it assumes the heavy case — and the geometry actually drawn stays
+under it.
+
+**No three-metre blocks.** When a machine sits far from a wall, the gap is
+closed with two pieces and a void between them, the way a crate maker does it.
+Before that fix one chock came out 3 000 mm deep in solid timber.
 
 This is a **blocking principle**: position and envelope, nothing else. No bill of
 materials, no nailing pattern, no section justified by a calculation. And it

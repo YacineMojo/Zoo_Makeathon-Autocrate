@@ -11,11 +11,48 @@ import type { Assumption } from './types.js';
  * voulu : l'avant-projet cadre la discussion, il ne la remplace pas.
  */
 
-/** Jeu de calage entre la machine et la paroi intérieure, sur chaque face. */
-export const CLEARANCE_MM = 60;
+/**
+ * Sections du calage. Elles ne sont pas décoratives : elles **occupent le jeu**.
+ *
+ * C'est le piège que ce fichier a failli laisser passer. Une lisse de 60 mm
+ * logée dans un jeu de 60 mm consomme la totalité de la garde, et il ne reste
+ * rien pour ce que ces mêmes hypothèses annoncent — la tolérance de mise en
+ * place. Sur le papier, la machine ne rentre plus dans sa caisse.
+ *
+ * Le jeu est donc défini comme une somme, et la somme est affichée.
+ */
+export const LISSE_MM = 45;
+export const TRAVERSE_MM = 70;
 
-/** Jeu supplémentaire au-dessus de la machine : passage des élingues et du calage haut. */
-export const TOP_CLEARANCE_MM = 80;
+/**
+ * Tolérance de mise en place : ce qui reste libre une fois le calage posé.
+ *
+ * Une machine ne se descend pas au millimètre dans une caisse, et il faut
+ * pouvoir passer les élingues.
+ */
+export const TOLERANCE_POSE_MM = 25;
+
+/** Jeu de calage entre la machine et la paroi intérieure, sur chaque face. */
+export const CLEARANCE_MM = LISSE_MM + TOLERANCE_POSE_MM;
+
+/** Jeu au-dessus de la machine : traverse de maintien plus tolérance. */
+export const TOP_CLEARANCE_MM = TRAVERSE_MM + TOLERANCE_POSE_MM;
+
+/** Hauteur d'une butée au sol, et largeur d'une colonne de calage. */
+export const BUTEE_HAUTEUR_MM = 150;
+export const COLONNE_MM = 300;
+/**
+ * Au-delà de cette profondeur, on ne remplit plus le jeu de bois plein.
+ *
+ * Un bloc massif de trois mètres n'existe pas en caisserie : on pose une pièce
+ * contre la machine, une contre la paroi, et on laisse le vide entre les deux.
+ * Le remplissage intermédiaire est l'affaire du caissier.
+ */
+export const CALE_PLEINE_MAX_MM = 250;
+/** Épaisseur des deux pièces d'un calage à vide. */
+export const CALE_ENTRETOISE_MM = 120;
+/** Nombre maximum de butées par paroi. */
+export const BUTEES_PAR_PAROI = 3;
 
 /** Contreplaqué de caisserie maritime. */
 export const PANEL_THICKNESS_MM = 10;
@@ -84,15 +121,15 @@ export const ASSUMPTIONS: ReadonlyArray<Assumption> = [
   {
     id: 'clearance',
     label: 'Jeu de calage latéral',
-    value: `${CLEARANCE_MM} mm par face`,
+    value: `${CLEARANCE_MM} mm par face — ${LISSE_MM} de lisse + ${TOLERANCE_POSE_MM} de tolérance`,
     rationale:
-      'Passage du calage et tolérance de mise en place. Une machine ne se pose pas au millimètre dans une caisse.',
+      'Le jeu est la somme de ce qui l’occupe et de ce qui doit rester libre. Un calage logé dans la totalité de la garde ne laisse rien pour descendre la machine : sur le papier, elle ne rentre plus dans sa caisse.',
   },
   {
     id: 'top-clearance',
     label: 'Jeu au-dessus de la machine',
-    value: `${TOP_CLEARANCE_MM} mm`,
-    rationale: 'Calage haut et passage des élingues lors de la descente en caisse.',
+    value: `${TOP_CLEARANCE_MM} mm — ${TRAVERSE_MM} de traverse + ${TOLERANCE_POSE_MM} de tolérance`,
+    rationale: 'Même règle en hauteur : la traverse de maintien occupe sa part, la tolérance couvre la descente en caisse et le passage des élingues.',
   },
   {
     id: 'panel',
@@ -123,7 +160,7 @@ export const ASSUMPTIONS: ReadonlyArray<Assumption> = [
   {
     id: 'calage',
     label: 'Calage',
-    value: 'butées, traverses, lisses et cales de coin',
+    value: `butées ${BUTEE_HAUTEUR_MM} mm, traverses ${TRAVERSE_MM} mm, lisses ${LISSE_MM} mm`,
     rationale:
       'Principe de calage : position et encombrement des cales, relevés contre l’emprise réelle de la machine tranche par tranche. Sans matière ni arbre d’assemblage, on ne peut pas désigner un point d’appui — on cale contre l’enveloppe, et la caisserie tranche.',
   },

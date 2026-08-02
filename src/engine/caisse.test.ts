@@ -105,16 +105,41 @@ const profilPlein = {
   topMm: zSol + 1303,
 };
 
-test('les butées vont de la paroi jusqu’à la machine, dans leur propre colonne', () => {
-  const cales = blockingBoxes(crate, profilPlein);
+test('un jeu court se comble d’une pièce, de la paroi jusqu’à la machine', () => {
   const interieurY = crate.outer.widthMm / 2 - crate.panelThicknessMm - 45;
+  // Machine presque contre la paroi : le jeu tient en une seule cale.
+  const serre = {
+    ...profilPlein,
+    basParX: [col(0, -interieurY + 80, interieurY - 80)],
+    basParY: [],
+  };
 
-  const cotesA = cales.filter((b) => b.name.startsWith('butee_long_a'));
-  assert.ok(cotesA.length > 0);
-  for (const b of cotesA) {
-    assert.ok(Math.abs(b.y - -interieurY) < 1e-6, `${b.name} ne part pas de la paroi`);
-    assert.ok(Math.abs(b.y + b.depth - -600) < 1e-6, `${b.name} n’atteint pas la machine`);
-  }
+  const cotesA = blockingBoxes(crate, serre).filter((b) => b.name.startsWith('butee_long_a'));
+  assert.equal(cotesA.length, 1, 'une seule pièce pour un jeu court');
+  const b = cotesA[0]!;
+  assert.ok(Math.abs(b.y - -interieurY) < 1e-6, 'ne part pas de la paroi');
+  assert.ok(Math.abs(b.y + b.depth - (-interieurY + 80)) < 1e-6, 'n’atteint pas la machine');
+});
+
+test('un jeu profond se comble de deux pièces, avec le vide entre elles', () => {
+  // Un bloc de bois plein de trois mètres n'existe pas en caisserie. Sur la
+  // machine de démonstration couchée, une butée de pignon faisait exactement
+  // cela avant correction.
+  const interieurY = crate.outer.widthMm / 2 - crate.panelThicknessMm - 45;
+  const cales = blockingBoxes(crate, profilPlein).filter((b) => b.name.startsWith('butee_long_a'));
+
+  assert.ok(cales.length >= 2, 'attendu deux pièces');
+  const paroi = cales.find((b) => b.name.endsWith('_paroi'))!;
+  const machine = cales.find((b) => b.name.endsWith('_machine'))!;
+
+  assert.ok(Math.abs(paroi.y - -interieurY) < 1e-6, 'la pièce de paroi ne touche pas la paroi');
+  assert.ok(Math.abs(machine.y + machine.depth - -600) < 1e-6, 'la pièce de machine ne touche pas la machine');
+  assert.ok(machine.y > paroi.y + paroi.depth, 'les deux pièces devraient laisser un vide');
+
+  // Et surtout : le volume de bois s'effondre par rapport au bloc plein.
+  const plein = (-600 - -interieurY) * 300 * paroi.height;
+  const reel = (paroi.depth + machine.depth) * 300 * paroi.height;
+  assert.ok(reel < plein / 2, `${Math.round(reel / 1e6)} dm³ contre ${Math.round(plein / 1e6)} dm³ en plein`);
 });
 
 test('une colonne où la machine n’est pas au sol ne reçoit pas de butée', () => {

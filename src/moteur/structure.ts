@@ -1,6 +1,13 @@
 import type { Crate, Triplet } from '../domain/types.js';
 import {
+  BUTEE_HAUTEUR_MM,
+  BUTEES_PAR_PAROI,
+  CALE_ENTRETOISE_MM,
+  CALE_PLEINE_MAX_MM,
   CLEARANCE_MM,
+  COLONNE_MM,
+  LISSE_MM,
+  TRAVERSE_MM,
   PANEL_THICKNESS_MM,
   PLYWOOD_DENSITY_KG_M3,
   SKID_TABLE,
@@ -92,7 +99,14 @@ export function buildCrate(machine: Triplet, massKg: number): Crate {
     outer.lengthMm * outer.widthMm;
   const panelVolumeMm3 = panelAreaMm2 * PANEL_THICKNESS_MM;
 
-  const solidWoodM3 = mm3ToM3(skidVolumeMm3 + floorVolumeMm3 + studVolumeMm3);
+  // Le calage compte. Il pèse, et la tare entre dans la charge utile du
+  // gabarit : l'ignorer sous-estimait la masse brute de près d'un tiers. Le
+  // volume est estimé ici, sur les seules cotes de la caisse, pour que le
+  // moteur reste pur ; la géométrie réelle est dessinée plus tard et reste
+  // sous cette enveloppe.
+  const blockingVolumeMm3 = blockingAllowanceMm3(inner, clearance);
+
+  const solidWoodM3 = mm3ToM3(skidVolumeMm3 + floorVolumeMm3 + studVolumeMm3 + blockingVolumeMm3);
   const plywoodM3 = mm3ToM3(panelVolumeMm3);
 
   const tareKg = Math.round(solidWoodM3 * WOOD_DENSITY_KG_M3 + plywoodM3 * PLYWOOD_DENSITY_KG_M3);
@@ -116,6 +130,26 @@ export function buildCrate(machine: Triplet, massKg: number): Crate {
   };
 }
 
+/**
+ * Volume de bois du calage, estimé sur les seules cotes de la caisse.
+ *
+ * Deux lisses sur toute la longueur, jusqu'à six butées, deux traverses. Les
+ * butées sont comptées dans leur cas le plus lourd : deux entretoises, parce
+ * qu'une machine éloignée d'une paroi se cale en deux pièces et non d'un bloc.
+ *
+ * **Conservateur, et volontairement.** Cette estimation alimente la tare, donc
+ * la charge utile du gabarit : mieux vaut annoncer une caisse un peu trop
+ * lourde qu'un peu trop légère. Sur la machine de démonstration, l'estimation
+ * donne 0,098 m³ pour 0,074 m³ réellement dessinés.
+ */
+export function blockingAllowanceMm3(inner: Triplet, clearanceMm: number): number {
+  const lisses = 2 * inner.lengthMm * LISSE_MM * LISSE_MM;
+  const profondeur = Math.max(Math.min(clearanceMm, CALE_PLEINE_MAX_MM), 2 * CALE_ENTRETOISE_MM);
+  const butees = 2 * BUTEES_PAR_PAROI * COLONNE_MM * profondeur * BUTEE_HAUTEUR_MM;
+  const traverses = 2 * TRAVERSE_MM * inner.widthMm * TRAVERSE_MM;
+  return lisses + butees + traverses;
+}
+
 /** Surfaces et volumes qui servent au chiffrage. Séparé pour ne pas alourdir `Crate`. */
 export function crateQuantities(crate: Crate): { panelM2: number; woodM3: number } {
   const { outer, inner, skid, skidCount: skids, floorThicknessMm: floor, studSpacingMm: spacing } = crate;
@@ -130,7 +164,9 @@ export function crateQuantities(crate: Crate): { panelM2: number; woodM3: number
   const woodM3 = mm3ToM3(
     skids * skid.heightMm * skid.widthMm * outer.widthMm +
       outer.lengthMm * outer.widthMm * floor +
-      studCount * STUD_SECTION_MM.thicknessMm * STUD_SECTION_MM.depthMm * inner.heightMm
+      studCount * STUD_SECTION_MM.thicknessMm * STUD_SECTION_MM.depthMm * inner.heightMm +
+      // Le calage se fabrique et se pose : il se facture aussi.
+      blockingAllowanceMm3(inner, crate.clearanceMm)
   );
 
   return { panelM2, woodM3 };

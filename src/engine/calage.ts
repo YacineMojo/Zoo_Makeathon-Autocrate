@@ -1,8 +1,16 @@
 import type { Box } from './box.js';
 import type { Crate } from '../domain/types.js';
 import type { Column, MachineProfile } from '../geometrie/tranches.js';
-import { COLONNE_MM } from '../geometrie/tranches.js';
-import { STUD_SECTION_MM } from '../domain/assumptions.js';
+import {
+  BUTEE_HAUTEUR_MM,
+  BUTEES_PAR_PAROI,
+  CALE_ENTRETOISE_MM,
+  CALE_PLEINE_MAX_MM,
+  COLONNE_MM,
+  LISSE_MM,
+  STUD_SECTION_MM,
+  TRAVERSE_MM,
+} from '../domain/assumptions.js';
 
 /**
  * Le calage (PROJECT.md §6.3).
@@ -36,18 +44,10 @@ import { STUD_SECTION_MM } from '../domain/assumptions.js';
  * une lisse de rive à mi-hauteur, qui raidit le panneau.
  */
 
-/** Hauteur maximale d'une butée au sol. */
-const BUTEE_HAUTEUR_MM = 150;
 /** Hauteur minimale en dessous de laquelle une butée ne vaut pas la peine. */
 const BUTEE_HAUTEUR_MINI_MM = 40;
-/** Section d'une lisse de rive. */
-const LISSE_MM = 60;
-/** Section d'une traverse de maintien haut. */
-const TRAVERSE_MM = 70;
 /** En deçà de ce jeu, il n'y a rien à caler : la machine touche déjà. */
 const JEU_MINIMAL_MM = 15;
-/** Nombre maximum de butées par paroi. Au-delà, on encombre sans rien tenir de plus. */
-const BUTEES_PAR_PAROI = 3;
 
 /**
  * Place un pavé de largeur `taille` autour de `centre`, sans sortir du volume.
@@ -59,6 +59,52 @@ const BUTEES_PAR_PAROI = 3;
  */
 function caler(centre: number, taille: number, min: number, max: number): number {
   return Math.min(Math.max(centre - taille / 2, min), max - taille);
+}
+
+/**
+ * Un jeu à combler, en une ou deux pièces selon sa profondeur.
+ *
+ * Une machine peut être loin d'une paroi — trois mètres sur notre machine de
+ * démonstration couchée. Un bloc de bois plein de trois mètres n'existe pas en
+ * caisserie : on pose une pièce contre la machine, une contre la paroi, et on
+ * laisse le vide entre les deux. Le remplissage intermédiaire est l'affaire du
+ * caissier, et l'outil n'a pas à le dessiner.
+ */
+function combler(
+  nom: string,
+  depuis: number,
+  jeu: number,
+  autres: { transverse: number; largeur: number; z: number; hauteur: number },
+  suivantX: boolean
+): Box[] {
+  const pavé = (debut: number, epaisseur: number, suffixe: string): Box =>
+    suivantX
+      ? {
+          name: `${nom}${suffixe}`,
+          x: debut,
+          y: autres.transverse,
+          z: autres.z,
+          width: epaisseur,
+          depth: autres.largeur,
+          height: autres.hauteur,
+        }
+      : {
+          name: `${nom}${suffixe}`,
+          x: autres.transverse,
+          y: debut,
+          z: autres.z,
+          width: autres.largeur,
+          depth: epaisseur,
+          height: autres.hauteur,
+        };
+
+  if (jeu <= CALE_PLEINE_MAX_MM) return [pavé(depuis, jeu, '')];
+
+  // Deux pièces, le vide au milieu.
+  return [
+    pavé(depuis, CALE_ENTRETOISE_MM, '_paroi'),
+    pavé(depuis + jeu - CALE_ENTRETOISE_MM, CALE_ENTRETOISE_MM, '_machine'),
+  ];
 }
 
 export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
@@ -88,30 +134,20 @@ export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
     // colonne**. Si la machine y est loin de la paroi, la cale est épaisse.
     // Si elle n'y est pas du tout, la colonne n'existe pas et on ne passe
     // jamais ici.
+    const x = caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX);
+
     const jeuA = c.min - interieur.minY;
     if (jeuA >= JEU_MINIMAL_MM) {
-      boxes.push({
-        name: `butee_long_a_${i + 1}`,
-        x: caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX),
-        y: interieur.minY,
-        z: zFloorTop,
-        width: COLONNE_MM,
-        depth: jeuA,
-        height: hauteur,
-      });
+      boxes.push(
+        ...combler(`butee_long_a_${i + 1}`, interieur.minY, jeuA, { transverse: x, largeur: COLONNE_MM, z: zFloorTop, hauteur }, false)
+      );
     }
 
     const jeuB = interieur.maxY - c.max;
     if (jeuB >= JEU_MINIMAL_MM) {
-      boxes.push({
-        name: `butee_long_b_${i + 1}`,
-        x: caler(c.center, COLONNE_MM, interieur.minX, interieur.maxX),
-        y: c.max,
-        z: zFloorTop,
-        width: COLONNE_MM,
-        depth: jeuB,
-        height: hauteur,
-      });
+      boxes.push(
+        ...combler(`butee_long_b_${i + 1}`, c.max, jeuB, { transverse: x, largeur: COLONNE_MM, z: zFloorTop, hauteur }, false)
+      );
     }
   });
 
@@ -120,30 +156,20 @@ export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
   retenir(profile.basParY).forEach((c, i) => {
     const hauteur = hauteurButee(c, zFloorTop);
 
+    const y = caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY);
+
     const jeuA = c.min - interieur.minX;
     if (jeuA >= JEU_MINIMAL_MM) {
-      boxes.push({
-        name: `butee_pignon_a_${i + 1}`,
-        x: interieur.minX,
-        y: caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY),
-        z: zFloorTop,
-        width: jeuA,
-        depth: COLONNE_MM,
-        height: hauteur,
-      });
+      boxes.push(
+        ...combler(`butee_pignon_a_${i + 1}`, interieur.minX, jeuA, { transverse: y, largeur: COLONNE_MM, z: zFloorTop, hauteur }, true)
+      );
     }
 
     const jeuB = interieur.maxX - c.max;
     if (jeuB >= JEU_MINIMAL_MM) {
-      boxes.push({
-        name: `butee_pignon_b_${i + 1}`,
-        x: c.max,
-        y: caler(c.center, COLONNE_MM, interieur.minY, interieur.maxY),
-        z: zFloorTop,
-        width: jeuB,
-        depth: COLONNE_MM,
-        height: hauteur,
-      });
+      boxes.push(
+        ...combler(`butee_pignon_b_${i + 1}`, c.max, jeuB, { transverse: y, largeur: COLONNE_MM, z: zFloorTop, hauteur }, true)
+      );
     }
   });
 

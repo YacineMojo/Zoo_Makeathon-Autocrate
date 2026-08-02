@@ -41,6 +41,10 @@ camera.position.set(7, -7, 4.5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+// Sans cela, la molette zoome la scène **et** fait défiler la page : on perd la
+// vue en essayant de la regarder.
+canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+canvas.style.touchAction = 'none';
 controls.target.set(0, 0, 0.8);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa6b2, 2.1));
@@ -201,8 +205,17 @@ async function afficherPose(poseId, gltfNom) {
     const gltf = await chargeurGltf.loadAsync(`/out/${gltfNom}`);
     // Le glTF est en mètres et en Y-up : on le remet dans notre repère.
     gltf.scene.rotation.x = Math.PI / 2;
+    // On garde les matériaux rendus par Zoo — c'est lui qui sait quel solide
+    // est du calage, le glTF n'ayant pas de noms de maillage. On se contente de
+    // rendre translucide ce qui est clair, c'est-à-dire les panneaux.
     gltf.scene.traverse((o) => {
-      if (o.isMesh) o.material = new THREE.MeshStandardMaterial({ color: 0xd8b483, roughness: 0.85, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+      if (!o.isMesh || !o.material) return;
+      const c = o.material.color;
+      const clair = c ? (c.r + c.g + c.b) / 3 > 0.6 : true;
+      o.material.transparent = clair;
+      o.material.opacity = clair ? 0.3 : 1;
+      o.material.depthWrite = !clair;
+      o.material.side = THREE.DoubleSide;
     });
     groupe.add(gltf.scene);
   } else {
@@ -222,7 +235,9 @@ async function afficherPose(poseId, gltfNom) {
   $('legende').textContent = pose
     ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(pose.crate.outer.heightMm)}, ` +
       `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm, ` +
-      `${pose.stackable ? 'gerbable' : 'non gerbable'}.` +
+      `${pose.stackable ? 'gerbable' : 'non gerbable'}. ` +
+      `${(etude.boxes[poseId] ?? []).filter((b) => /^(butee_|traverse_|lisse_|cale_)/.test(b.name)).length} pièces de calage, ` +
+      `jeu ${pose.crate.clearanceMm} mm par face.` +
       (gltfNom ? ' Géométrie b-rep générée par Zoo.' : ' Aperçu local — cliquez « Générer la caisse » pour la géométrie Zoo.')
     : '';
 }

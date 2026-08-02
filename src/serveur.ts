@@ -9,7 +9,7 @@ import type { Axis } from './geometrie/emprise.js';
 import type { UnitChoice } from './geometrie/unites.js';
 import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
-import { blockingBoxes } from './engine/calage.js';
+import { blockingBoxes, isBlocking } from './engine/calage.js';
 import { machineProfile } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
 import type { ShippingMode } from './domain/types.js';
@@ -301,6 +301,24 @@ async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
 
     const ids = await createBoxesBatched(session, boxes);
     entites.push(...ids);
+
+    // Le glTF rendu par Zoo n'a pas de noms de maillage : le viewer ne peut pas
+    // y retrouver le calage pour le colorier. C'est donc le moteur qui le
+    // colorie, et le viewer se contente d'utiliser les matériaux reçus.
+    await session.sendBatch(
+      boxes
+        .map((b, i) => (isBlocking(b.name) ? ids[i]! : undefined))
+        .filter((id): id is string => id !== undefined)
+        .map((object_id) => ({
+          type: 'object_set_material_params_pbr' as const,
+          object_id,
+          color: { r: 0.72, g: 0.45, b: 0.16, a: 1 },
+          metalness: 0.02,
+          roughness: 0.9,
+          ambient_occlusion: 0.5,
+        }))
+    );
+
     await mkdir('out', { recursive: true });
 
     const exporter = async (format: 'gltf' | 'step', nom: string): Promise<string | undefined> => {
