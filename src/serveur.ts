@@ -259,6 +259,75 @@ async function sourceBrep(mesh: string): Promise<string | undefined> {
   return undefined;
 }
 
+/**
+ * Les N caisses du découpage, construites en b-rep par le moteur.
+ *
+ * Elles sortent en un seul STEP : c'est l'expédition complète, telle qu'elle
+ * partirait. La machine n'y est pas — ses pièces sont des maillages, et un
+ * maillage importé n'est pas réexportable (FEEDBACK.md #8). On exporte donc les
+ * caisses, et le viewer y pose les pièces.
+ */
+async function sceneDecoupeZoo(body: EtudeBody & { caisses?: number }) {
+  const { EngineSession } = await import('./engine/session.js');
+  const { createBoxesBatched } = await import('./engine/scene.js');
+
+  const data = await etude(body);
+  const d = data.study.decoupe;
+  if (!d) throw new Error('Aucun découpage à générer : une pose passe déjà.');
+
+  const boxes = sceneDecoupe(d).boxes;
+  const t0 = performance.now();
+  const session = await EngineSession.open();
+
+  try {
+    const ids = await createBoxesBatched(session, boxes);
+
+    await session.sendBatch(
+      boxes
+        .map((b, i) => (isBlocking(b.name) ? ids[i]! : undefined))
+        .filter((id): id is string => id !== undefined)
+        .map((object_id) => ({
+          type: 'object_set_material_params_pbr' as const,
+          object_id,
+          color: { r: 0.72, g: 0.45, b: 0.16, a: 1 },
+          metalness: 0.02,
+          roughness: 0.9,
+          ambient_occlusion: 0.5,
+        }))
+    );
+
+    await mkdir('out', { recursive: true });
+
+    const sortir = async (format: 'step' | 'gltf', nom: string) => {
+      const { resp } = await session.send(
+        {
+          type: 'export',
+          entity_ids: ids,
+          format:
+            format === 'step'
+              ? { type: 'step', coords: ZOO_COORDS, created: undefined }
+              : { type: 'gltf', storage: 'embedded', presentation: 'compact' },
+        },
+        600_000
+      );
+      if (resp.type !== 'export' || !resp.data.files[0]) return undefined;
+      await writeFile(join('out', nom), Buffer.from(resp.data.files[0].contents as unknown as Uint8Array));
+      return nom;
+    };
+
+    return {
+      caisses: d.caisses.length,
+      solides: ids.length,
+      step: await sortir('step', 'decoupe.step'),
+      gltf: await sortir('gltf', 'decoupe.gltf'),
+      sessionMs: session.elapsedMs(),
+      totalMs: Math.round(performance.now() - t0),
+    };
+  } finally {
+    await session.close();
+  }
+}
+
 async function scene(body: EtudeBody & { pose?: string; brep?: string }) {
   // Import tardif : ouvrir une session coûte, on ne charge le transport que
   // lorsqu'une scène est réellement demandée.
@@ -602,6 +671,8 @@ const server = createServer((req, res) => {
       if (req.method === 'GET' && url === '/api/maillages') return json(res, 200, { meshes: await meshes() });
       if (req.method === 'POST' && url === '/api/etude') return json(res, 200, await etude((await readBody(req)) as EtudeBody));
       if (req.method === 'POST' && url === '/api/scene') return json(res, 200, await scene((await readBody(req)) as never));
+      if (req.method === 'POST' && url === '/api/scene-decoupe')
+        return json(res, 200, await sceneDecoupeZoo((await readBody(req)) as never));
       if (req.method === 'POST' && url === '/api/decoupe') return json(res, 200, await decoupe((await readBody(req)) as never));
       if (req.method === 'POST' && url === '/api/conversion') return json(res, 200, await conversion((await readBody(req)) as never));
       if (req.method === 'GET') return await serveStatic(url, res);

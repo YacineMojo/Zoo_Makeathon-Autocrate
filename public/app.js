@@ -304,9 +304,26 @@ function dessinerDecoupe(d, pose) {
  * volontaire — chaque transformation rejouée est une occasion de la rejouer de
  * travers, et on en a déjà corrigé trois.
  */
-async function afficherDecoupe(r) {
+async function afficherDecoupe(r, gltfNom) {
   viderGroupe();
-  dessinerCaisse(r.boxes);
+
+  if (gltfNom) {
+    // Géométrie b-rep réelle, sortie du moteur Zoo.
+    const gltf = await chargeurGltf.loadAsync(`/out/${gltfNom}`);
+    gltf.scene.rotation.x = Math.PI / 2;
+    gltf.scene.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const c = o.material.color;
+      const clair = c ? (c.r + c.g + c.b) / 3 > 0.6 : true;
+      o.material.transparent = clair;
+      o.material.opacity = clair ? 0.3 : 1;
+      o.material.depthWrite = !clair;
+      o.material.side = THREE.DoubleSide;
+    });
+    groupe.add(gltf.scene);
+  } else {
+    dessinerCaisse(r.boxes);
+  }
 
   // Une couleur par caisse : la première garde le jaune machine, les suivantes
   // s'en détachent — c'est ce qui rend la répartition lisible d'un coup d'œil.
@@ -518,12 +535,20 @@ $('formulaire').addEventListener('submit', async (e) => {
     $('panneau-vue').hidden = false;
     $('panneau-hypotheses').hidden = false;
     $('generer').disabled = false;
-    $('decouper').hidden = !etude.study.decoupe;
+    $('generer').textContent = etude.study.decoupe
+      ? `Générer les ${etude.study.decoupe.caisses.length} caisses (Zoo)`
+      : 'Générer la caisse (Zoo)';
 
     rendreTableau();
-    // La pose montrée est celle qu'on recommande. Afficher la machine debout
-    // pendant qu'on explique qu'il faut la coucher vide le propos.
-    await afficherPose(etude.study.best?.pose ?? etude.study.otherMode?.pose ?? 'A', null);
+    // La vue montre ce que l'outil recommande. Si un découpage est proposé,
+    // c'est **lui** la recommandation : afficher une caisse unique pendant que
+    // le bandeau parle de trois caisses laisse croire que rien ne se passe.
+    if (etude.study.decoupe) {
+      const r = await poster('/api/decoupe', saisie());
+      await afficherDecoupe(r);
+    } else {
+      await afficherPose(etude.study.best?.pose ?? etude.study.otherMode?.pose ?? 'A', null);
+    }
 
     $('etat-calcul').textContent =
       `${etude.vertices.toLocaleString('fr-FR')} sommets, emprises et verdicts en ${etude.ms} ms. ` +
@@ -534,20 +559,27 @@ $('formulaire').addEventListener('submit', async (e) => {
   }
 });
 
-$('decouper').addEventListener('click', async () => {
-  $('vue-etat').textContent = 'découpage…';
-  try {
-    const r = await poster('/api/decoupe', saisie());
-    await afficherDecoupe(r);
-    $('vue-etat').textContent = `${r.decoupe.caisses.length} caisses — ${r.decoupe.corpsTotal} corps répartis`;
-    $('telechargements').innerHTML = '';
-  } catch (err) {
-    $('vue-etat').textContent = `échec : ${err.message}`;
-  }
-});
-
 $('generer').addEventListener('click', async () => {
   $('vue-etat').textContent = 'session Zoo en cours…';
+
+  // Un découpage proposé, ce sont N caisses à construire — pas une.
+  if (etude?.study.decoupe) {
+    try {
+      const r = await poster('/api/scene-decoupe', saisie());
+      const local = await poster('/api/decoupe', saisie());
+      await afficherDecoupe(local, r.gltf);
+      $('vue-etat').textContent =
+        `${r.caisses} caisses, ${r.solides} solides b-rep, session ${(r.sessionMs / 1000).toFixed(1)} s`;
+      $('telechargements').innerHTML = [
+        r.step ? `<a class="bouton" href="/out/${r.step}" download>STEP — les ${r.caisses} caisses</a>` : '',
+        r.gltf ? `<a class="bouton" href="/out/${r.gltf}" download>glTF — la scène</a>` : '',
+      ].join(' ');
+    } catch (err) {
+      $('vue-etat').textContent = `échec : ${err.message}`;
+    }
+    return;
+  }
+
   try {
     const r = await poster('/api/scene', { ...saisie(), pose: poseCourante });
     await afficherPose(r.pose, r.gltf);
