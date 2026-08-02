@@ -143,8 +143,20 @@
           <div class="vue-scene">
             <canvas id="scene"></canvas>
             <p class="vue-etat" id="vue-etat"></p>
+            <div class="chargement" id="chargement" hidden></div>
           </div>
           <p class="legende" id="legende"></p>
+
+          <!-- La limite qu'un jury verra en premier s'il dépose une voiture :
+               la caisse s'appuiera sur le rétroviseur. Autant la dire avant
+               qu'on la découvre. -->
+          <p class="avertissement-court">
+            L'outil ne connaît ni la matière des pièces, ni leur résistance. Il cale contre
+            l'enveloppe : sur une voiture, une butée peut prendre appui sur un rétroviseur
+            sans savoir qu'il ne porte pas deux tonnes. Le calage est un principe de position,
+            à valider par la caisserie.
+          </p>
+
           <div class="actions" id="telechargements"></div>
         </section>
 

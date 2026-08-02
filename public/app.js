@@ -411,9 +411,9 @@ function rendreTableau() {
       (${s.overloaded.gabaritLabel}). Aucune orientation ne change cela, et le hors gabarit non plus :
       c'est un problème de masse, pas d'encombrement.`;
   } else if (s.best && s.arbitrage === 'aucun') {
-    verdict = `Toutes les poses tombent dans le même gabarit — <strong>${s.best.retained.gabarit.label}</strong>,
-      ${s.best.costing.leadTimeDays} j. L'écart entre elles n'est que du contreplaqué :
-      gardez le repère CAO, il n'y a rien à arbitrer.`;
+    // Rien à arbitrer : autant le dire en une ligne et laisser le tableau parler.
+    verdict = `Toutes les poses passent en <strong>${s.best.retained.gabarit.label}</strong>
+      — ${eur(s.best.costing.totalEur)}, ${s.best.costing.leadTimeDays} j.`;
   } else if (s.best) {
     const eco = ref.costing.totalEur - s.best.costing.totalEur;
     const jours = ref.costing.leadTimeDays - s.best.costing.leadTimeDays;
@@ -483,6 +483,61 @@ function rendreTableau() {
   $('mentions').innerHTML = s.notices.map((n) => `<p>${n}</p>`).join('');
 }
 
+/* --------------------------------------------------------------- chargement */
+
+/**
+ * Déroulé des étapes pendant un calcul.
+ *
+ * Les étapes affichées sont celles qui ont réellement lieu — lecture du
+ * maillage, balayage du lacet, verdicts, calage, rendu. La seule chose ajoutée
+ * est une **durée plancher** : sans elle, l'étude finit en quarante
+ * millisecondes et l'écran change si vite qu'on ne voit pas ce qui s'est passé.
+ * Montrer le travail n'est pas l'inventer.
+ */
+const ETAPES_ETUDE = [
+  'lecture du maillage',
+  'enveloppe convexe et balayage du lacet',
+  'trois poses, cinq gabarits',
+  'structure de caisse et calage',
+  'rendu',
+];
+
+const ETAPES_ZOO = [
+  'ouverture de la session Zoo',
+  'import de la machine en b-rep',
+  'construction de la caisse',
+  'export STEP et glTF',
+];
+
+let minuterie;
+
+function demarrerChargement(etapes, dureeMs = 3000) {
+  const zone = $('chargement');
+  zone.hidden = false;
+  const debut = performance.now();
+  let i = 0;
+
+  const afficher = () => {
+    zone.innerHTML =
+      `<span class="fusee"></span><span class="chargement-etape">${etapes[Math.min(i, etapes.length - 1)]}</span>`;
+  };
+
+  afficher();
+  clearInterval(minuterie);
+  minuterie = setInterval(() => {
+    i += 1;
+    if (i >= etapes.length) return;
+    afficher();
+  }, dureeMs / etapes.length);
+
+  return async () => {
+    const reste = dureeMs - (performance.now() - debut);
+    if (reste > 0) await new Promise((r) => setTimeout(r, reste));
+    clearInterval(minuterie);
+    zone.hidden = true;
+  };
+}
+
 /* ------------------------------------------------------------------ appels */
 
 async function poster(url, corps) {
@@ -509,7 +564,7 @@ function saisie() {
 }
 
 async function etudier() {
-  $('etat-calcul').textContent = 'calcul…';
+  const fini = demarrerChargement(ETAPES_ETUDE);
   try {
     etude = await poster('/api/etude', saisie());
 
@@ -539,6 +594,8 @@ async function etudier() {
     $('vue-etat').textContent = 'aperçu local';
   } catch (err) {
     $('etat-calcul').textContent = `échec : ${err.message}`;
+  } finally {
+    await fini();
   }
 }
 
@@ -555,6 +612,7 @@ for (const champ of ['mesh', 'massKg', 'up', 'unit', 'mode', 'caisses', 'forbidL
 
 $('generer').addEventListener('click', async () => {
   $('vue-etat').textContent = 'session Zoo en cours…';
+  const fini = demarrerChargement(ETAPES_ZOO, 2500);
 
   // Un découpage proposé, ce sont N caisses à construire — pas une.
   if (etude?.study.decoupe) {
@@ -570,6 +628,8 @@ $('generer').addEventListener('click', async () => {
       ].join(' ');
     } catch (err) {
       $('vue-etat').textContent = `échec : ${err.message}`;
+    } finally {
+      await fini();
     }
     return;
   }
@@ -595,6 +655,8 @@ $('generer').addEventListener('click', async () => {
     ].join(' ');
   } catch (err) {
     $('vue-etat').textContent = `échec : ${err.message}`;
+  } finally {
+    await fini();
   }
 });
 

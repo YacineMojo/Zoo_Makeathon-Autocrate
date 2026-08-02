@@ -742,3 +742,52 @@ summary:focus-visible {
 .repli[open] > summary::before {
   content: '▾ ';
 }
+
+/* ── Chargement ────────────────────────────────────────────────────────────
+   Les étapes affichées sont celles qui ont réellement lieu ; seule leur durée
+   d'affichage est plancher. Sans cela l'étude finit en quarante millisecondes
+   et on ne voit pas ce qui s'est passé. */
+
+.chargement {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgb(244 247 250 / 88%);
+  z-index: 2;
+}
+
+.chargement-etape {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #48525e;
+}
+
+.fusee {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #dbe1e7;
+  border-top-color: #8a5a2b;
+  border-radius: 50%;
+  animation: tourne 0.8s linear infinite;
+}
+
+@keyframes tourne {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Une limite énoncée à sa place : sous ce qu'elle limite. */
+.avertissement-court {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #6b7684;
+  border-left: 2px solid #dbe1e7;
+  padding-left: 10px;
+}
