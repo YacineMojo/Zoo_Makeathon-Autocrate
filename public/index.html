@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Caisse — avant-projet de caisse d'expédition</title>
+    <title>Caisse — la caisse d'expédition d'une machine, et le gabarit qui la porte</title>
     <meta
       name="description"
-      content="Dépose le STEP d'une machine, mesure son emprise, génère la caisse autour et dit dans quel gabarit de transport elle rentre — avant que la caisse soit commandée."
+      content="Déposez le STEP d'une machine : son emprise est mesurée, sa caisse d'expédition dimensionnée, et le gabarit de transport qui la porte désigné — avant que la caisse soit commandée."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
@@ -21,152 +21,179 @@
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <header class="plaque">
-      <div class="plaque-titre">
+    <!-- ── Cartouche ───────────────────────────────────────────────────────
+         Le cartouche d'un plan : qui, quoi, avec quoi. Il ne vend rien, il
+         identifie le document. -->
+    <header class="cartouche" data-entree="1">
+      <div class="cartouche-marque">
         <h1>Caisse</h1>
-        <p class="plaque-sous">
-          Déposez le STEP d'une machine : sa caisse d'expédition, et le gabarit dans lequel elle rentre
+        <p class="cartouche-accroche">
+          Le STEP d'une machine entre. Sa caisse d'expédition, le gabarit qui la porte
+          et ce qu'elle coûte en sortent.
         </p>
       </div>
-      <dl class="plaque-meta">
-        <dt>Lecture du STEP</dt>
-        <dd>Zoo File Format API</dd>
-        <dt>Caisse b-rep</dt>
-        <dd>Zoo Engine API</dd>
+      <dl class="cartouche-credits">
+        <div><dt>Lecture du STEP</dt><dd>Zoo File Format API</dd></div>
+        <div><dt>Caisse b-rep</dt><dd>Zoo Engine API</dd></div>
       </dl>
     </header>
 
-    <div class="barre-omnibus" aria-hidden="true"></div>
+    <!-- ── Console ─────────────────────────────────────────────────────────
+         Les entrées tiennent sur une ligne, au-dessus de ce qu'elles
+         commandent. L'étude se relance à chaque changement : quatre
+         millisecondes, aucun appel à Zoo, donc aucun bouton « calculer » —
+         il n'y a rien à attendre. Le seul bouton qui reste est celui qui
+         coûte réellement quelque chose : la session Zoo. -->
+    <form class="console" id="formulaire" novalidate data-entree="2">
+      <div class="reglage reglage-fichier">
+        <span class="reglage-titre" id="fichier-titre">Machine</span>
+        <label class="depot" for="fichier">
+          <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" aria-labelledby="fichier-titre" />
+          <span>Déposer un STEP</span>
+        </label>
+      </div>
 
-    <main class="atelier">
-      <!-- ── Entrées ─────────────────────────────────────────────────────────
-           Le strict nécessaire est visible. Les garde-fous — axe vertical,
-           unité — vivent dans un repli : ils comptent, mais leur valeur
-           automatique est bonne dans l'immense majorité des cas, et les
-           afficher revient à demander au lecteur de trancher ce qu'il ne sait
-           pas encore.
+      <div class="reglage reglage-exemple">
+        <label for="mesh">ou un exemple</label>
+        <select id="mesh" name="mesh"></select>
+      </div>
 
-           L'étude se relance à chaque changement : il n'y a pas de bouton
-           « calculer », parce qu'il n'y a rien à attendre — quatre millisecondes
-           et aucun appel à Zoo. -->
-      <form class="panneau panneau-saisie" id="formulaire" novalidate>
-        <div class="champ champ-large">
-          <label for="fichier">Fichier STEP ou OBJ</label>
-          <div class="champ-saisie">
-            <input id="fichier" type="file" accept=".stp,.step,.STP,.STEP,.obj,.OBJ" />
-          </div>
-        </div>
+      <div class="reglage">
+        <label for="massKg">Masse</label>
+        <span class="saisie-unite">
+          <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
+          <span class="unite">kg</span>
+        </span>
+      </div>
 
-        <div class="champ champ-large">
-          <label for="mesh">…ou un exemple</label>
-          <div class="champ-saisie">
-            <select id="mesh" name="mesh"></select>
-          </div>
-        </div>
+      <div class="reglage">
+        <label for="mode">Acheminement</label>
+        <select id="mode" name="mode">
+          <option value="maritime" selected>maritime</option>
+          <option value="route">route</option>
+        </select>
+      </div>
 
-        <div class="champ">
-          <label for="massKg">Masse</label>
-          <div class="champ-saisie">
-            <input id="massKg" name="massKg" type="number" value="2350" min="1" max="100000" step="10" />
-            <span class="unite">kg</span>
-          </div>
-        </div>
+      <div class="reglage">
+        <label for="caisses">Découper en</label>
+        <select id="caisses" name="caisses">
+          <option value="">au besoin</option>
+          <option value="2">2 caisses</option>
+          <option value="3">3 caisses</option>
+          <option value="4">4 caisses</option>
+        </select>
+      </div>
 
-        <div class="champ">
-          <label for="mode">Acheminement</label>
-          <div class="champ-saisie">
-            <select id="mode" name="mode">
-              <option value="maritime" selected>maritime</option>
-              <option value="route">route</option>
-            </select>
-          </div>
-        </div>
+      <div class="reglage reglage-bascule">
+        <input id="forbidLying" name="forbidLying" type="checkbox" />
+        <label for="forbidLying">Couchage interdit</label>
+      </div>
 
-        <div class="champ">
-          <label for="caisses">Découper en</label>
-          <div class="champ-saisie">
-            <select id="caisses" name="caisses">
-              <option value="">— au besoin —</option>
-              <option value="2">2 caisses</option>
-              <option value="3">3 caisses</option>
-              <option value="4">4 caisses</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="champ champ-bascule">
-          <label for="forbidLying">Couchage interdit</label>
-          <input id="forbidLying" name="forbidLying" type="checkbox" />
-        </div>
-
-        <details class="repli">
-          <summary>Réglages de lecture</summary>
-          <div class="champ">
+      <!-- Les garde-fous. Ils comptent, mais leur valeur automatique est bonne
+           dans l'immense majorité des cas, et les afficher revient à demander
+           au lecteur de trancher ce qu'il ne sait pas encore. -->
+      <details class="reglage-repli" id="repli-lecture">
+        <summary aria-label="Réglages de lecture du fichier">Lecture</summary>
+        <div class="repli-panneau">
+          <div class="reglage">
             <label for="up">Axe vertical</label>
-            <div class="champ-saisie">
-              <select id="up" name="up">
-                <option value="z" selected>Z</option>
-                <option value="y">Y</option>
-                <option value="x">X</option>
-              </select>
-            </div>
+            <select id="up" name="up">
+              <option value="z" selected>Z</option>
+              <option value="y">Y</option>
+              <option value="x">X</option>
+            </select>
           </div>
-          <div class="champ">
+          <div class="reglage">
             <label for="unit">Unité</label>
-            <div class="champ-saisie">
-              <select id="unit" name="unit">
-                <option value="auto" selected>auto</option>
-                <option value="mm">mm</option>
-                <option value="m">m</option>
-                <option value="in">pouce</option>
-              </select>
-            </div>
+            <select id="unit" name="unit">
+              <option value="auto" selected>auto</option>
+              <option value="mm">mm</option>
+              <option value="m">m</option>
+              <option value="in">pouce</option>
+            </select>
           </div>
-        </details>
-
-        <div class="actions">
-          <button class="bouton bouton-primaire" id="generer" type="button" disabled>
-            Générer la caisse (Zoo)
-          </button>
         </div>
-        <p class="actions-note" id="etat-calcul"></p>
-      </form>
+      </details>
 
-      <!-- ── Résultats ───────────────────────────────────────────────────── -->
-      <section class="colonne-resultats">
-        <section class="panneau panneau-verdict" id="panneau-verdict" hidden>
-          <div class="verdict" id="verdict"></div>
-          <div class="donnees" id="tableau"></div>
-        </section>
+      <button class="bouton bouton-zoo" id="generer" type="button" disabled>
+        Générer la caisse
+      </button>
 
-        <section class="panneau" id="panneau-vue" hidden>
-          <div class="vue-scene">
-            <canvas id="scene"></canvas>
-            <p class="vue-etat" id="vue-etat"></p>
-            <div class="chargement" id="chargement" hidden></div>
+      <p class="console-etat" id="etat-calcul" role="status"></p>
+    </form>
+
+    <main>
+      <!-- ── Le verdict, et la coupe qui le prouve ─────────────────────────
+           La conclusion en chiffres, puis le dessin qui la démontre : la
+           section du gabarit, à l'échelle, avec la caisse dedans. C'est la
+           seule image qui répond à la question posée — est-ce que ça rentre —
+           sans qu'on ait à lire un nombre. -->
+      <section class="verdict-bande" id="panneau-verdict" hidden data-entree="3">
+        <div class="verdict-tete">
+          <p class="oeil">Verdict</p>
+          <p class="verdict-chiffre" id="verdict-chiffre"></p>
+          <p class="verdict-phrase" id="verdict"></p>
+          <p class="verdict-second" id="verdict-second"></p>
+
+          <!-- La mesure sur laquelle tout le reste repose. Un verdict sans la
+               cote qui l'a produit demande qu'on lui fasse confiance ; avec
+               elle, il se vérifie. -->
+          <dl class="releve" id="releve"></dl>
+        </div>
+
+        <figure class="coupes" id="coupes">
+          <figcaption class="oeil oeil-clair">Coupe au gabarit — à l'échelle</figcaption>
+          <div class="coupes-rang" id="coupes-rang"></div>
+          <p class="coupes-somme" id="coupes-somme"></p>
+        </figure>
+      </section>
+
+      <!-- ── La caisse ────────────────────────────────────────────────────── -->
+      <section class="bloc" id="panneau-vue" hidden data-entree="4">
+        <div class="bloc-tete">
+          <p class="oeil">La caisse</p>
+          <p class="bloc-note" id="legende"></p>
+        </div>
+
+        <div class="vue-scene">
+          <canvas id="scene"></canvas>
+          <p class="vue-etat" id="vue-etat"></p>
+          <div class="chargement" id="chargement" hidden>
+            <div class="chargement-rule"><span></span></div>
+            <p class="chargement-etape"></p>
           </div>
-          <p class="legende" id="legende"></p>
+        </div>
 
+        <div class="bloc-pied">
           <!-- La limite qu'un jury verra en premier s'il dépose une voiture :
                la caisse s'appuiera sur le rétroviseur. Autant la dire avant
                qu'on la découvre. -->
-          <p class="avertissement-court">
+          <p class="reserve">
             L'outil ne connaît ni la matière des pièces, ni leur résistance. Il cale contre
             l'enveloppe : sur une voiture, une butée peut prendre appui sur un rétroviseur
             sans savoir qu'il ne porte pas deux tonnes. Le calage est un principe de position,
             à valider par la caisserie.
           </p>
+          <div class="telechargements" id="telechargements"></div>
+        </div>
+      </section>
 
-          <div class="actions" id="telechargements"></div>
-        </section>
+      <!-- ── Les poses ────────────────────────────────────────────────────── -->
+      <section class="bloc" id="panneau-poses" hidden data-entree="5">
+        <div class="bloc-tete">
+          <p class="oeil">Les poses</p>
+          <p class="bloc-note">Cliquez une ligne pour la voir en 3D.</p>
+        </div>
+        <div class="tableau-cadre" id="tableau"></div>
+      </section>
 
-        <section class="panneau panneau-hypotheses" id="panneau-hypotheses" hidden>
-          <details class="repli">
-            <summary>Hypothèses et mentions</summary>
-            <div class="hypotheses" id="hypotheses"></div>
-            <div class="avertissement" id="mentions"></div>
-          </details>
-        </section>
+      <!-- ── Ce sur quoi l'outil s'appuie ─────────────────────────────────── -->
+      <section class="bloc bloc-pied-page" id="panneau-hypotheses" hidden data-entree="6">
+        <details class="repli">
+          <summary>Hypothèses et mentions</summary>
+          <div class="hypotheses" id="hypotheses"></div>
+          <div class="mentions" id="mentions"></div>
+        </details>
       </section>
     </main>
   </body>

@@ -37,17 +37,52 @@ await page.goto(URL_BASE, { waitUntil: 'networkidle' });
 // Mode maritime, celui du §16 : c'est là que le franchissement de seuil coûte
 // le plus cher, et c'est la phrase de la démonstration — debout hors gabarit,
 // couchée dans un 40 pieds standard.
+//
+// Il n'y a pas de bouton « calculer » : l'étude part au chargement et se
+// relance à chaque changement. Ce script cliquait un `#calculer` disparu depuis
+// plusieurs versions, et échouait avant d'avoir rien vérifié.
 await page.selectOption('#mode', 'maritime');
-await page.click('#calculer');
 await page.waitForSelector('.tableau-poses tr[data-pose]', { timeout: 120_000 });
+await page.waitForSelector('.coupe svg', { timeout: 120_000 });
+
+// Le voile de chargement doit être **parti**, pas seulement marqué caché : une
+// règle de feuille de style peut annuler l'attribut `hidden`, et le calque
+// reste alors par-dessus la vue en interceptant les clics.
+await page.waitForFunction(
+  () => getComputedStyle(document.getElementById('chargement')).display === 'none',
+  null,
+  { timeout: 60_000 }
+);
+const voileBloque = await page.evaluate(() => {
+  const r = document.getElementById('scene').getBoundingClientRect();
+  const cible = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  return cible && cible.id !== 'scene' ? `${cible.tagName}.${cible.className}` : null;
+});
+if (voileBloque) erreurs.push(`la vue 3D est masquée par ${voileBloque}`);
+
+// Une page qui déborde horizontalement se voit tout de suite en démonstration.
+if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
+  erreurs.push('la page déborde horizontalement');
+}
 
 // Le maillage de la machine pèse plusieurs mégaoctets : on laisse le temps au
 // chargeur OBJ de le poser dans la caisse avant de photographier.
 await page.waitForTimeout(12_000);
 await page.screenshot({ path: `${OUT}/ui-etude.png`, fullPage: true });
 
+console.log('chiffre :', propre(await page.textContent('#verdict-chiffre')));
 console.log('verdict :', propre(await page.textContent('#verdict')));
 console.log('état    :', propre(await page.textContent('#etat-calcul')));
+for (const coupe of await page.$$eval('.coupe', (cs) =>
+  cs.map((c) => ({
+    titre: c.querySelector('.coupe-pose')?.textContent.trim(),
+    verdict: c.dataset.verdict,
+    cote: c.querySelector('.cote-texte')?.textContent.trim(),
+    prix: c.querySelector('.coupe-prix-montant')?.textContent.trim(),
+  }))
+)) {
+  console.log(`    coupe ${coupe.titre} — ${coupe.verdict}, ${coupe.cote}, ${coupe.prix}`);
+}
 for (const ligne of await page.$$eval('.tableau-poses tbody tr', (rs) =>
   rs.map((r) => [...r.children].map((c) => c.textContent.replace(/\s+/g, ' ').trim()).join(' | '))
 )) {

@@ -1,15 +1,18 @@
 /*
-  Direction : la plaque signalétique d'un équipement électrique.
+  Direction : le terminal à conteneurs, pas la plaquette commerciale.
 
-  Ce que regarde un ingénieur d'avant-projet, ce sont des nombres alignés et un
-  verdict. D'où l'inversion assumée : la police à chasse fixe n'est pas réservée
-  au code, c'est ici la police de titre *et* de donnée — comme sur une plaque
-  gravée ou un repère de bornier. Le texte courant, minoritaire, passe en
-  grotesque système. Aucune police distante : la page doit fonctionner hors ligne.
+  Tout ce que la page raconte se joue sur un quai — une caisse de bois, une
+  section de conteneur, et trois centimètres de marge. Les couleurs viennent de
+  là et de nulle part ailleurs : l'encre de coque, la craie du marquage sur
+  l'acier, l'oxyde du corten pour ce qui ne passe pas, le vert d'antifouling
+  pour ce qui passe. Le cuivre est le seul accent chaud, et il est rare : il ne
+  signale que l'interaction et Zoo.
 
-  Le cuivre est l'unique accent, et il est rare : c'est la couleur du jeu de
-  barres, pas une couleur de marque. L'identité tient à l'aluminium anodisé et au
-  gris ardoise gravé.
+  La typographie tient à une seule collision, tenue partout : la même chasse
+  fixe, serrée à −0,035 em pour le chiffre du verdict, ouverte à +0,24 em pour
+  les œils-de-section. Le plus resserré et le plus écarté de la page sont de la
+  même famille. Aucune police distante — la démonstration doit tourner hors
+  ligne, et une police qui ne charge pas est un écran qui ne ressemble à rien.
 */
 
 :root {
@@ -17,22 +20,31 @@
     "Liberation Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  --ardoise-900: #171c22;
-  --ardoise-700: #2b333d;
-  --ardoise-500: #56616e;
-  --ardoise-300: #8a949f;
-  --alu-300: #c2ccd5;
-  --alu-200: #dbe1e7;
-  --alu-100: #edf0f3;
-  --blanc: #fbfcfd;
+  /* Encre de coque : le fond des bandes sombres, et tout le texte principal. */
+  --encre: #0f151b;
+  --encre-80: #1b242e;
+  --encre-60: #38434f;
+  /* Acier : les traits, les seconds rôles. */
+  --acier: #5a646f;
+  --acier-clair: #8d97a2;
+  /* Craie sur tôle : le fond de page. */
+  --craie: #e3e7ea;
+  --craie-trait: #ccd3d9;
+  --papier: #fbfcfd;
 
-  --cuivre: #a8632a;
-  --ambre: #9a6c0c;
-  --rouge: #a12a20;
-  --vert: #26604e;
+  /* Corten : ce qui ne passe pas. Antifouling : ce qui passe. */
+  --oxyde: #af3a21;
+  --oxyde-clair: #e06a4d;
+  --algue: #1e6b54;
+  --algue-clair: #4fb490;
+  /* Le seul accent chaud : interaction, Zoo, marge serrée. */
+  --cuivre: #b0682f;
+  --cuivre-clair: #dd9a5c;
 
   --rayon: 2px;
-  --trait: 1px solid var(--alu-300);
+  --trait: 1px solid var(--craie-trait);
+  --marge-page: clamp(16px, 4.5vw, 60px);
+  --entree: 460ms;
 }
 
 *,
@@ -57,274 +69,773 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  background: var(--alu-100);
-  color: var(--ardoise-900);
+  /*
+    La trame millimétrée du papier de calcul, très en retrait. Elle donne au
+    fond une texture de document mesuré plutôt que de page web, et c'est sur
+    elle que les blocs blancs se détachent.
+  */
+  background-color: var(--craie);
+  background-image:
+    linear-gradient(rgb(15 21 27 / 3.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(15 21 27 / 3.5%) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--encre);
   font-family: var(--sans);
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-/* ── Plaque d'en-tête ───────────────────────────────────────────────────── */
+/* ── L'œil de section ───────────────────────────────────────────────────────
+   Le repère le plus écarté de la page. Il nomme la vue, comme sur un plan, et
+   ne dit jamais rien d'autre. */
 
-.plaque {
+.oeil {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--acier);
+}
+
+.oeil-clair {
+  color: var(--acier-clair);
+}
+
+/* ── Cartouche ──────────────────────────────────────────────────────────── */
+
+.cartouche {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
-  padding: 26px clamp(16px, 4vw, 44px) 18px;
-  background: var(--ardoise-900);
-  color: var(--alu-100);
+  gap: 20px 40px;
+  padding: clamp(22px, 3.5vw, 40px) var(--marge-page) clamp(18px, 2.6vw, 26px);
+  background: var(--encre);
+  color: var(--craie);
 }
 
-.plaque-titre {
-  flex: 1 1 22rem;
+.cartouche-marque {
+  flex: 1 1 26rem;
   min-width: 0;
 }
 
-.plaque h1 {
+.cartouche h1 {
   margin: 0;
   font-family: var(--mono);
-  font-size: clamp(19px, 2.6vw, 27px);
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
+  color: var(--papier);
 }
 
-.plaque-sous {
-  margin: 6px 0 0;
-  max-width: 52ch;
-  color: var(--alu-300);
-  font-size: 13.5px;
+.cartouche-accroche {
+  margin: 8px 0 0;
+  max-width: 54ch;
+  color: var(--acier-clair);
+  font-size: 14px;
 }
 
-.plaque-meta {
+.cartouche-credits {
   display: grid;
-  grid-template-columns: auto auto;
-  gap: 2px 14px;
+  gap: 4px;
   margin: 0;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
-.plaque-meta dt {
-  color: var(--ardoise-300);
-  letter-spacing: 0.12em;
+.cartouche-credits > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.cartouche-credits dt {
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  color: var(--acier);
 }
 
-.plaque-meta dd {
+.cartouche-credits dd {
   margin: 0;
-  color: var(--alu-200);
+  color: var(--craie);
 }
 
-/* Le jeu de barres : l'unique trait de cuivre de la page. */
-.barre-omnibus {
-  height: 3px;
-  background: linear-gradient(90deg, var(--cuivre) 0%, var(--cuivre) 62%, var(--ardoise-700) 62%);
+/* ── Console ────────────────────────────────────────────────────────────────
+   Une ligne d'entrées, collante, au-dessus de ce qu'elle commande. Le trait de
+   cuivre sous la barre est le seul liseré de la page. */
+
+.console {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px clamp(14px, 1.8vw, 26px);
+  padding: 12px var(--marge-page) 13px;
+  background: var(--papier);
+  border-bottom: 2px solid var(--encre);
+  box-shadow: 0 1px 0 var(--cuivre), 0 10px 24px -18px rgb(15 21 27 / 55%);
 }
 
-/* ── Atelier ────────────────────────────────────────────────────────────── */
-
-.atelier {
+.reglage {
   display: grid;
-  grid-template-columns: minmax(300px, 372px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-  padding: 18px clamp(16px, 4vw, 44px) 56px;
-  max-width: 1560px;
-  margin: 0 auto;
-}
-
-.colonne-resultats {
-  display: grid;
-  gap: 18px;
+  gap: 4px;
   min-width: 0;
 }
 
-.panneau {
-  background: var(--blanc);
-  border: var(--trait);
-  border-radius: var(--rayon);
-  padding: 16px 18px;
-}
-
-.panneau-titre {
-  margin: 0 0 12px;
+.reglage > label,
+.reglage-titre {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ardoise-500);
+  color: var(--acier);
 }
 
-/* ── Champs : lignes de plaque gravée ───────────────────────────────────── */
-
-.panneau-saisie {
-  position: sticky;
-  top: 18px;
-}
-
-.champ {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px dashed var(--alu-200);
-}
-
-.champ label {
-  font-size: 13.5px;
-  color: var(--ardoise-700);
-}
-
-.champ-saisie {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
-.champ-large {
-  display: block;
-}
-
-.champ-large .champ-saisie {
-  margin-top: 7px;
-  display: block;
-}
-
-.champ input[type="number"],
-.champ select {
+.console select,
+.console input[type="number"] {
   font-family: var(--mono);
-  font-size: 14px;
-  color: var(--ardoise-900);
-  background: var(--alu-100);
-  border: 1px solid var(--alu-300);
+  font-size: 13px;
+  color: var(--encre);
+  background: var(--craie);
+  border: 1px solid var(--craie-trait);
   border-radius: var(--rayon);
-  padding: 5px 7px;
-  /* Le léger enfoncement évoque la gravure, sans ombre décorative. */
-  box-shadow: inset 0 1px 0 rgb(23 28 34 / 8%);
+  padding: 6px 8px;
+  /* L'enfoncement de la gravure, sans ombre décorative. */
+  box-shadow: inset 0 1px 0 rgb(15 21 27 / 8%);
 }
 
-.champ input[type="number"] {
-  width: 8ch;
-  text-align: right;
+.console select:hover,
+.console input[type="number"]:hover {
+  border-color: var(--acier-clair);
 }
 
-.champ-large select {
+.reglage-exemple {
+  flex: 1 1 15rem;
+  max-width: 26rem;
+}
+
+.reglage-exemple select {
   width: 100%;
 }
 
-.champ input:focus-visible,
-.champ select:focus-visible,
-.bouton:focus-visible,
-summary:focus-visible {
-  outline: 2px solid var(--cuivre);
-  outline-offset: 2px;
+.console input[type="number"] {
+  width: 9ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.saisie-unite {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
 }
 
 .unite {
   font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--ardoise-500);
-  min-width: 3ch;
+  font-size: 11px;
+  color: var(--acier);
 }
 
-.champ-bascule {
+/*
+  Le dépôt de fichier : un bouton, pas un contrôle système à moitié stylé.
+
+  Le champ natif reste dans le document — il porte l'événement, le clavier et
+  le lecteur d'écran — mais il est réduit à rien derrière son étiquette. Le
+  « No file chosen » que le navigateur ajoute de lui-même n'apprend rien à
+  personne : le nom du fichier lu s'affiche sous la console, avec le nombre de
+  sommets, là où il veut dire quelque chose.
+*/
+.depot {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  border: 1px solid var(--encre);
+  border-radius: var(--rayon);
+  background: var(--papier);
+  color: var(--encre);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.depot:hover {
+  background: var(--craie);
+}
+
+.depot:focus-within {
+  outline: 2px solid var(--cuivre);
+  outline-offset: 2px;
+}
+
+.depot input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reglage-bascule {
   display: flex;
-  border-bottom: none;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 7px;
 }
 
-.champ-bascule input {
-  width: 17px;
-  height: 17px;
+.reglage-bascule input {
+  width: 16px;
+  height: 16px;
   accent-color: var(--cuivre);
+  margin: 0;
 }
 
-/* ── Actions ────────────────────────────────────────────────────────────── */
+.reglage-bascule label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acier);
+  cursor: pointer;
+}
 
-.actions {
+/* Réglages de lecture : présents, vérifiables, hors du chemin. */
+.reglage-repli {
+  position: relative;
+  padding-bottom: 7px;
+}
+
+.reglage-repli > summary {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acier);
+  cursor: pointer;
+  list-style: none;
+  padding: 5px 0;
+}
+
+.reglage-repli > summary::-webkit-details-marker {
+  display: none;
+}
+
+.reglage-repli > summary::after {
+  content: " ▾";
+  color: var(--acier-clair);
+}
+
+.reglage-repli[open] > summary {
+  color: var(--cuivre);
+}
+
+.repli-panneau {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
   display: grid;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 10px;
+  padding: 14px 16px;
+  min-width: 13rem;
+  background: var(--papier);
+  border: 1px solid var(--encre);
+  border-radius: var(--rayon);
+  box-shadow: 0 14px 30px -14px rgb(15 21 27 / 45%);
 }
+
+/* ── Boutons ────────────────────────────────────────────────────────────── */
 
 .bouton {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border: 1px solid var(--encre);
+  border-radius: var(--rayon);
+  background: var(--papier);
+  color: var(--encre);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.bouton:hover:not(:disabled) {
+  background: var(--craie);
+}
+
+.bouton-zoo {
+  margin-left: auto;
+  background: var(--cuivre);
+  border-color: var(--cuivre);
+  color: var(--papier);
+}
+
+.bouton-zoo:hover:not(:disabled) {
+  background: #96551f;
+  border-color: #96551f;
+}
+
+.bouton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+:where(a, button, select, input, summary):focus-visible {
+  outline: 2px solid var(--cuivre);
+  outline-offset: 2px;
+}
+
+.console-etat {
+  flex: 1 0 100%;
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--acier);
+  min-height: 1.2em;
+}
+
+.console-etat:empty {
+  display: none;
+}
+
+/* ── La bande de verdict ────────────────────────────────────────────────────
+   Le seul aplat sombre de la page après le cartouche. La conclusion en
+   chiffres, et sous elle le dessin qui la démontre. */
+
+/*
+  Deux colonnes dès qu'il y a la place : la conclusion à gauche, la preuve à
+  droite. Empilées, le dessin tombe sous la ligne de flottaison — et un dessin
+  qu'il faut aller chercher ne démontre rien.
+*/
+.verdict-bande {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(26px, 4vw, 60px);
+  align-items: start;
+  padding: clamp(26px, 3.8vw, 46px) var(--marge-page) clamp(26px, 3.4vw, 42px);
+  background: var(--encre);
+  color: var(--craie);
+}
+
+@media (max-width: 1060px) {
+  .verdict-bande {
+    grid-template-columns: 1fr;
+  }
+}
+
+.verdict-tete {
+  max-width: 52ch;
+}
+
+.verdict-chiffre {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(42px, 5.4vw, 78px);
+  font-weight: 700;
+  /* Le contrepoint de l'œil : le plus resserré de la page. */
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  color: var(--papier);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: break-word;
+}
+
+.verdict-chiffre[data-ton="passe"] {
+  color: var(--algue-clair);
+}
+
+.verdict-chiffre[data-ton="bloque"] {
+  color: var(--oxyde-clair);
+}
+
+.verdict-phrase {
+  margin: 16px 0 0;
+  max-width: 62ch;
+  font-size: clamp(15px, 1.5vw, 18px);
+  line-height: 1.5;
+  color: var(--craie);
+}
+
+.verdict-phrase strong {
+  color: var(--papier);
+  font-weight: 600;
+}
+
+.verdict-second {
+  margin: 10px 0 0;
+  max-width: 68ch;
+  font-size: 13.5px;
+  color: var(--acier-clair);
+}
+
+.verdict-second:empty {
+  display: none;
+}
+
+/* Le relevé : ce que l'outil a mesuré, sous ce qu'il en conclut. */
+.releve {
+  display: grid;
+  gap: 0;
+  margin: clamp(22px, 3vw, 34px) 0 0;
+  max-width: 34rem;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.releve > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--encre-80);
+}
+
+.releve dt {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  color: var(--acier);
+}
+
+.releve dd {
+  margin: 0;
+  color: var(--craie);
+  text-align: right;
+}
+
+.verdict-second strong {
+  color: var(--craie);
+  font-weight: 600;
+}
+
+/* ── Élément signature : la coupe au gabarit ────────────────────────────────
+   La section du conteneur et celle de la caisse, au même trait et à la même
+   échelle. C'est le seul dessin qui répond à « est-ce que ça rentre » sans
+   qu'on ait à lire un nombre : ou la caisse tient dans le rectangle, ou elle
+   en sort. Le reste de la page peut être lu ; celui-ci se regarde. */
+
+.coupes {
+  margin: 0;
+}
+
+@media (max-width: 1060px) {
+  .coupes {
+    margin-top: clamp(24px, 4vw, 36px);
+  }
+}
+
+.coupes-rang {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: clamp(14px, 1.8vw, 24px);
+  margin-top: 14px;
+}
+
+/* Une coupe seule ne doit pas s'étaler sur toute la largeur : un dessin étiré
+   pour remplir un vide cesse d'être à l'échelle de l'œil. */
+.coupes-rang--seule {
+  grid-template-columns: minmax(0, 380px);
+}
+
+.coupe {
+  display: grid;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--encre-60);
+  border-radius: var(--rayon);
+  background: rgb(255 255 255 / 3%);
+}
+
+.coupe[data-verdict="passe"] {
+  border-color: rgb(79 180 144 / 45%);
+}
+
+.coupe[data-verdict="bloque"] {
+  border-color: rgb(224 106 77 / 45%);
+}
+
+/*
+  Titre puis étiquette, toujours sur deux lignes.
+
+  En les mettant côte à côte, l'étiquette la plus longue passait à la ligne dans
+  sa carte et pas dans l'autre : les deux dessins ne partaient plus de la même
+  hauteur, et deux coupes qui ne partagent pas leur ligne de sol ne se comparent
+  plus — c'est précisément ce que ce dessin existe pour permettre.
+*/
+.coupe-tete {
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  align-content: start;
+  min-height: 3.6em;
+}
+
+.coupe-pose {
+  margin: 0;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 11px 14px;
-  border: 1px solid var(--ardoise-700);
+  color: var(--papier);
+}
+
+.coupe-etiquette {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 3px 7px;
   border-radius: var(--rayon);
-  background: var(--blanc);
-  color: var(--ardoise-900);
-  cursor: pointer;
+  border: 1px solid currentcolor;
 }
 
-.bouton:hover:not(:disabled) {
-  background: var(--alu-100);
+.coupe[data-verdict="passe"] .coupe-etiquette {
+  color: var(--algue-clair);
 }
 
-.bouton-primaire {
-  background: var(--cuivre);
-  border-color: var(--cuivre);
-  color: var(--blanc);
+.coupe[data-verdict="bloque"] .coupe-etiquette {
+  color: var(--oxyde-clair);
 }
 
-.bouton-primaire:hover:not(:disabled) {
-  background: #92551f;
+.coupe svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 
-.bouton:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+/* Le trait du dessin : celui d'un plan, pas d'une infographie. */
+/* Le gabarit est le cadre de référence : il doit rester lisible même quand la
+   caisse vient l'épouser à cinquante millimètres près. */
+.trait-gabarit {
+  fill: none;
+  stroke: #aab4bf;
+  stroke-width: 2;
 }
 
-.actions-note {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--ardoise-500);
+.trait-porte {
+  fill: none;
+  stroke: var(--acier);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
 }
 
-/* ── Vue 3D ─────────────────────────────────────────────────────────────── */
+.trait-sol {
+  stroke: var(--acier-clair);
+  stroke-width: 2.4;
+}
 
-.vue-entete {
+.trait-caisse {
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.coupe[data-verdict="passe"] .trait-caisse {
+  stroke: var(--algue-clair);
+  fill: rgb(79 180 144 / 16%);
+}
+
+.coupe[data-verdict="bloque"] .trait-caisse {
+  stroke: var(--oxyde-clair);
+  fill: rgb(224 106 77 / 16%);
+}
+
+/* Le dépassement : hachuré, parce qu'il n'est pas une pièce de plus mais une
+   part de caisse qui n'a nulle part où aller.
+
+   Pas de `fill` ici : la trame est propre à chaque coupe — son `id` porte le
+   rang du panneau, sans quoi deux coupes sur la même page se disputent la même
+   définition. Une règle de feuille de style l'emporterait sur l'attribut de
+   présentation, et renverrait toutes les coupes vers un motif inexistant. */
+.trait-depassement {
+  stroke: none;
+}
+
+.cote-trait {
+  stroke: var(--cuivre-clair);
+  stroke-width: 1;
+}
+
+.cote-texte {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  fill: var(--cuivre-clair);
+}
+
+.repere-texte {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  fill: var(--acier);
+}
+
+/* La longueur, qui ne tient pas dans une coupe : une règle sous le dessin. */
+.coupe-longueur {
+  display: grid;
+  gap: 5px;
+}
+
+.longueur-rule {
+  position: relative;
+  height: 8px;
+  border: 1px solid var(--encre-60);
+  border-radius: 1px;
+  background: rgb(255 255 255 / 4%);
+  overflow: hidden;
+}
+
+.longueur-part {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--acier);
+}
+
+.coupe[data-verdict="passe"] .longueur-part {
+  background: rgb(79 180 144 / 55%);
+}
+
+.coupe[data-verdict="bloque"] .longueur-part {
+  background: rgb(224 106 77 / 55%);
+}
+
+.longueur-legende {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--acier);
+}
+
+.coupe-prix {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--encre-60);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.source {
+.coupe-prix-montant {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--papier);
+}
+
+/* Ce que les cartes ne portent pas : le poste qui n'appartient à aucune caisse.
+   Sans lui, deux prix affichés s'additionnent en un chiffre qui n'est pas
+   celui du bandeau. */
+.coupes-somme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--encre-60);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--acier-clair);
+  font-variant-numeric: tabular-nums;
+}
+
+.coupes-somme:empty {
+  display: none;
+}
+
+.coupes-somme span:first-child {
+  flex: 1 1 auto;
+}
+
+.coupes-somme-total {
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 3px 7px;
-  border: 1px solid var(--alu-300);
+  color: var(--papier);
+}
+
+.coupe-prix-delai {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--acier-clair);
+}
+
+/* ── Blocs de lecture ───────────────────────────────────────────────────── */
+
+.bloc {
+  margin: clamp(18px, 2.4vw, 30px) var(--marge-page);
+  padding: clamp(16px, 2vw, 24px);
+  background: var(--papier);
+  border: var(--trait);
   border-radius: var(--rayon);
-  color: var(--ardoise-500);
 }
 
-.source[data-source="zoo"] {
-  border-color: var(--cuivre);
-  color: var(--cuivre);
+.bloc-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
+.bloc-note {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--acier);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Vue 3D ─────────────────────────────────────────────────────────────── */
+
+/*
+  Pas de `min-height` ici.
+
+  Avec `aspect-ratio`, une hauteur plancher se retourne en largeur plancher :
+  sur un écran de 390 px, les 300 px de hauteur imposaient 533 px de large, et
+  toute la page débordait horizontalement. Le rapport suffit — la largeur vient
+  du parent, la hauteur suit.
+*/
 .vue-scene {
   position: relative;
+  width: 100%;
   aspect-ratio: 16 / 9;
-  min-height: 280px;
-  background: linear-gradient(180deg, var(--alu-100), var(--alu-200));
+  background:
+    radial-gradient(120% 90% at 50% 0%, #f4f6f8 0%, #dfe4e9 100%);
   border: var(--trait);
   border-radius: var(--rayon);
   overflow: hidden;
@@ -336,431 +847,60 @@ summary:focus-visible {
   height: 100%;
 }
 
+/* Une étiquette d'état épouse son texte : étirée sur toute la largeur, elle
+   lit comme une barre d'outils et cache la scène pour rien. */
 .vue-etat {
   position: absolute;
-  inset: auto 10px 10px;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  margin: 0;
   font-family: var(--mono);
-  font-size: 11.5px;
-  padding: 8px 10px;
-  background: rgb(23 28 34 / 88%);
-  color: var(--alu-100);
+  font-size: 11px;
+  padding: 8px 11px;
+  background: rgb(15 21 27 / 90%);
+  color: var(--craie);
   border-radius: var(--rayon);
 }
 
-.legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ardoise-500);
-}
-
-.legende li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pastille {
-  width: 10px;
-  height: 10px;
-  border: 1px solid rgb(23 28 34 / 30%);
-  border-radius: 1px;
-}
-
-.pastille-rack {
-  background: #2a5c9e;
-}
-.pastille-cooling {
-  background: #d98c30;
-}
-.pastille-pcs {
-  background: #6b4d8c;
-}
-.pastille-aisle {
-  background: #f2da59;
-}
-.pastille-enclosure {
-  background: rgb(194 204 213 / 45%);
-}
-
-/* ── Verdict et jauge d'occupation (élément signature) ──────────────────── */
-
-.panneau-verdict {
-  border-left: 3px solid var(--ardoise-300);
-}
-
-.panneau-verdict[data-etat="realisable"] {
-  border-left-color: var(--vert);
-}
-
-.panneau-verdict[data-etat="bloque"] {
-  border-left-color: var(--rouge);
-}
-
-.verdict {
-  margin: 0 0 12px;
-  font-family: var(--mono);
-  font-size: clamp(16px, 2.1vw, 21px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.panneau-verdict[data-etat="realisable"] .verdict {
-  color: var(--vert);
-}
-
-.panneau-verdict[data-etat="bloque"] .verdict {
-  color: var(--rouge);
-}
-
-/*
-  Un cran par rack : plein = rack en place, creux = emplacement libre,
-  au-delà du trait = rack qui ne rentre pas. C'est l'alerte « 15 racks requis,
-  12 tiennent » rendue lisible d'un coup d'œil.
-*/
-.jauge {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  min-height: 34px;
-}
-
-.cran {
-  width: 11px;
-  height: 26px;
-  border: 1px solid var(--ardoise-500);
-  border-radius: 1px;
-  background: transparent;
-  transition: background-color 160ms ease, height 160ms ease;
-}
-
-.cran[data-etat="place"] {
-  background: var(--cuivre);
-  border-color: var(--cuivre);
-}
-
-.cran[data-etat="excedent"] {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--rouge) 0 3px,
-    transparent 3px 6px
-  );
-  border-color: var(--rouge);
-  height: 34px;
-}
-
-.separateur-gabarit {
-  width: 2px;
-  height: 34px;
-  margin: 0 5px;
-  background: var(--rouge);
-}
-
-.jauge-legende {
-  margin: 10px 0 0;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--ardoise-500);
-}
-
-/* ── Alertes ────────────────────────────────────────────────────────────── */
-
-.alertes {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 10px;
-}
-
-.alerte {
-  border-left: 3px solid var(--ardoise-300);
-  padding: 2px 0 2px 12px;
-}
-
-.alerte[data-severite="blocking"] {
-  border-left-color: var(--rouge);
-}
-.alerte[data-severite="warning"] {
-  border-left-color: var(--ambre);
-}
-.alerte[data-severite="info"] {
-  border-left-color: var(--ardoise-300);
-}
-
-.alerte-code {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ardoise-500);
-}
-
-.alerte[data-severite="blocking"] .alerte-code {
-  color: var(--rouge);
-}
-.alerte[data-severite="warning"] .alerte-code {
-  color: var(--ambre);
-}
-
-.alerte-message {
-  margin: 2px 0 0;
-  font-size: 14px;
-}
-
-.alerte-options {
-  margin: 7px 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 3px;
-  font-size: 13px;
-  color: var(--ardoise-700);
-}
-
-.alerte-options li::before {
-  content: "→ ";
-  font-family: var(--mono);
-  color: var(--cuivre);
-}
-
-/* ── Fiche récapitulative ───────────────────────────────────────────────── */
-
-.fiche {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 18px;
-}
-
-.donnees {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0;
-  margin: 0;
-  font-size: 13px;
-}
-
-.donnees dt,
-.donnees dd {
-  padding: 5px 0;
-  border-bottom: 1px dashed var(--alu-200);
-}
-
-.donnees dt {
-  color: var(--ardoise-500);
-  padding-right: 10px;
-}
-
-.donnees dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 13px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.donnees dd[data-hors-limite="true"] {
-  color: var(--rouge);
-}
-
-/* ── Hypothèses ─────────────────────────────────────────────────────────── */
-
-.panneau-hypotheses summary {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ardoise-500);
-  cursor: pointer;
-}
-
-.hypotheses {
-  margin: 12px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 5px;
-  font-size: 13px;
-  color: var(--ardoise-700);
-}
-
-.avertissement {
-  margin: 14px 0 0;
-  padding: 10px 12px;
-  background: var(--alu-100);
-  border-left: 3px solid var(--ambre);
-  font-size: 13px;
-}
-
-/* ── Adaptatif ──────────────────────────────────────────────────────────── */
-
-@media (max-width: 940px) {
-  .atelier {
-    grid-template-columns: 1fr;
-  }
-
-  .panneau-saisie {
-    position: static;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
-
-/* ── Tableau des poses ──────────────────────────────────────────────────────
-   Le seul écran qui compte avec la vue 3D (PROJECT.md §13). Une ligne rouge qui
-   devient verte quand on couche la machine : compréhensible sans commentaire. */
-
-.tableau-poses {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-}
-
-.tableau-poses th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7684;
-  padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid #dbe1e7;
-}
-
-.tableau-poses td {
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid #eef1f4;
-  cursor: pointer;
-}
-
-.tableau-poses .nombre {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  /* Un montant coupé sur deux lignes se lit mal et se compare encore plus mal :
-     la colonne des coûts est celle que l'œil balaie en premier. */
-  white-space: nowrap;
-}
-
-.tableau-poses td:first-child {
-  min-width: 15rem;
-}
-
-.tableau-poses tbody tr:hover td {
-  background: #f4f7fa;
-}
-
-/* La couleur porte le verdict, mais jamais seule : le texte du gabarit le dit
-   aussi, pour rester lisible en niveaux de gris et en vidéoprojection. */
-.ligne-verte td:first-child {
-  box-shadow: inset 3px 0 0 #2f8f5b;
-}
-
-.ligne-rouge td:first-child {
-  box-shadow: inset 3px 0 0 #c0392b;
-}
-
-.ligne-ecartee td {
-  color: #96a0ac;
-  text-decoration: line-through;
-}
-
-.ligne-ecartee td:first-child {
-  box-shadow: inset 3px 0 0 #96a0ac;
-  text-decoration: none;
-}
-
-.ligne-retenue td {
-  background: #eef7f1;
-  font-weight: 600;
-}
-
-.tableau-poses .cran {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #2f8f5b;
-  margin-left: 0.4rem;
-}
-
-/* Marge serrée : la couleur ne remplace pas le texte, elle le double. */
-.tableau-poses .cran-juste {
-  color: #b06a12;
-}
-
-/* Une pose qui passe dans l'autre mode d'acheminement : ni verte, ni rouge. */
-.ligne-autre td:first-child {
-  box-shadow: inset 3px 0 0 #b06a12;
-}
-
-/* Valeur d'hypothèse : du texte, pas un champ. La table est en lecture seule,
-   et un cadre blanc invite à cliquer dedans pour rien. */
-.valeur-hypothese {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #48525e;
-}
-
-/* Seconde option du verdict : présente, mais subordonnée à la première. */
-.verdict-second {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 0.82em;
-  text-transform: none;
-  letter-spacing: 0;
-  color: #48525e;
-}
-
-/* ── Replis ────────────────────────────────────────────────────────────────
-   Ce qui compte mais n'a pas à être lu tout de suite : réglages de lecture,
-   hypothèses, mentions. Présent, vérifiable, et hors du chemin. */
-
-.repli {
-  border-top: 1px solid #eef1f4;
-  margin-top: 4px;
-  padding-top: 8px;
-}
-
-.repli > summary {
-  cursor: pointer;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #6b7684;
-  list-style: none;
-  padding: 4px 0;
-}
-
-.repli > summary::-webkit-details-marker {
+.vue-etat:empty {
   display: none;
 }
 
-.repli > summary::before {
-  content: '▸ ';
-  color: #96a0ac;
+.bloc-pied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px 28px;
+  margin-top: 14px;
 }
 
-.repli[open] > summary::before {
-  content: '▾ ';
+.reserve {
+  flex: 1 1 34rem;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--acier);
+  border-left: 2px solid var(--craie-trait);
+  padding-left: 12px;
 }
 
-/* ── Chargement ────────────────────────────────────────────────────────────
+.telechargements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.telechargements:empty {
+  display: none;
+}
+
+/* ── Chargement ─────────────────────────────────────────────────────────────
    Les étapes affichées sont celles qui ont réellement lieu ; seule leur durée
    d'affichage est plancher. Sans cela l'étude finit en quarante millisecondes
-   et on ne voit pas ce qui s'est passé. */
+   et on ne voit pas ce qui s'est passé. Une règle qui se remplit plutôt qu'un
+   rond qui tourne : c'est une mesure en cours, pas une attente. */
 
 .chargement {
   position: absolute;
@@ -770,38 +910,304 @@ summary:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: rgb(244 247 250 / 88%);
+  background: rgb(227 231 234 / 90%);
   z-index: 2;
 }
 
-.chargement-etape {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: #48525e;
+.chargement-rule {
+  width: min(240px, 60%);
+  height: 2px;
+  background: var(--craie-trait);
+  overflow: hidden;
 }
 
-.fusee {
-  width: 34px;
-  height: 34px;
-  border: 2px solid #dbe1e7;
-  border-top-color: #8a5a2b;
-  border-radius: 50%;
-  animation: tourne 0.8s linear infinite;
+.chargement-rule span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--cuivre);
+  animation: balayage 1.15s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes tourne {
-  to {
-    transform: rotate(360deg);
+@keyframes balayage {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
   }
 }
 
-/* Une limite énoncée à sa place : sous ce qu'elle limite. */
-.avertissement-court {
-  margin: 10px 0 0;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: #6b7684;
-  border-left: 2px solid #dbe1e7;
-  padding-left: 10px;
+.chargement-etape {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--encre-60);
+}
+
+/* ── Tableau des poses ──────────────────────────────────────────────────────
+   Le seul écran qui compte avec la vue 3D (PROJECT.md §13). Une ligne rouge qui
+   devient verte quand on couche la machine : compréhensible sans commentaire.
+   La couleur porte le verdict, mais jamais seule — le texte du gabarit le dit
+   aussi, pour rester lisible en niveaux de gris et en vidéoprojection. */
+
+.tableau-cadre {
+  overflow-x: auto;
+}
+
+.tableau-poses {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tableau-poses th {
+  text-align: left;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acier);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--encre);
+  white-space: nowrap;
+}
+
+.tableau-poses td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--craie);
+  cursor: pointer;
+}
+
+.tableau-poses .nombre {
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  /* Un montant coupé sur deux lignes se lit mal et se compare encore plus mal :
+     la colonne des coûts est celle que l'œil balaie en premier. */
+  white-space: nowrap;
+}
+
+.tableau-poses .cote {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tableau-poses td:first-child {
+  min-width: 14rem;
+}
+
+.tableau-poses tbody tr {
+  transition: background-color 130ms ease;
+}
+
+.tableau-poses tbody tr:hover td {
+  background: var(--craie);
+}
+
+.ligne-verte td:first-child {
+  box-shadow: inset 3px 0 0 var(--algue);
+}
+
+.ligne-rouge td:first-child {
+  box-shadow: inset 3px 0 0 var(--oxyde);
+}
+
+.ligne-autre td:first-child {
+  box-shadow: inset 3px 0 0 var(--cuivre);
+}
+
+.ligne-ecartee td {
+  color: var(--acier-clair);
+  text-decoration: line-through;
+}
+
+.ligne-ecartee td:first-child {
+  box-shadow: inset 3px 0 0 var(--acier-clair);
+  text-decoration: none;
+}
+
+.ligne-retenue td {
+  background: rgb(30 107 84 / 7%);
+  font-weight: 600;
+}
+
+/* La pose actuellement dans la vue 3D. Le lien entre le tableau et l'image doit
+   se voir : sans lui, on clique et on ne sait pas ce qui a changé. */
+.tableau-poses tr[aria-selected="true"] td:first-child {
+  box-shadow: inset 3px 0 0 var(--cuivre);
+}
+
+.tableau-poses tr[aria-selected="true"] td {
+  background: rgb(176 104 47 / 9%);
+}
+
+.cran {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--algue);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* Marge serrée : la couleur ne remplace pas le texte, elle le double. */
+.cran-juste {
+  color: var(--cuivre);
+}
+
+.cran-autre {
+  color: var(--cuivre);
+}
+
+/* ── Hypothèses et mentions ─────────────────────────────────────────────── */
+
+.bloc-pied-page {
+  margin-bottom: clamp(40px, 6vw, 80px);
+}
+
+.repli > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--acier);
+  list-style: none;
+  padding: 2px 0;
+}
+
+.repli > summary::-webkit-details-marker {
+  display: none;
+}
+
+.repli > summary::before {
+  content: "▸ ";
+  color: var(--acier-clair);
+}
+
+.repli[open] > summary::before {
+  content: "▾ ";
+}
+
+.hypotheses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 18px 28px;
+  margin-top: 20px;
+}
+
+/* Valeur d'hypothèse : du texte, pas un champ. La table est en lecture seule,
+   et un cadre blanc invite à cliquer dedans pour rien. */
+.fiche {
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  border-top: 1px solid var(--craie-trait);
+  padding-top: 10px;
+}
+
+.fiche strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.valeur-hypothese {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cuivre);
+}
+
+.fiche p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--acier);
+}
+
+.mentions {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: var(--craie);
+  border-left: 3px solid var(--cuivre);
+  border-radius: 0 var(--rayon) var(--rayon) 0;
+  font-size: 12.5px;
+}
+
+.mentions p {
+  margin: 0 0 6px;
+}
+
+.mentions p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Entrée en page ─────────────────────────────────────────────────────────
+   Une seule séquence, au premier affichage : le document se pose de haut en
+   bas. Rien d'autre ne bouge ensuite — un instrument qui s'anime à chaque
+   lecture est un instrument qu'on cesse de lire. */
+
+[data-entree] {
+  animation: pose var(--entree) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+[data-entree="1"] { animation-delay: 0ms; }
+[data-entree="2"] { animation-delay: 70ms; }
+[data-entree="3"] { animation-delay: 140ms; }
+[data-entree="4"] { animation-delay: 210ms; }
+[data-entree="5"] { animation-delay: 260ms; }
+[data-entree="6"] { animation-delay: 310ms; }
+
+@keyframes pose {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ── Adaptatif ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .console {
+    position: static;
+  }
+
+  .bouton-zoo {
+    margin-left: 0;
+    flex: 1 0 100%;
+  }
+
+  .reglage-exemple {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .repli-panneau {
+    right: auto;
+    left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
