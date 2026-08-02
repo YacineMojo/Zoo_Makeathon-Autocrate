@@ -478,7 +478,6 @@ test('le découpage désigne les corps qui portent le dépassement', () => {
   assert.ok(result.decoupe, 'le découpage doit être proposé');
 
   assert.equal(result.decoupe.corpsTotal, 4);
-  assert.equal(result.decoupe.axe, 2, 'la coupe se fait en hauteur');
   assert.ok(result.decoupe.caisses.length >= 2);
   for (const c of result.decoupe.caisses) assert.ok(c.retained, `la caisse ${c.rang + 1} doit passer`);
 

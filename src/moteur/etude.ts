@@ -251,12 +251,32 @@ export function study(input: StudyInput): Study {
       split: costSplit(tightest.footprint, massKg),
     };
 
-    // Et si le maillage porte des corps distincts, on peut faire beaucoup mieux
-    // qu'une coupe au milieu : dire **lesquels** portent le dépassement.
-    const avecCorps = input.poses.find((p) => p.pose === tightest.pose)?.bodies;
-    if (avecCorps && avecCorps.length > 1) {
-      study.decoupe = proposeDecoupe(avecCorps, massKg, mode, input.caisses);
-    }
+
+  }
+
+  // Le découpage se calcule dans deux cas, et pas seulement dans un.
+  //
+  //   - rien ne passe : c'est la branche du §6.5, l'outil propose une issue ;
+  //   - l'utilisateur a **demandé** un nombre de caisses : il veut comparer,
+  //     et lui répondre « inutile, une seule suffit » n'est pas une réponse.
+  //
+  // Le second cas manquait, et le champ « découper en » semblait sans effet dès
+  // qu'une pose passait.
+  //
+  // Et on cherche sur **toutes les poses autorisées**, pas seulement la retenue.
+  // Couchée, une machine a souvent des corps qui traversent toute sa longueur :
+  // aucun plan ne les sépare, et le découpage sort dégénéré — un corps d'un
+  // côté, quatorze de l'autre. Debout, la même machine se découpe très bien.
+  // Choisir la pose est justement ce que l'outil sait faire.
+  if (!study.best || input.caisses !== undefined) {
+    const propositions = input.poses
+      .filter((p) => p.pose !== 'reference' && p.bodies && p.bodies.length > 1)
+      .filter((p) => !poses.find((q) => q.pose === p.pose)?.forbidden)
+      .map((p) => proposeDecoupe(p.bodies!, massKg, mode, input.caisses))
+      .filter((d): d is NonNullable<typeof d> => d !== undefined)
+      .sort((a, b) => a.caisses.length - b.caisses.length || a.totalEur - b.totalEur);
+
+    study.decoupe = propositions[0];
   }
 
   return study;

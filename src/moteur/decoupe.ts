@@ -62,6 +62,11 @@ export interface Decoupe {
 /** Au-delà, ce n'est plus un démontage, c'est une refonte du produit. */
 export const CAISSES_MAX = 4;
 
+/** Volume extérieur d'une caisse, en mm³. Sert à juger si un découpage sert. */
+function volumeCaisse(c: Caisse): number {
+  return c.crate.outer.lengthMm * c.crate.outer.widthMm * c.crate.outer.heightMm;
+}
+
 /** Étendues brutes d'un ensemble de corps, suivant X, Y et Z de la caisse. */
 function etendues(bodies: PlacedBody[]): [number, number, number] {
   const min = [Infinity, Infinity, Infinity];
@@ -190,33 +195,56 @@ export function proposeDecoupe(
     (sous.reduce((a, b) => a + b.volumeMm3, 0) / volumeTotal) * massTotaleKg;
 
   const entier = caisse(bodies, massTotaleKg, mode, false, 0);
-  const axe = axeBloquant(entier.checks, bodies);
 
-  // Sans cible, on cherche le plus petit nombre de caisses qui passe. Avec, on
-  // ne tente que celui-là : l'utilisateur demande une comparaison, pas une
-  // optimisation.
+  // **Les trois axes, pas un seul.** L'axe qui bloque est le bon candidat quand
+  // quelque chose bloque ; quand rien ne bloque — découpage demandé par
+  // l'utilisateur — il n'a plus de sens, et couper au hasard donne des
+  // répartitions absurdes : un corps d'un côté, quatorze de l'autre. On essaie
+  // donc les trois et on garde le moins cher.
+  const bloquant = axeBloquant(entier.checks, bodies);
+  const axes: Array<0 | 1 | 2> = [bloquant, ...([0, 1, 2] as const).filter((a) => a !== bloquant)];
+
   const essais = cible ? [cible] : Array.from({ length: CAISSES_MAX - 1 }, (_, k) => k + 2);
+  const candidats: Decoupe[] = [];
 
-  for (const nb of essais) {
-    if (nb < 2 || nb > CAISSES_MAX) continue;
+  for (const axe of axes) {
+    for (const nb of essais) {
+      if (nb < 2 || nb > CAISSES_MAX) continue;
 
-    const { groupes, plans } = grouper(bodies, axe, nb);
-    if (groupes.length < nb) continue; // des plans sont tombés dans le vide
+      const { groupes, plans } = grouper(bodies, axe, nb);
+      if (groupes.length < nb) continue; // des plans sont tombés dans le vide
 
-    // La caisse du bas garde la pose étudiée ; les autres se recouchent.
-    const caisses = groupes.map((g, i) => caisse(g, masse(g), mode, i > 0, i));
-    if (caisses.some((c) => !c.retained)) continue;
+      // La caisse du bas garde la pose étudiée ; les autres se recouchent.
+      const caisses = groupes.map((g, i) => caisse(g, masse(g), mode, i > 0, i));
+      if (caisses.some((c) => !c.retained)) continue;
 
-    return {
-      caisses,
-      corpsTotal: bodies.length,
-      axe,
-      plansMm: plans.map((v) => Math.round(v)),
-      // Un forfait par caisse, plus l'étude et le démontage, une seule fois.
-      totalEur: caisses.reduce((a, c) => a + c.costing.totalEur, 0) + SPLIT_ENGINEERING_EUR,
-      leadTimeDays: Math.max(...caisses.map((c) => c.costing.leadTimeDays)) + SPLIT_EXTRA_DAYS,
-    };
+      // **Le découpage doit servir à quelque chose.** Le seul critère qui
+      // compte est là : la plus grosse caisse obtenue doit être nettement plus
+      // petite que la caisse unique. Sans lui, on produisait des répartitions
+      // absurdes — un corps mince d'un côté, quatorze de l'autre, et une caisse
+      // principale identique à celle qu'on voulait éviter.
+      const plusGrosse = Math.max(...caisses.map((c) => volumeCaisse(c)));
+      if (plusGrosse > volumeCaisse(entier) * 0.9) continue;
+
+      candidats.push({
+        caisses,
+        corpsTotal: bodies.length,
+        axe,
+        plansMm: plans.map((v) => Math.round(v)),
+        // Un forfait par caisse, plus l'étude et le démontage, une seule fois.
+        totalEur: caisses.reduce((a, c) => a + c.costing.totalEur, 0) + SPLIT_ENGINEERING_EUR,
+        leadTimeDays: Math.max(...caisses.map((c) => c.costing.leadTimeDays)) + SPLIT_EXTRA_DAYS,
+      });
+    }
+
+    // Sans cible, on veut le plus petit nombre de caisses : dès qu'un axe donne
+    // un résultat, inutile d'en essayer d'autres avec davantage de caisses.
+    if (!cible && candidats.length > 0) break;
   }
 
-  return undefined;
+  if (candidats.length === 0) return undefined;
+
+  return candidats.sort(
+    (a, b) => a.caisses.length - b.caisses.length || a.totalEur - b.totalEur
+  )[0];
 }

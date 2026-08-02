@@ -441,6 +441,16 @@ function rendreTableau() {
     // Le groupage est presque toujours le moins cher et presque toujours le
     // plus lent. Trancher en silence sur le prix contredirait la thèse : pour
     // un constructeur, rater une fenêtre d'expédition coûte plus que le fret.
+    if (s.decoupe) {
+      // Découpage demandé alors qu'une caisse unique suffit : la comparaison
+      // est justement ce qui a été demandé, on la donne.
+      const ecart = s.decoupe.totalEur - s.best.costing.totalEur;
+      verdict += `<br /><span class="verdict-second">En ${s.decoupe.caisses.length} caisses :
+        <strong>${eur(s.decoupe.totalEur)}</strong> en ${s.decoupe.leadTimeDays} j,
+        soit ${ecart >= 0 ? eur(ecart) + ' de plus' : eur(-ecart) + ' de moins'} qu'en une seule.
+        Coupes à ${s.decoupe.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')}.</span>`;
+    }
+
     if (s.faster) {
       const jours = s.best.costing.leadTimeDays - s.faster.costing.leadTimeDays;
       const surcout = s.faster.costing.totalEur - s.best.costing.totalEur;
