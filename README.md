@@ -27,7 +27,8 @@ until it is too late.
 
 ## What this does
 
-You drop in the machine's STEP file and enter its mass. Four seconds later you
+You drop in the machine's STEP file — or a mesh, if you already have one — and
+enter its mass. Four seconds later you
 get a **crate pre-design**: the real footprint, the generated crate
 structure, and a table of orientations with a gauge verdict, a cost and a lead
 time for each.

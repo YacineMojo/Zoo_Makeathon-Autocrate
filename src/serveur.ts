@@ -92,10 +92,22 @@ interface EtudeBody {
   caisses?: number;
 }
 
-/** Maillages disponibles, servis depuis `out/`. Le dépôt d'un STEP passe par /api/conversion. */
+/**
+ * Maillages de **machines** disponibles.
+ *
+ * `out/` sert à la fois d'entrée et de sortie : on y trouve les maillages
+ * convertis, mais aussi les fichiers que l'outil produit — les pièces réparties
+ * par caisse, par exemple. Les proposer comme machines à étudier n'a aucun sens,
+ * et la liste devenait illisible.
+ *
+ * Convention : une machine porte le préfixe de son origine, `async-` pour une
+ * conversion en ligne de commande, `web-` pour un dépôt depuis l'atelier.
+ */
 async function meshes(): Promise<string[]> {
   try {
-    return (await readdir('out')).filter((f) => f.endsWith('.obj')).sort();
+    return (await readdir('out'))
+      .filter((f) => /^(async|web)-.+\.obj$/.test(f))
+      .sort();
   } catch {
     return [];
   }
@@ -597,6 +609,21 @@ async function conversion(body: { name?: string; base64?: string }) {
 
   if (!body.base64 || !body.name) throw new Error('Fichier manquant.');
   const bytes = Buffer.from(body.base64, 'base64');
+
+  // Un maillage déposé n'a rien à convertir : il entre tel quel. C'est le
+  // chemin rapide, utile pour itérer, et le seul qui ne coûte rien. Le STEP,
+  // lui, doit passer par Zoo — c'est là que Zoo lit la CAO du client.
+  if (/\.obj$/i.test(body.name)) {
+    const nom = `web-${basename(body.name).replace(/\.[^.]+$/, '')}.obj`;
+    const texte = bytes.toString('utf8');
+    if (!/^v\s/m.test(texte)) throw new Error('Ce fichier ne contient aucun sommet : ce n’est pas un OBJ.');
+
+    await mkdir('out', { recursive: true });
+    await writeFile(join('out', nom), texte);
+
+    const compact = compactObj(texte);
+    return { mesh: nom, ms: 0, vertices: compact.vertices, faces: compact.faces, direct: true };
+  }
 
   const client = createZooClient();
   const t0 = performance.now();

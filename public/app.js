@@ -618,7 +618,10 @@ $('fichier').addEventListener('change', async (e) => {
   const fichier = e.target.files?.[0];
   if (!fichier) return;
 
-  $('note-conversion').textContent = `conversion de ${fichier.name} par Zoo…`;
+  const estObj = /\.obj$/i.test(fichier.name);
+  $('note-conversion').textContent = estObj
+    ? `lecture de ${fichier.name}…`
+    : `conversion de ${fichier.name} par Zoo…`;
   try {
     const base64 = await new Promise((resolve, reject) => {
       const lecteur = new FileReader();
@@ -629,8 +632,9 @@ $('fichier').addEventListener('change', async (e) => {
 
     const r = await poster('/api/conversion', { name: fichier.name, base64 });
     await remplirMaillages(r.mesh);
-    $('note-conversion').textContent =
-      `${fichier.name} converti par Zoo en ${(r.ms / 1000).toFixed(1)} s — ${r.vertices.toLocaleString('fr-FR')} sommets.`;
+    $('note-conversion').textContent = r.direct
+      ? `${fichier.name} chargé directement — ${r.vertices.toLocaleString('fr-FR')} sommets, aucune conversion nécessaire.`
+      : `${fichier.name} converti par Zoo en ${(r.ms / 1000).toFixed(1)} s — ${r.vertices.toLocaleString('fr-FR')} sommets.`;
   } catch (err) {
     $('note-conversion').textContent = `conversion refusée : ${err.message}`;
   }
