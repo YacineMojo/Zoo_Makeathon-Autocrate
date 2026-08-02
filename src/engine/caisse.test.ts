@@ -209,7 +209,7 @@ test('une colonne au ras de la paroi produit quand même sa cale', () => {
   };
 
   const traverses = blockingBoxes(crate, auRas).filter((b) => b.name.startsWith('traverse_'));
-  assert.equal(traverses.length, 2, 'les deux traverses doivent survivre au bornage');
+  assert.ok(traverses.length >= 2, 'les traverses des colonnes extrêmes doivent survivre au bornage');
   for (const t of traverses) {
     assert.ok(t.width > 1 && t.height > 1, `${t.name} rabotée`);
   }

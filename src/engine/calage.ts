@@ -49,8 +49,15 @@ import {
 const BUTEE_HAUTEUR_MINI_MM = 40;
 /** En deçà de ce jeu, il n'y a rien à caler : la machine touche déjà. */
 const JEU_MINIMAL_MM = 15;
-/** Une traverse ne se pose que sur une partie haute de la machine, à ceci près. */
-const PORTEE_TRAVERSE_MM = 150;
+/**
+ * Hauteur maximale d'une traverse de maintien.
+ *
+ * Au-delà, ce n'est plus une traverse mais un poteau : elle descendrait au droit
+ * d'une partie basse et n'appuierait sur rien d'utile.
+ */
+const TRAVERSE_HAUTEUR_MAX_MM = 400;
+/** Nombre de traverses posées sur une machine. */
+const TRAVERSES_MAX = 3;
 
 /**
  * Place un pavé de largeur `taille` autour de `centre`, sans sortir du volume.
@@ -185,14 +192,19 @@ export function blockingBoxes(crate: Crate, profile: MachineProfile): Box[] {
   // Chaque traverse descend jusqu'à la cote où la machine s'arrête **sous
   // elle**, et non jusqu'au sommet global : au droit d'une partie basse, une
   // traverse calée sur le point le plus haut ne toucherait rien.
-  // Une traverse ne se pose qu'au droit du **haut** de la machine. Ailleurs,
-  // elle descendrait jusqu'à une partie basse et deviendrait un poteau d'un
-  // mètre quatre-vingts — vu sur la machine de démonstration avant correction.
-  const sommetsHauts = profile.hautParX.filter(
-    (c) => c.topMm >= profile.topMm - PORTEE_TRAVERSE_MM && zRoof - c.topMm >= JEU_MINIMAL_MM
-  );
+  // Les traverses sont ce qui empêche la machine de **se soulever**. Les butées
+  // la retiennent latéralement, le plancher la porte, mais rien ne s'oppose au
+  // mouvement vertical sans elles — et un transport, ça saute.
+  //
+  // On en pose donc partout où c'est utile : au droit de matière, avec un jeu
+  // suffisant pour qu'une traverse ait un sens, et pas si haut qu'elle
+  // deviendrait un poteau descendu au droit d'une partie basse.
+  const sommetsHauts = profile.hautParX.filter((c) => {
+    const jeu = zRoof - c.topMm;
+    return jeu >= JEU_MINIMAL_MM && jeu <= TRAVERSE_HAUTEUR_MAX_MM && c.topMm > zFloorTop;
+  });
 
-  retenir(sommetsHauts, 2).forEach((pressentie, i) => {
+  retenir(sommetsHauts, TRAVERSES_MAX).forEach((pressentie, i) => {
     const x = caler(pressentie.center, TRAVERSE_MM, interieur.minX, interieur.maxX);
     // Même règle qu'au sol : la traverse est remesurée sur son emprise. Elle
     // doit reposer sur le point le plus **haut** qui passe dessous, sinon elle

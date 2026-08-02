@@ -272,7 +272,12 @@ export function study(input: StudyInput): Study {
     const propositions = input.poses
       .filter((p) => p.pose !== 'reference' && p.bodies && p.bodies.length > 1)
       .filter((p) => !poses.find((q) => q.pose === p.pose)?.forbidden)
-      .map((p) => proposeDecoupe(p.bodies!, massKg, mode, input.caisses))
+      // La pose voyage avec sa proposition : la scène sera construite avec le
+      // placement de **cette** pose, et pas d'une autre.
+      .map((p) => {
+        const d = proposeDecoupe(p.bodies!, massKg, mode, input.caisses);
+        return d ? { ...d, pose: p.pose } : undefined;
+      })
       .filter((d): d is NonNullable<typeof d> => d !== undefined)
       .sort((a, b) => a.caisses.length - b.caisses.length || a.totalEur - b.totalEur);
 

@@ -544,3 +544,28 @@ test('rien à découper quand la machine passe déjà', () => {
   assert.ok(result.best);
   assert.equal(result.decoupe, undefined);
 });
+
+test('le découpage dit sur quelle pose il a été calculé', () => {
+  // Sans cela, la scène est construite avec le placement d'une autre pose : la
+  // caisse attend les pièces couchées, le maillage arrive debout, et il sort de
+  // la caisse d'un mètre. Vu sur un KUKA KR 6.
+  const debout = { lengthMm: 1600, widthMm: 1400, heightMm: 3000 };
+  const couchee = { lengthMm: 3000, widthMm: 1600, heightMm: 1400 };
+  const bodies = [
+    corps('socle', [-800, 800], [-700, 700], [0, 600]),
+    corps('colonne', [600, 800], [-100, 100], [0, 3000]),
+  ];
+
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: debout, lying: false, bodies },
+      { pose: 'B', label: 'Pose B', footprint: couchee, lying: true, bodies },
+    ],
+    massKg: 2_000,
+    caisses: 2,
+  });
+
+  assert.ok(result.decoupe);
+  assert.ok(['A', 'B'].includes(result.decoupe.pose!), `pose « ${result.decoupe.pose} » inattendue`);
+});

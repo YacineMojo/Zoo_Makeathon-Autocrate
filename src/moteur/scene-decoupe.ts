@@ -50,45 +50,43 @@ export function sceneDecoupe(d: Decoupe): ScenePartagee {
 }
 
 /**
- * Transformation à appliquer aux pièces qui partent dans la seconde caisse.
+ * Couche un groupe de pièces : la plus petite dimension passe sur Z.
  *
- * Elles se recouchent : la plus petite dimension devient la hauteur, comme le
- * chiffrage l'a supposé. Sans cela on montrerait une colonne debout dans une
- * caisse dimensionnée pour elle couchée.
+ * Ne s'applique **pas** à la caisse qui garde la pose étudiée : là, la hauteur
+ * est la hauteur, c'est tout le propos des poses.
  */
-export function coucher(
+export function coucherAPlat(
   min: [number, number, number],
   max: [number, number, number]
-): { axe: 0 | 1 | 2; permuter: (p: [number, number, number]) => [number, number, number] } {
+): (p: [number, number, number]) => [number, number, number] {
   const d: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
   const axe: 0 | 1 | 2 = d[0] <= d[1] && d[0] <= d[2] ? 0 : d[1] <= d[2] ? 1 : 2;
 
-  // Premier quart de tour : l'axe le plus court passe sur Z.
-  const surZ =
-    axe === 2
-      ? (p: [number, number, number]): [number, number, number] => p
-      : axe === 0
-        ? (p: [number, number, number]): [number, number, number] => [-p[2], p[1], p[0]]
-        : (p: [number, number, number]): [number, number, number] => [p[0], -p[2], p[1]];
+  if (axe === 2) return (p) => p;
+  if (axe === 0) return (p) => [-p[2], p[1], p[0]];
+  return (p) => [p[0], -p[2], p[1]];
+}
 
-  // Second quart de tour, autour de Z, si le grand côté restant est tombé sur Y.
-  //
-  // Sans lui, la caisse est construite avec sa longueur suivant X pendant que
-  // les pièces sont plus longues suivant Y : elles sortent de leur caisse par
-  // le côté. C'est ce qu'on voyait sur la seconde caisse.
-  const apresZ = [surZ([max[0], max[1], max[2]]), surZ([min[0], min[1], min[2]])];
-  const dx = Math.abs(apresZ[0]![0] - apresZ[1]![0]);
-  const dy = Math.abs(apresZ[0]![1] - apresZ[1]![1]);
+/**
+ * Quart de tour autour de Z si le grand côté est tombé sur Y.
+ *
+ * La caisse est **toujours** construite avec sa longueur suivant X — c'est ainsi
+ * que le verdict la mesure, longueur contre longueur utile. Si les pièces sont
+ * plus longues suivant Y, elles sortent de leur caisse par le flanc. Sur un
+ * robot KUKA, ça faisait 2 195 mm dehors.
+ *
+ * Le défaut ne touchait que la première caisse : les autres passaient déjà par
+ * un recouchage qui corrigeait au passage.
+ */
+export function alignerSurX(
+  points: Array<[number, number, number]>
+): (p: [number, number, number]) => [number, number, number] {
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]);
+  const dx = Math.max(...xs) - Math.min(...xs);
+  const dy = Math.max(...ys) - Math.min(...ys);
 
-  const permuter =
-    dy > dx
-      ? (p: [number, number, number]): [number, number, number] => {
-          const q = surZ(p);
-          return [-q[1], q[0], q[2]];
-        }
-      : surZ;
-
-  return { axe, permuter };
+  return dy > dx ? (p) => [-p[1], p[0], p[2]] : (p) => p;
 }
 
 /** Placement d'un groupe de pièces au centre d'une caisse, posé sur son plancher. */

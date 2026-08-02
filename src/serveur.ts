@@ -12,7 +12,7 @@ import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
 import { buildCrate } from './moteur/structure.js';
 import { blockingBoxes, isBlocking } from './engine/calage.js';
-import { sceneDecoupe, coucher, centrer, decalerX } from './moteur/scene-decoupe.js';
+import { sceneDecoupe, coucherAPlat, alignerSurX, centrer, decalerX } from './moteur/scene-decoupe.js';
 import { rotate } from './geometrie/placement.js';
 import { alignedCloud } from './geometrie/emprise.js';
 import { machineProfile, profilDepuisPoints } from './geometrie/tranches.js';
@@ -507,9 +507,8 @@ async function construireDecoupe(body: EtudeBody & { caisses?: number }) {
   const scene = sceneDecoupe(d);
   const texte = await readFile(join('out', body.mesh!), 'utf8');
 
-  // La pose sur laquelle le découpage a été calculé, et son placement.
-  const base = data.study.poses.find((p) => p.pose !== 'reference' && !p.forbidden)!;
-  const place = data.placements.find((p) => p.pose === base.pose)!;
+  // La pose sur laquelle le découpage a été calculé — celle-là et pas une autre.
+  const place = data.placements.find((p) => p.pose === d.pose)!;
   const axe = place.axis as 'x' | 'y' | 'z';
   const pl = place.placement;
 
@@ -531,32 +530,32 @@ async function construireDecoupe(body: EtudeBody & { caisses?: number }) {
     // Transformation **locale** : la caisse est centrée sur l'origine. Le
     // décalage vers sa place dans la scène vient après, sinon le calage serait
     // relevé dans un repère et posé dans un autre.
-    let locale: (p: [number, number, number]) => [number, number, number];
-
-    if (i === 0) {
-      locale = poser;
-    } else {
-      const poses: Array<[number, number, number]> = [];
-      for (const ligne of brut.split('\n')) {
-        if (ligne.startsWith('v ')) {
-          const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
-          poses.push(poser([x, y, z]));
-        }
+    //
+    // Toutes les caisses suivent le même chemin — poser, coucher si ce n'est
+    // pas celle qui garde la pose, aligner le grand côté sur X, recentrer. La
+    // première y échappait, et c'est elle qui laissait les pièces dehors.
+    const poses: Array<[number, number, number]> = [];
+    for (const ligne of brut.split('\n')) {
+      if (ligne.startsWith('v ')) {
+        const [x, y, z] = ligne.slice(2).trim().split(/\s+/).map(Number) as [number, number, number];
+        poses.push(poser([x, y, z]));
       }
-
-      const min: [number, number, number] = [Infinity, Infinity, Infinity];
-      const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
-      for (const p of poses) {
-        for (let a = 0; a < 3; a++) {
-          if (p[a]! < min[a]!) min[a] = p[a]!;
-          if (p[a]! > max[a]!) max[a] = p[a]!;
-        }
-      }
-
-      const { permuter } = coucher(min, max);
-      const recentrer = centrer(poses.map(permuter), 0, floorTop);
-      locale = (p) => recentrer(permuter(poser(p)));
     }
+
+    const min: [number, number, number] = [Infinity, Infinity, Infinity];
+    const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+    for (const p of poses) {
+      for (let a = 0; a < 3; a++) {
+        if (p[a]! < min[a]!) min[a] = p[a]!;
+        if (p[a]! > max[a]!) max[a] = p[a]!;
+      }
+    }
+
+    const aPlat = i === 0 ? (p: [number, number, number]) => p : coucherAPlat(min, max);
+    const couches = poses.map(aPlat);
+    const surX = alignerSurX(couches);
+    const recentrer = centrer(couches.map(surX), 0, floorTop);
+    const locale = (p: [number, number, number]) => recentrer(surX(aPlat(poser(p))));
 
     // Les sommets de cette caisse, dans son repère : c'est sur eux que se
     // relève le calage. Repartir du nuage entier donnerait le profil de la

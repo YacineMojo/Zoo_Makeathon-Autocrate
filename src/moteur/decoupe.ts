@@ -51,6 +51,15 @@ export interface Caisse {
 export interface Decoupe {
   caisses: Caisse[];
   corpsTotal: number;
+  /**
+   * La pose sur laquelle ce découpage a été calculé.
+   *
+   * Indispensable, et son absence a coûté cher : la recherche essaie toutes les
+   * poses, et la scène était ensuite construite avec le placement d'une autre.
+   * La caisse attendait les pièces couchées, le maillage arrivait debout, et il
+   * sortait de la caisse d'un mètre.
+   */
+  pose?: string;
   /** Axe du repère caisse sur lequel la coupe est faite : 0 X, 1 Y, 2 Z. */
   axe: 0 | 1 | 2;
   /** Cotes des plans de coupe, en coordonnées caisse. */
