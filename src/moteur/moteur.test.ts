@@ -168,6 +168,13 @@ test('quand aucun conteneur ne passe, une solution routière est proposée avant
 
   assert.equal(result.best, undefined, 'rien ne passe en maritime');
   assert.ok(result.otherMode, 'mais la route est proposée');
+
+  // Et la pose elle-même porte sa solution : la colonne du tableau ne doit pas
+  // afficher « hors gabarit » sur une ligne dont le bandeau dit qu'elle passe.
+  const pose = result.poses.find((p) => p.pose === 'C')!;
+  assert.ok(pose.otherMode, 'la pose porte l’option de l’autre mode');
+  assert.equal(pose.otherMode.gabarit.gabarit.id, 'semi');
+  assert.ok(pose.otherMode.costing.totalEur < pose.costing.totalEur);
   assert.equal(result.otherMode.mode, 'route');
   assert.equal(result.otherMode.gabaritLabel, 'Semi-remorque (route)');
   assert.ok(result.otherMode.marginMm > 0);

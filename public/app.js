@@ -214,7 +214,8 @@ async function afficherPose(poseId, gltfNom) {
   const pose = etude.study.poses.find((p) => p.pose === poseId);
   $('legende').textContent = pose
     ? `${pose.label} — caisse ${m(pose.crate.outer.lengthMm)} × ${m(pose.crate.outer.widthMm)} × ${m(pose.crate.outer.heightMm)}, ` +
-      `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm.` +
+      `tare ${pose.crate.tareKg} kg, ${pose.crate.skidCount} patins de ${pose.crate.skid.heightMm} mm, ` +
+      `${pose.stackable ? 'gerbable' : 'non gerbable'}.` +
       (gltfNom ? ' Géométrie b-rep générée par Zoo.' : ' Aperçu local — cliquez « Générer la caisse » pour la géométrie Zoo.')
     : '';
 }
@@ -231,17 +232,29 @@ function rendreTableau() {
       // à arbitrer. Le poser pour 38 € de contreplaqué apprend au lecteur à
       // ignorer nos recommandations, y compris le jour où elles comptent.
       const meilleure = s.best && s.best.pose === p.pose && s.arbitrage === 'gabarit';
-      const classe = p.forbidden ? 'ligne-ecartee' : passe ? 'ligne-verte' : 'ligne-rouge';
+      // Une pose qui ne passe pas dans le mode demandé mais passe dans l'autre
+      // n'est pas « hors gabarit » : elle est hors **de ce mode-ci**. La
+      // nuance vaut plusieurs milliers d'euros, et le tableau doit la porter.
+      const autre = !passe && !p.forbidden && p.otherMode;
+      const classe = p.forbidden ? 'ligne-ecartee' : passe ? 'ligne-verte' : autre ? 'ligne-autre' : 'ligne-rouge';
       const serre = passe && p.retained.confidence === 'juste';
       return `
         <tr class="${classe} ${meilleure ? 'ligne-retenue' : ''}" data-pose="${p.pose}" title="Cliquer pour voir cette pose en 3D">
           <td>${p.label}${meilleure ? ' <span class="cran">retenue</span>' : ''}</td>
           <td>${m(p.crate.outer.lengthMm)} × ${m(p.crate.outer.widthMm)} × ${m(p.crate.outer.heightMm)}</td>
-          <td>${p.forbidden ? 'écartée' : passe ? p.retained.gabarit.label : 'hors gabarit'}${
-            serre ? ` <span class="cran cran-juste">${p.retained.tightestMarginMm} mm</span>` : ''
+          <td>${
+            p.forbidden
+              ? 'écartée'
+              : passe
+                ? p.retained.gabarit.label
+                : autre
+                  ? `${p.otherMode.gabarit.gabarit.label} <span class="cran">autre mode</span>`
+                  : 'hors gabarit'
+          }${serre ? ` <span class="cran cran-juste">${p.retained.tightestMarginMm} mm</span>` : ''}</td>
+          <td class="nombre">${p.forbidden ? '—' : eur(autre ? p.otherMode.costing.totalEur : p.costing.totalEur)}</td>
+          <td class="nombre">${
+            p.forbidden ? '—' : `${(autre ? p.otherMode.costing : p.costing).leadTimeDays} j`
           }</td>
-          <td class="nombre">${p.forbidden ? '—' : eur(p.costing.totalEur)}</td>
-          <td class="nombre">${p.forbidden ? '—' : `${p.costing.leadTimeDays} j`}</td>
         </tr>`;
     })
     .join('');
@@ -310,8 +323,14 @@ function rendreTableau() {
     )
     .join('');
 
+  // Valeurs en texte, pas dans un cadre qui ressemble à un champ de saisie :
+  // la table est en lecture seule (§10), autant que ça se voie. Une fausse
+  // affordance est pire qu'une absence d'affordance.
   $('hypotheses').innerHTML = s.assumptions
-    .map((a) => `<div class="fiche"><strong>${a.label}</strong><span class="source">${a.value}</span><p>${a.rationale}</p></div>`)
+    .map(
+      (a) =>
+        `<div class="fiche"><strong>${a.label}</strong><span class="valeur-hypothese">${a.value}</span><p>${a.rationale}</p></div>`
+    )
     .join('');
 
   $('mentions').innerHTML = s.notices.map((n) => `<p>${n}</p>`).join('');
@@ -353,7 +372,9 @@ $('formulaire').addEventListener('submit', async (e) => {
     $('generer').disabled = false;
 
     rendreTableau();
-    await afficherPose(etude.study.best?.pose ?? 'A', null);
+    // La pose montrée est celle qu'on recommande. Afficher la machine debout
+    // pendant qu'on explique qu'il faut la coucher vide le propos.
+    await afficherPose(etude.study.best?.pose ?? etude.study.otherMode?.pose ?? 'A', null);
 
     $('etat-calcul').textContent =
       `${etude.vertices.toLocaleString('fr-FR')} sommets, emprises et verdicts en ${etude.ms} ms. ` +

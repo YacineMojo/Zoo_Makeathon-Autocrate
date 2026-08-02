@@ -73,6 +73,11 @@ function evaluatePose(
     ? costForGabarit(crate, retained)
     : { ...costOversize(crate) };
 
+  // Ce que la même pose donnerait dans l'autre mode : la colonne du tableau
+  // doit pouvoir le dire elle-même, sans dépendre du bandeau.
+  const autre: ShippingMode = mode === 'maritime' ? 'route' : 'maritime';
+  const checkAutre = forbidden || retained ? undefined : cheapestFit(checks, autre);
+
   return {
     pose: input.pose,
     label: input.label,
@@ -81,6 +86,7 @@ function evaluatePose(
     checks,
     retained,
     costing,
+    otherMode: checkAutre ? { gabarit: checkAutre, costing: costForGabarit(crate, checkAutre) } : undefined,
     stackable: isStackable(crate) && (retained?.gabarit.stackable ?? false),
     forbidden,
   };
@@ -168,22 +174,18 @@ export function study(input: StudyInput): Study {
     // n'entre. C'est une proposition, pas une décision — la destination n'est
     // pas une variable d'ajustement.
     const other: ShippingMode = mode === 'maritime' ? 'route' : 'maritime';
-    const alternatives = poses
-      .filter((p) => p.pose !== 'reference' && !p.forbidden)
-      .map((p) => ({ pose: p, check: cheapestFit(p.checks, other) }))
-      .filter((a): a is { pose: PoseResult; check: NonNullable<typeof a.check> } => a.check !== undefined)
-      .map((a) => ({ ...a, costing: costForGabarit(a.pose.crate, a.check) }))
-      .sort((a, b) => a.costing.totalEur - b.costing.totalEur);
+    const alternative = poses
+      .filter((p) => p.pose !== 'reference' && p.otherMode)
+      .sort((a, b) => a.otherMode!.costing.totalEur - b.otherMode!.costing.totalEur)[0];
 
-    const alternative = alternatives[0];
     if (alternative) {
       study.otherMode = {
         mode: other,
-        pose: alternative.pose.pose,
-        label: alternative.pose.label,
-        gabaritLabel: alternative.check.gabarit.label,
-        marginMm: alternative.check.tightestMarginMm,
-        costing: alternative.costing,
+        pose: alternative.pose,
+        label: alternative.label,
+        gabaritLabel: alternative.otherMode!.gabarit.gabarit.label,
+        marginMm: alternative.otherMode!.gabarit.tightestMarginMm,
+        costing: alternative.otherMode!.costing,
       };
     }
 

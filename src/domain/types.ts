@@ -151,9 +151,18 @@ export interface PoseResult {
   crate: Crate;
   /** Tous les gabarits testés, dans l'ordre du moins cher au plus cher. */
   checks: GabaritCheck[];
-  /** Le premier gabarit qui passe, s'il y en a un. */
+  /** Le gabarit retenu dans le mode demandé, s'il y en a un. */
   retained?: GabaritCheck;
   costing: Costing;
+  /**
+   * Ce que cette pose donnerait dans **l'autre** mode d'acheminement.
+   *
+   * Sans cela, la colonne « gabarit » affiche « hors gabarit » sur une ligne
+   * dont le bandeau dit, deux centimètres plus haut, qu'elle passe en
+   * semi-remorque. Qui lit le tableau sans lire le bandeau repart avec la
+   * mauvaise réponse.
+   */
+  otherMode?: { gabarit: GabaritCheck; costing: Costing };
   /** La caisse est-elle gerbable une fois chargée ? */
   stackable: boolean;
   /** Pose écartée par l'utilisateur : couchage interdit (§5). */

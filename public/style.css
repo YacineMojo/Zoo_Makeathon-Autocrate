@@ -684,3 +684,18 @@ summary:focus-visible {
 .tableau-poses .cran-juste {
   color: #b06a12;
 }
+
+/* Une pose qui passe dans l'autre mode d'acheminement : ni verte, ni rouge. */
+.ligne-autre td:first-child {
+  box-shadow: inset 3px 0 0 #b06a12;
+}
+
+/* Valeur d'hypothèse : du texte, pas un champ. La table est en lecture seule,
+   et un cadre blanc invite à cliquer dedans pour rien. */
+.valeur-hypothese {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #48525e;
+}

@@ -87,23 +87,57 @@ async function meshes(): Promise<string[]> {
   }
 }
 
-async function etude(body: EtudeBody) {
-  const name = body.mesh ?? 'async-kuka_kr600_r2830.obj';
-  if (basename(name) !== name) throw new Error('Nom de maillage invalide.');
+/**
+ * Bornes de saisie, alignées sur celles du formulaire.
+ *
+ * Une API plus permissive que son formulaire n'est pas une API souple, c'est
+ * une API dont on ne sait plus ce qu'elle accepte.
+ */
+const MASSE_MIN_KG = 1;
+const MASSE_MAX_KG = 100_000;
 
-  const massKg = Number(body.massKg);
-  if (!Number.isFinite(massKg) || massKg <= 0) {
-    // Un STEP ne porte pas de matériau. Le demander montre qu'on le sait (§5).
-    throw new Error('Masse invalide : un STEP ne porte pas de matériau, elle doit être saisie.');
+function unDe<T extends string>(valeur: unknown, permis: readonly T[], champ: string): T {
+  if (typeof valeur === 'string' && (permis as readonly string[]).includes(valeur)) return valeur as T;
+  throw new Error(`Champ « ${champ} » invalide : attendu ${permis.join(', ')}.`);
+}
+
+async function etude(body: EtudeBody) {
+  // Pas de maillage par défaut : une requête sans `mesh` renvoyait une étude
+  // complète et parfaitement plausible sur un tout autre fichier. Un résultat
+  // faux et crédible est pire qu'une erreur.
+  const name = body.mesh;
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new Error('Champ « mesh » manquant : indiquez le maillage à étudier.');
+  }
+  if (basename(name) !== name || !name.endsWith('.obj')) {
+    throw new Error('Nom de maillage invalide.');
   }
 
+  const massKg = Number(body.massKg);
+  if (!Number.isFinite(massKg) || massKg < MASSE_MIN_KG || massKg > MASSE_MAX_KG) {
+    // Un STEP ne porte pas de matériau. Le demander montre qu'on le sait (§5).
+    throw new Error(
+      `Masse invalide : un STEP ne porte pas de matériau, elle doit être saisie, entre ${MASSE_MIN_KG} et ${MASSE_MAX_KG.toLocaleString('fr-FR')} kg.`
+    );
+  }
+
+  const up = unDe(body.up ?? 'z', ['x', 'y', 'z'] as const, 'up');
+  const unit = unDe(body.unit ?? 'auto', ['auto', 'mm', 'm', 'in'] as const, 'unit');
+  const mode = unDe(body.mode ?? 'maritime', ['maritime', 'route'] as const, 'mode');
+
   const t0 = performance.now();
-  const cloud = parseObjVertices(await readFile(join('out', name), 'utf8'));
-  const geometry = buildPoses(cloud, body.up ?? 'z', body.unit ?? 'auto');
+  const objet = await readFile(join('out', name), 'utf8').catch(() => {
+    // Jamais l'erreur système : elle expose l'arborescence du serveur et ne dit
+    // rien d'utile à qui lit l'écran.
+    throw new Error(`Maillage introuvable : « ${name} ». Convertissez d'abord un STEP.`);
+  });
+
+  const cloud = parseObjVertices(objet);
+  const geometry = buildPoses(cloud, up, unit);
   const result = study({
     poses: geometry.poses,
     massKg,
-    mode: body.mode ?? 'maritime',
+    mode,
     forbidLying: body.forbidLying === true,
   });
 
