@@ -166,3 +166,44 @@ export function placeForPose(
     size: [maxX - minX, maxY - minY, maxZ - minZ],
   };
 }
+
+/**
+ * Place les corps d'un maillage comme la machine elle-même.
+ *
+ * Les huit sommets de chaque boîte subissent la pose, le lacet et la
+ * translation, puis on reprend la boîte du résultat. Une boîte tournée n'est
+ * plus une boîte : on prend son encombrement, ce qui majore légèrement — dans
+ * le sens prudent.
+ */
+export function placeBodies(
+  bodies: Array<{ name: string; min: [number, number, number]; max: [number, number, number] }>,
+  up: Axis,
+  placement: Placement,
+  scale: number
+): Array<{ name: string; min: [number, number, number]; max: [number, number, number]; volumeMm3: number }> {
+  return bodies.map((b) => {
+    const min: [number, number, number] = [Infinity, Infinity, Infinity];
+    const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+
+    for (const x of [b.min[0], b.max[0]]) {
+      for (const y of [b.min[1], b.max[1]]) {
+        for (const z of [b.min[2], b.max[2]]) {
+          const aligne = alignedCloud({ count: 1, xyz: Float64Array.from([x, y, z]) }, up, scale);
+          const p = rotate([aligne.xyz[0]!, aligne.xyz[1]!, aligne.xyz[2]!], [0, 0, 1], placement.yawDeg);
+          for (let a = 0; a < 3; a++) {
+            const v = p[a]! + placement.translateMm[a]!;
+            if (v < min[a]!) min[a] = v;
+            if (v > max[a]!) max[a] = v;
+          }
+        }
+      }
+    }
+
+    return {
+      name: b.name,
+      min,
+      max,
+      volumeMm3: (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]),
+    };
+  });
+}

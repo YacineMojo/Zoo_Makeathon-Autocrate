@@ -2,13 +2,15 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { extname, join, normalize, resolve, basename } from 'node:path';
 import { parseObjVertices } from './mesh/obj.js';
+import { parseObjBodies } from './mesh/corps.js';
 import { compactObj } from './mesh/compacter.js';
 import { buildPoses } from './geometrie/poses.js';
-import { placeForPose } from './geometrie/placement.js';
+import { placeForPose, placeBodies } from './geometrie/placement.js';
 import type { Axis } from './geometrie/emprise.js';
 import type { UnitChoice } from './geometrie/unites.js';
 import { study } from './moteur/etude.js';
 import { crateBoxes } from './engine/caisse.js';
+import { buildCrate } from './moteur/structure.js';
 import { blockingBoxes, isBlocking } from './engine/calage.js';
 import { machineProfile } from './geometrie/tranches.js';
 import { explain } from './moteur/verdict.js';
@@ -140,9 +142,22 @@ async function etude(body: EtudeBody) {
   });
 
   const cloud = parseObjVertices(objet);
+  const corps = parseObjBodies(objet);
   const geometry = buildPoses(cloud, up, unit);
+
+  // Les corps sont placés pose par pose, comme la machine : c'est ce qui permet
+  // de dire lesquels portent un dépassement dans cette orientation-là.
+  const posesAvecCorps = geometry.poses.map((p, i) => {
+    if (p.pose === 'reference' || corps.length < 2) return p;
+    const axis = geometry.oriented[i - 1]!;
+    const crateFloor = buildCrate(p.footprint, massKg);
+    const floorTop = crateFloor.skid.heightMm + crateFloor.floorThicknessMm;
+    const placement = placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, floorTop);
+    return { ...p, bodies: placeBodies(corps, axis.axis, placement, geometry.unit.scale) };
+  });
+
   const result = study({
-    poses: geometry.poses,
+    poses: posesAvecCorps,
     massKg,
     mode,
     forbidLying: body.forbidLying === true,
@@ -170,6 +185,7 @@ async function etude(body: EtudeBody) {
     ms: Math.round(performance.now() - t0),
     vertices: cloud.count,
     unit: geometry.unit,
+    corps: corps.length,
     areaGainPct: geometry.areaGainPct,
     yawDeg: geometry.oriented[0]!.footprint.yawDeg,
     study: {

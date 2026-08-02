@@ -214,6 +214,24 @@ does not read the assembly tree and does not decide the split — that is an
 engineering decision that does not belong to it. It prices both and lets you
 choose.
 
+**But it can say what costs.** PROJECT.md called the assembly tree "the trap of
+the project" because product hierarchy does not survive the import path — and
+that is true, the names come out as `Unnamed-0`, `Unnamed-1`. **The grouping
+survives, though**: fifteen bodies for the demo machine, thirty-seven for a KUKA
+robot. Names are lost, bodies are not, and naming pieces is not what is needed
+here — geometry is.
+
+So when nothing fits, the tool tries cutting planes from the top down and
+reports which bodies stick out. On the demo machine standing upright:
+
+> Three bodies out of fifteen carry the overrun. Cut at 2.00 m and shipped
+> separately: main crate 2.25 × 2.15 × 2.11 m, second crate 3.19 × 2.25 ×
+> 0.38 m, **7 156 € in 19 days** — against 13 639 € and 21 days out of gauge.
+
+It still does not decide. A distinct body in a mesh is not a removable part: it
+may be a weld, or a converter artefact. The tool says which ones cost; the
+engineering department rules.
+
 **And before announcing an oversize convoy**, it checks the other shipping mode:
 on one test machine no container fitted, but a standard trailer cleared by
 21 mm. Announcing 20 205 € of special convoy there would have been wrong.

@@ -3,6 +3,7 @@ import { ASSUMPTIONS } from '../domain/assumptions.js';
 import { buildCrate, isStackable } from './structure.js';
 import { checkAll, cheapestFit } from './verdict.js';
 import { costForGabarit, costOversize, costSplit } from './chiffrage.js';
+import { proposeDecoupe, type PlacedBody } from './decoupe.js';
 
 /**
  * La fonction cœur du projet (PROJECT.md §12) :
@@ -29,6 +30,13 @@ export interface PoseInput {
    * salle est anticipée.
    */
   lying: boolean;
+  /**
+   * Les corps distincts du maillage, déjà placés pour cette pose.
+   *
+   * Facultatif : sans eux l'étude fonctionne, elle propose seulement un
+   * démontage moins bien renseigné.
+   */
+  bodies?: PlacedBody[];
 }
 
 export interface StudyInput {
@@ -218,8 +226,13 @@ export function study(input: StudyInput): Study {
 
     // Aucune pose ne passe : on retient la pose la plus compacte comme base de
     // chiffrage du repli, celle qui minimise le volume de caisse.
-    const tightest = poses
-      .filter((p) => p.pose !== 'reference')
+    //
+    // Mais une pose **écartée** ne peut pas servir de base : elle est interdite,
+    // pas seulement chère, et sa caisse passe souvent très bien — ce qui
+    // faisait disparaître toute proposition de découpage dès que le couchage
+    // était interdit.
+    const eligibles = poses.filter((p) => p.pose !== 'reference' && !p.forbidden);
+    const tightest = (eligibles.length > 0 ? eligibles : poses.filter((p) => p.pose !== 'reference'))
       .sort(
         (a, b) =>
           a.crate.outer.lengthMm * a.crate.outer.widthMm * a.crate.outer.heightMm -
@@ -230,6 +243,13 @@ export function study(input: StudyInput): Study {
       oversize: costOversize(tightest.crate),
       split: costSplit(tightest.footprint, massKg),
     };
+
+    // Et si le maillage porte des corps distincts, on peut faire beaucoup mieux
+    // qu'une coupe au milieu : dire **lesquels** portent le dépassement.
+    const avecCorps = input.poses.find((p) => p.pose === tightest.pose)?.bodies;
+    if (avecCorps && avecCorps.length > 1) {
+      study.decoupe = proposeDecoupe(avecCorps, massKg, mode);
+    }
   }
 
   return study;

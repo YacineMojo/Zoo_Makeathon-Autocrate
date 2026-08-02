@@ -445,3 +445,100 @@ test('le calage est compté dans la tare, et l’estimation reste conservatrice'
     `${Math.round(dessine / 1e6)} dm³ dessinés pour ${Math.round(blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e6)} dm³ estimés`
   );
 });
+
+/* --------------------------------------------------- découpage par corps */
+
+/** Un corps parallélépipédique placé, tel que le viewer le verrait. */
+const corps = (name: string, x: [number, number], y: [number, number], z: [number, number]) => ({
+  name,
+  min: [x[0], y[0], z[0]] as [number, number, number],
+  max: [x[1], y[1], z[1]] as [number, number, number],
+  volumeMm3: (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]),
+});
+
+test('le découpage désigne les corps qui portent le dépassement', () => {
+  // Un socle bas et large, plus deux corps qui montent trop haut. La coupe doit
+  // porter sur ces deux-là, et sur eux seuls.
+  const bodies = [
+    corps('socle', [-1000, 1000], [-800, 800], [0, 600]),
+    corps('armoire', [-900, -400], [-700, 700], [0, 1400]),
+    corps('colonne', [700, 900], [-100, 100], [0, 3000]),
+    corps('poutre', [-800, 900], [-100, 100], [2800, 3000]),
+  ];
+
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3000 }, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3000 }, lying: false, bodies },
+    ],
+    massKg: 2_000,
+  });
+
+  assert.equal(result.best, undefined, 'debout, rien ne passe');
+  assert.ok(result.decoupe, 'le découpage doit être proposé');
+
+  assert.deepEqual(result.decoupe.retires.sort(), ['colonne', 'poutre']);
+  assert.equal(result.decoupe.corpsTotal, 4);
+  assert.equal(result.decoupe.axe, 2, 'la coupe se fait en hauteur');
+  assert.ok(result.decoupe.principale.retained, 'ce qui reste doit passer');
+  assert.ok(result.decoupe.seconde.retained, 'ce qui part doit passer aussi');
+});
+
+test('le découpage est moins cher que le hors gabarit, sinon il ne vaut rien', () => {
+  const bodies = [
+    corps('socle', [-1000, 1000], [-800, 800], [0, 600]),
+    corps('mat', [0, 200], [-100, 100], [0, 3200]),
+  ];
+
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3200 }, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3200 }, lying: false, bodies },
+    ],
+    massKg: 2_000,
+  });
+
+  assert.ok(result.decoupe);
+  assert.ok(
+    result.decoupe.totalEur < result.fallbacks!.oversize.totalEur,
+    `${result.decoupe.totalEur} € contre ${result.fallbacks!.oversize.totalEur} € hors gabarit`
+  );
+});
+
+test('une pose écartée ne sert pas de base au découpage', () => {
+  // Une pose interdite passe souvent très bien : la prendre pour base faisait
+  // disparaître toute proposition dès que le couchage était interdit.
+  const debout = { lengthMm: 1600, widthMm: 1400, heightMm: 3000 };
+  const couchee = { lengthMm: 3000, widthMm: 1600, heightMm: 1400 };
+  const bodies = [
+    corps('socle', [-800, 800], [-700, 700], [0, 600]),
+    corps('colonne', [600, 800], [-100, 100], [0, 3000]),
+  ];
+
+  const result = study({
+    poses: [
+      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'A', label: 'Pose A', footprint: debout, lying: false, bodies },
+      { pose: 'B', label: 'Pose B', footprint: couchee, lying: true, bodies },
+    ],
+    massKg: 2_000,
+    forbidLying: true,
+  });
+
+  assert.equal(result.best, undefined);
+  assert.ok(result.decoupe, 'le découpage doit se baser sur la pose autorisée');
+  assert.deepEqual(result.decoupe.retires, ['colonne']);
+});
+
+test('rien à découper quand la machine passe déjà', () => {
+  const bodies = [corps('bloc', [-600, 600], [-500, 500], [0, 900])];
+  const result = study({
+    poses: [
+      { pose: 'A', label: 'Pose A', footprint: { lengthMm: 1200, widthMm: 1000, heightMm: 900 }, lying: false, bodies },
+    ],
+    massKg: 1_000,
+  });
+
+  assert.ok(result.best);
+  assert.equal(result.decoupe, undefined);
+});

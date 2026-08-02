@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { parseObjVertices } from './mesh/obj.js';
+import { parseObjBodies } from './mesh/corps.js';
 import { buildPoses } from './geometrie/poses.js';
+import { placeForPose, placeBodies } from './geometrie/placement.js';
+import { buildCrate } from './moteur/structure.js';
 import type { Axis } from './geometrie/emprise.js';
 import type { UnitChoice } from './geometrie/unites.js';
 import { study } from './moteur/etude.js';
@@ -35,15 +38,27 @@ if (!Number.isFinite(massKg) || massKg <= 0) {
   process.exit(1);
 }
 
-const cloud = parseObjVertices(await readFile(path, 'utf8'));
+const texte = await readFile(path, 'utf8');
+const cloud = parseObjVertices(texte);
+const corps = parseObjBodies(texte);
 const geometry = buildPoses(cloud, arg('up', 'z') as Axis, arg('unit', 'auto') as UnitChoice);
+
+// Les corps placés pose par pose : ce qui permet de désigner ceux qui portent
+// un dépassement dans cette orientation-là.
+const posesAvecCorps = geometry.poses.map((p, i) => {
+  if (p.pose === 'reference' || corps.length < 2) return p;
+  const axis = geometry.oriented[i - 1]!;
+  const c = buildCrate(p.footprint, massKg);
+  const placement = placeForPose(cloud, axis.axis, axis.footprint.yawDeg, geometry.unit.scale, c.skid.heightMm + c.floorThicknessMm);
+  return { ...p, bodies: placeBodies(corps, axis.axis, placement, geometry.unit.scale) };
+});
 
 if (!geometry.unit.plausible) {
   console.error(`\n⚠ ${geometry.unit.note}\n`);
 }
 
 const result = study({
-  poses: geometry.poses,
+  poses: posesAvecCorps,
   massKg,
   forbidLying: process.argv.includes('--no-couchage'),
   mode: arg('mode', 'maritime') as 'maritime' | 'route',

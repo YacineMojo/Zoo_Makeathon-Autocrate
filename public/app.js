@@ -335,6 +335,19 @@ function rendreTableau() {
       En revanche « ${s.otherMode.label} » passe en ${s.otherMode.gabaritLabel} avec
       ${s.otherMode.marginMm} mm de marge : <strong>${eur(s.otherMode.costing.totalEur)}</strong>,
       ${s.otherMode.costing.leadTimeDays} j. Changer de mode est votre décision, pas celle de l'outil.`;
+  } else if (s.decoupe) {
+    // Le §6.5 dit « l'outil ne découpe pas ». Il ne découpe toujours pas : il
+    // désigne les corps qui portent le dépassement et chiffre l'hypothèse.
+    const d = s.decoupe;
+    verdict = `Aucune pose ne passe. Mais <strong>${d.retires.length} corps sur ${d.corpsTotal}</strong>
+      portent le dépassement : coupés ${d.axe === 2 ? 'en hauteur' : 'en largeur'} à
+      ${(d.planDeCoupeMm / 1000).toFixed(2)} m et expédiés à part, l'ensemble passe en
+      <strong>${eur(d.totalEur)}</strong> et ${d.leadTimeDays} j —
+      ${d.principale.retained.gabarit.label} pour la caisse principale,
+      ${d.seconde.retained.gabarit.label} pour la seconde.
+      Contre ${eur(s.fallbacks.oversize.totalEur)} en ${s.fallbacks.oversize.leadTimeDays} j hors gabarit.
+      <span class="verdict-second">L'outil ne découpe pas : un corps distinct dans un maillage n'est pas
+      une pièce démontable. Il dit lesquels coûtent, l'ingénierie tranche.</span>`;
   } else {
     verdict = `Aucune pose ne passe. Les deux issues, chiffrées :
       ${s.fallbacks.oversize.label} <strong>${eur(s.fallbacks.oversize.totalEur)}</strong> en

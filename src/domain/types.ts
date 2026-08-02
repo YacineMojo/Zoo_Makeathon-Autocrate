@@ -202,6 +202,15 @@ export interface Study {
   /** Renseigné uniquement si aucune pose ne passe. */
   fallbacks?: Fallbacks;
   /**
+   * Quels corps du maillage portent le dépassement.
+   *
+   * Bien plus utile que la coupe au milieu de `fallbacks.split` : au lieu de
+   * chiffrer un démontage imaginaire, on désigne les pièces qui coûtent. Reste
+   * une **hypothèse** — un corps distinct dans un maillage n'est pas une pièce
+   * démontable — et l'outil ne décide toujours pas (§6.5).
+   */
+  decoupe?: import('../moteur/decoupe.js').Decoupe;
+  /**
    * Le refus tient à la **masse**, pas à l'encombrement.
    *
    * Un refus par charge utile est invariant par orientation : aucune pose n'y
