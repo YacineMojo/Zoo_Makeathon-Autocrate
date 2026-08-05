@@ -34,56 +34,63 @@ until it is too late.
 ## What this does
 
 You drop in the machine's STEP file — or a mesh, if you already have one — and
-enter its mass. Four seconds later you
-get a **crate pre-design**: the real footprint, the generated crate
-structure, and a table of orientations with a gauge verdict, a cost and a lead
-time for each.
+enter its mass. Four seconds later you get a **crate pre-design**: the real
+footprint, the generated crate structure, and a table of orientations with a
+gauge verdict, a cost and a lead time for each.
 
-It does not decide for you. It shows you that **laid on its side, the machine
-fits a standard container**.
+It does not decide for you, and when there is nothing to decide it says so.
 
-The worked example below is the **generated demo machine** — 2.0 × 1.9 × 3.1 m,
-2 350 kg — because it is the only file we may publish that actually crosses a
-gauge threshold. Reproduce it with `./script.sh demo`. The studio itself opens on
-a real robot, the KUKA KR 6: see [Machines](#machines-the-studio-opens-on-a-real-robot).
+The worked example is the **KUKA KR 6 with its tool** — real manufacturer CAD,
+5.4 MB of STEP, 10 bodies, MIT licence. It is the machine the studio opens on,
+and `./script.sh` fetches it and has Zoo convert it, so every figure below is
+reproducible. All of them are measured, none projected.
 
-| Orientation | Crate L × W × H | Gauge | Cost | Lead time |
-|---|---|---|---|---|
-| CAD frame (naive) | 2.25 × 2.15 × 3.33 m | **out of gauge** | 13 639 € | 21 days |
-| A — upright | 2.25 × 2.15 × 3.33 m | **out of gauge** | 13 639 € | 21 days |
-| B — laid on X | 3.88 × 1.98 × 2.23 m | 20' standard | 5 618 € | 5 days |
-| **C — laid on Y** | **3.35 × 2.25 × 2.13 m** | **LCL groupage** | **3 766 €** | **12 days** |
+**What Zoo does with it:**
 
-**9 873 € and 9 days saved per machine.** And because the cheapest option is
-also the slowest, the tool refuses to decide for you:
+| Step | Whose | Measured |
+|---|---|---|
+| customer STEP → mesh | Zoo **File Format API**, async route | 273 s for 5.4 MB |
+| reading the mesh | ours | 42 216 vertices, 172 676 faces, 10 bodies |
+| footprint, poses, gauge verdicts | ours | 382 ms |
+| the crate as b-rep | Zoo **Engine API** | 33 solids, 19 of them blocking, 0.1 s |
+| STEP and glTF export | Zoo **Engine API** | one session, 4.5 s billed |
+| re-measuring our own export | ours, on the returned glTF | 1 450 × 846 × 478 mm, matches the verdict |
 
-> Faster: pose C in a 20' standard container, 5 472 € in 5 days — seven days
-> less for 1 706 € more. Up to you what the shipping window is worth.
+The mesh is compacted 9.0 → 4.1 MB before it goes out, and the machine itself is
+left out of the b-rep export: above 2 MB the Engine API fails after several
+minutes. Both are measured limits, written up in [`FEEDBACK.md`](FEEDBACK.md)
+among twelve notes on the Zoo APIs.
 
-The faster option is the same crate as C, shipped as a container instead of
-groupage — which is why it is neither the 3 766 € of the table nor the 5 618 €
-of pose B.
+**And the study it produces:**
 
-The interesting part is *where* the money is. Comparing the naive box against
-the same crate shipped in a full container:
-
-| Cost line | Upright | Laid down | Delta |
+| Orientation | Crate L × W × H | Gauge | Cost |
 |---|---|---|---|
-| Building the crate | 1 852 € | 1 661 € | −191 € |
-| Volume shipped (m³) | 504 € | 475 € | −29 € |
-| **Threshold crossing** | **11 000 €** | **2 400 €** | **−8 600 €** |
+| CAD frame (naive) | 1.13 × 0.53 × 1.17 m | LCL groupage | 953 € |
+| Pose A — upright | 1.12 × 0.53 × 1.17 m | LCL groupage | 952 € |
+| Pose B — laid on X | 1.21 × 0.53 × 1.08 m | LCL groupage | 950 € |
+| Pose C — laid on Y | 1.45 × 0.85 × 0.48 m | LCL groupage | 908 € |
 
-**98 % of the gain comes from the threshold.** The cubic metres of air saved are
-worth 29 €. That is the whole thesis of the project, verified on a real file:
-the money is not in the volume, it is in the step function.
+Four poses, one gauge, 45 € between the best and the worst. So the tool
+recommends nothing, and says why:
 
-### The detail that would have wrecked it
+> All poses fall in the same gauge — Ocean groupage (LCL), 12 days. The gap
+> between them is plywood: keep the CAD frame, there is nothing to arbitrate.
 
-The crate clears the container doors by **110 mm**. The bare machine is 2 000 mm
-wide, which against a 2 340 mm door opening looks like a comfortable 340 mm of
-margin. Blocking, studs and panels add 230 mm. Compare the *machine* to the
-gauge instead of the *crate*, and you turn a 110 mm squeak into a false sense of
-safety. This is why the tool always confronts the crate — never the machine.
+An 88 cm robot crosses no gauge threshold, and that is the honest result at this
+size. It is also the point: the tool arbitrates when there is something to
+arbitrate, and stays quiet when there is not. On a machine that does cross a
+threshold the same study saves **9 873 € and 9 days** — `./script.sh demo` runs
+that case, on the one machine we are free to publish.
+
+### Why the crate, and never the machine
+
+The KR 6 laid on Y measures 1 200 × 596 × 276 mm. Its crate measures
+1 450 × 846 × 478 mm: blocking, studs and panels add **250 mm on width and
+202 mm on height**. It is the crate that meets the container door, never the
+machine, so a margin measured on the machine is a number that will never be
+loaded. On this robot it costs nothing. On the demo machine it turns a
+comfortable-looking 340 mm into a 110 mm squeak — which is why the tool always
+confronts the crate.
 
 ![The KUKA KR 6 with its tool inside its generated crate, chocks included](docs/caisse-ecorchee.png)
 
@@ -296,8 +303,8 @@ questions:
 and show. It is what proves the tool reads industrial CAD rather than a shape we
 drew ourselves. And it is honest about its own verdict: at 88 cm it crosses no
 threshold, all four poses land in the same gauge, and the console report refuses
-to invent an arbitration rather than recommending a pose worth 40 € (`npm run
-etude out/async-kuka_kr6_with_tool.obj 2350`, translated from the French):
+to invent an arbitration rather than recommending a pose worth 45 € (`npm run
+etude out/async-kuka_kr6_with_tool.obj 150`, translated from the French):
 
 > All poses fall in the same gauge — Ocean groupage (LCL), 12 days. The gap
 > between them is plywood: keep the CAD frame, there is nothing to arbitrate.
@@ -310,9 +317,9 @@ the studio generates the crate on its own and says so on screen. The **single
 STEP holding machine and crate** is therefore demonstrated on the demo machine,
 whose 106 KB the engine imports in 1.37 s.
 
-**The generated demo machine** is what carries the numbers at the top of this
-README, because a threshold has to be crossed for there to be anything to show.
-It is **generated by Zoo Text-to-CAD** (`npm run machine-demo`, prompt in
+**The generated demo machine** is what carries the threshold case, because a
+threshold has to be crossed for a saving to exist at all. It is **generated by
+Zoo Text-to-CAD** (`npm run machine-demo`, prompt in
 `src/machine-demo.ts`, KCL in `fixtures/machine-demo.kcl`): no rights question, a
 third flagship API in the project, and a geometry chosen for what it has to
 demonstrate. It is the only STEP committed here, and `./script.sh demo` replays
