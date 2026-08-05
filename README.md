@@ -348,7 +348,9 @@ not reconstructed afterwards. The three that cost us the most:
 
 ## Demo video
 
-One-minute walkthrough: **<VIDEO_LINK>**
+One-minute walkthrough, committed alongside the code:
+**[docs/demo.mp4](https://github.com/YacineMojo/Zoo_Makeathon-Autocrate/blob/main/docs/demo.mp4)**
+— 75 s, plays in the browser on GitHub.
 
 ## Repository map
 
