@@ -11,7 +11,7 @@ makeathon running 22 July to 5 August 2026.
 
 ![The landing page: what the tool does, and which Zoo APIs it uses](docs/accueil.png)
 
-![The studio: parameters on the left, the generated crate in 3D, and the two exports](docs/atelier.png)
+![The studio, opened on the KUKA KR 6 with its tool: parameters on the left, the generated crate in 3D, and the two exports](docs/atelier.png)
 
 ---
 
