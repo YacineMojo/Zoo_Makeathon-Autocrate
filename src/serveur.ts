@@ -106,7 +106,7 @@ interface EtudeBody {
 async function meshes(): Promise<string[]> {
   try {
     return (await readdir('out'))
-      .filter((f) => /^(async|web)-.+\.obj$/.test(f))
+      .filter((f) => /^(async|web)-.+\.obj$/.test(f) && !RETIRES.has(f))
       .sort();
   } catch {
     return [];
@@ -114,31 +114,21 @@ async function meshes(): Promise<string[]> {
 }
 
 /**
- * La machine de démonstration, déposée dans `out/` si elle n'y est pas.
+ * Maillages présents dans `out/` mais retirés du menu.
  *
- * `out/` n'est pas versionné — c'est un répertoire de travail. La liste des
- * exemples en étant tirée, un dépôt fraîchement cloné n'en proposait aucun :
- * le menu était vide, l'étude de démarrage échouait sans rien dire, et la seule
- * voie qui restait était de déposer un STEP. C'est exactement ce qu'on ne veut
- * pas faire vivre à un jury qui ouvre la page pour la première fois.
- *
- * La machine de démo est la seule dont la licence est nôtre — elle est générée
- * par Zoo Text-to-CAD depuis `fixtures/machine-demo.kcl`. Son maillage est donc
- * versionné à côté de son STEP, et recopié ici au démarrage. Aucun appel réseau,
- * aucune clé d'API : la page fonctionne hors ligne, dès le premier `npm run dev`.
+ * Tout ce qui traîne dans `out/` finissait proposé comme machine à étudier : la
+ * caisse de démonstration, un assemblage d'essai, et deux modèles déposés à la
+ * main pendant les tests — un canapé, une berline. Ce sont des maillages
+ * parfaitement valides, mais ce ne sont pas des machines industrielles à
+ * caisser : les laisser en tête de menu raconte la mauvaise histoire à qui ouvre
+ * la page. On ne supprime rien du disque, on tient seulement la liste.
  */
-const EXEMPLE_DEMO = 'async-machine-demo.obj';
-
-async function amorcerExemples(): Promise<void> {
-  await mkdir('out', { recursive: true });
-  const cible = join('out', EXEMPLE_DEMO);
-  try {
-    await readFile(cible);
-  } catch {
-    await writeFile(cible, await readFile(join('fixtures', 'machine-demo.obj')));
-    console.log(`Exemple de démonstration déposé dans ${cible}`);
-  }
-}
+const RETIRES = new Set([
+  'async-machine-demo.obj',
+  'async-as1_assembly.obj',
+  'web-sofa.obj',
+  'web-uploads_files_2787791_Mercedes+Benz+GLS+580.obj',
+]);
 
 /**
  * Bornes de saisie, alignées sur celles du formulaire.
@@ -261,8 +251,8 @@ async function etude(body: EtudeBody) {
  * STEP commun machine + caisse n'existe que si la machine entre en b-rep. Il
  * faut donc son STEP, pas son maillage.
  *
- *   async-machine-demo.obj  →  fixtures/machine-demo.step   (machine de démo)
- *   web-<nom>.obj           →  out/web-<nom>.step           (STEP déposé)
+ *   async-<nom>.obj  →  fixtures/<nom>.step   (converti en ligne de commande)
+ *   web-<nom>.obj    →  out/web-<nom>.step    (STEP déposé)
  */
 /**
  * Au-delà, on ne tente même pas l'import b-rep dans l'atelier.
@@ -777,7 +767,7 @@ const server = createServer((req, res) => {
   })();
 });
 
-await amorcerExemples();
+await mkdir('out', { recursive: true });
 
 server.listen(PORT, () => {
   console.log(`Atelier Caisse — http://localhost:${PORT}`);
