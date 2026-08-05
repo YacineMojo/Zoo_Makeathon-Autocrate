@@ -85,7 +85,7 @@ margin. Blocking, studs and panels add 230 mm. Compare the *machine* to the
 gauge instead of the *crate*, and you turn a 110 mm squeak into a false sense of
 safety. This is why the tool always confronts the crate — never the machine.
 
-![The machine inside its generated crate](docs/caisse-ecorchee.png)
+![The KUKA KR 6 with its tool inside its generated crate, chocks included](docs/caisse-ecorchee.png)
 
 ## Where Zoo does the work, and where we do
 
