@@ -5,7 +5,7 @@ import { costForGabarit } from './chiffrage.js';
 import { SPLIT_ENGINEERING_EUR, SPLIT_EXTRA_DAYS } from '../domain/tariffs.js';
 
 /**
- * Découper l'expédition en plusieurs caisses (PROJECT.md §6.5).
+ * Découper l'expédition en plusieurs caisses.
  *
  * **Ce que l'outil affirme, et ce qu'il n'affirme pas.** Il ne dit pas que ces
  * pièces se démontent : un corps distinct dans un maillage peut être une

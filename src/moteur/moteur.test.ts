@@ -109,7 +109,7 @@ test('la marge la plus faible est rendue, y compris quand ça passe', () => {
 /* -------------------------------------------------- le seuil, à 3 cm près */
 
 test('trois centimètres font basculer le verdict et multiplient la facture', () => {
-  // C'est la thèse du projet (§2) : « le coût réel n'est pas le m³ d'air
+  // C'est la thèse du projet : « le coût réel n'est pas le m³ d'air
   // transporté, c'est le franchissement de seuil ».
   const base = { lengthMm: 2000, widthMm: 1500 };
   const juste = machinePourCaisse(gabarit('semi').maxHeightMm, 2_000);
@@ -147,7 +147,7 @@ test('le franchissement de seuil coûte un facteur, pas un pourcentage', () => {
   assert.ok(apres > 2 * avant, `attendu un facteur, obtenu ${avant} € → ${apres} €`);
 
   // Le délai est l'argument qu'on ne peut pas balayer : rater une fenêtre
-  // d'expédition coûte plus cher que le fret (§2).
+  // d'expédition coûte plus cher que le fret.
   assert.ok(dessus.fallbacks.oversize.leadTimeDays > 3 * dessous.best.costing.leadTimeDays);
 });
 
@@ -314,7 +314,7 @@ test('KUKA KR 600 : coucher la machine déplace la contrainte de la hauteur vers
 
   // C'est précisément la raison d'être de l'étape suivante. Cette emprise est
   // celle du **repère du fichier**, et une machine dessinée de travers y produit
-  // une boîte visiblement trop grosse (§6.1) : « votre CAO est dans un repère
+  // une boîte visiblement trop grosse : « votre CAO est dans un repère
   // arbitraire, la caisse doit être alignée sur la machine ». Pour qu'un
   // conteneur s'ouvre, l'emprise orientée doit ramener la largeur machine sous
   // 2 120 mm — 2 350 moins les 230 mm de calage, montants et panneaux.

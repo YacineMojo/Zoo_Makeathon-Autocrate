@@ -4,7 +4,7 @@ import { GABARITS } from '../domain/gabarits.js';
 import { costForGabarit } from './chiffrage.js';
 
 /**
- * Le verdict gabarit (PROJECT.md §6.4).
+ * Le verdict gabarit.
  *
  * « C'est littéralement une comparaison à des constantes. Le meilleur ratio
  * valeur/effort du projet est un `if`. »
@@ -99,7 +99,7 @@ export function cheapestFit(
     .sort((a, b) => a.total - b.total)[0]?.c;
 }
 
-/** Formulation lisible d'un refus. « Ça ne passe pas » vaut zéro (§15). */
+/** Formulation lisible d'un refus. « Ça ne passe pas » vaut zéro. */
 export function explain(check: GabaritCheck): string {
   if (check.fits) {
     return check.confidence === 'juste'

@@ -1,7 +1,7 @@
 /**
  * Les corps distincts d'un maillage.
  *
- * PROJECT.md §8 appelle l'arbre d'assemblage « le piège du projet » : la
+ * L'arbre d'assemblage avait tout du piège du projet : la
  * hiérarchie produit ne survit pas au chemin d'import, et les noms sortent
  * illisibles. C'est vrai — mais **le regroupement, lui, survit**. L'OBJ rendu
  * par la File Format API porte des sections `o Unnamed-0`, `o Unnamed-1` … :

@@ -86,12 +86,23 @@ case "$ACTION" in
     ;;
 
   atelier)
-    # Un maillage doit exister pour que l'atelier ait quelque chose à montrer
-    # au premier lancement. Celui de la machine de démonstration se produit en
-    # quelques secondes, et c'est l'occasion de vérifier que le jeton marche.
-    if ! ls out/*.obj >/dev/null 2>&1; then
-      bleu "Premier lancement : conversion de la machine de démonstration par Zoo…"
-      npx tsx src/async-conversion.ts fixtures/machine-demo.step
+    # Un maillage doit exister pour que l'atelier ait quelque chose à montrer au
+    # premier lancement. C'est le KUKA KR 6 outillé : le seul modèle de machine
+    # réelle dont la licence permette qu'on le récupère et qu'on le montre (MIT,
+    # csbebetter/OCC_Qt_Robot). Son STEP n'est pas versionné ici — on ne
+    # redistribue pas le fichier d'un tiers, on va le chercher à la source.
+    #
+    # Sa conversion demande plusieurs minutes chez Zoo : c'est le prix d'un
+    # STEP de 5,4 Mo, et c'est dit avant d'attendre.
+    KR6=fixtures/kuka_kr6_with_tool.step
+    if ! ls out/async-*.obj out/web-*.obj >/dev/null 2>&1; then
+      if [ ! -f "$KR6" ]; then
+        bleu "Premier lancement : récupération du KUKA KR 6 (MIT)…"
+        curl -sSL --fail -o "$KR6" \
+          https://raw.githubusercontent.com/csbebetter/OCC_Qt_Robot/master/robot/KR6/KR6withTool.STEP
+      fi
+      bleu "Conversion du KR 6 par Zoo — comptez quatre à cinq minutes…"
+      npx tsx src/async-conversion.ts "$KR6"
     fi
 
     bleu "Atelier Caisse — http://localhost:$PORT"

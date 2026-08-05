@@ -39,7 +39,10 @@ time for each.
 It does not decide for you. It shows you that **laid on its side, the machine
 fits a standard container**.
 
-On the demo machine — 2.0 × 1.9 × 3.1 m, 2 350 kg:
+The worked example below is the **generated demo machine** — 2.0 × 1.9 × 3.1 m,
+2 350 kg — because it is the only file we may publish that actually crosses a
+gauge threshold. Reproduce it with `./script.sh demo`. The studio itself opens on
+a real robot, the KUKA KR 6: see [Machines](#machines-the-studio-opens-on-a-real-robot).
 
 | Orientation | Crate L × W × H | Gauge | Cost | Lead time |
 |---|---|---|---|---|
@@ -51,8 +54,12 @@ On the demo machine — 2.0 × 1.9 × 3.1 m, 2 350 kg:
 **9 873 € and 9 days saved per machine.** And because the cheapest option is
 also the slowest, the tool refuses to decide for you:
 
-> Faster: 20' standard, 5 472 € in 5 days — seven days less for 1 706 € more.
-> Up to you what the shipping window is worth.
+> Faster: pose C in a 20' standard container, 5 472 € in 5 days — seven days
+> less for 1 706 € more. Up to you what the shipping window is worth.
+
+The faster option is the same crate as C, shipped as a container instead of
+groupage — which is why it is neither the 3 766 € of the table nor the 5 618 €
+of pose B.
 
 The interesting part is *where* the money is. Comparing the naive box against
 the same crate shipped in a full container:
@@ -83,7 +90,7 @@ safety. This is why the tool always confronts the crate — never the machine.
 Zoo — File Format API   reads the customer's STEP, returns a mesh
 our code                vertices → oriented footprint, poses, verdicts, costs
 Zoo — Engine API        builds the crate as b-rep, exports the common STEP
-Zoo — ML / Text-to-CAD  generated the demo machine (see "Demo file" below)
+Zoo — ML / Text-to-CAD  generated the demo machine (see "Machines" below)
 ```
 
 **Zoo does no simulation and no business logic.** What makes this a Zoo showcase
@@ -113,11 +120,17 @@ solids, the customer's b-rep and ours, in the same scene.
 ## Running it
 
 ```bash
-git clone <this repo> && cd ZOO_Hackaton_Caisse
-./script.sh          # installs, converts the demo machine, opens the workshop
+git clone git@github.com:YacineMojo/Zoo_Makeathon-Autocrate.git && cd Zoo_Makeathon-Autocrate
+./script.sh          # installs, fetches and converts the KUKA KR 6, opens the studio
 ```
 
 Then open <http://localhost:5174>.
+
+**The first launch takes four to five minutes**, and says so before it waits: no
+third-party STEP is committed here, so `script.sh` fetches the KR 6 from its MIT
+source and has Zoo convert it — 5.4 MB of STEP is 273 s of conversion. Every
+launch after that is immediate. Drop your own STEP or OBJ at any time and the
+studio uses it instead.
 
 You need Node 20+ and a Zoo API token in `.env` (`ZOO_API_TOKEN=…`, from
 <https://zoo.dev/account/api-tokens>). `script.sh` creates the file and tells you
@@ -125,7 +138,7 @@ if the token is missing rather than letting you discover it on the first call.
 
 ```bash
 ./script.sh demo       # the full chain in the console, timed post by post
-./script.sh test       # 51 unit tests
+./script.sh test       # 74 unit tests
 ./script.sh verifier   # drives the workshop in a real browser, fails on any console error
 ```
 
@@ -218,11 +231,10 @@ does not read the assembly tree and does not decide the split — that is an
 engineering decision that does not belong to it. It prices both and lets you
 choose.
 
-**But it can say what costs.** PROJECT.md called the assembly tree "the trap of
-the project" because product hierarchy does not survive the import path — and
-that is true, the names come out as `Unnamed-0`, `Unnamed-1`. **The grouping
-survives, though**: fifteen bodies for the demo machine, thirty-seven for a KUKA
-robot. Names are lost, bodies are not, and naming pieces is not what is needed
+**But it can say what costs.** The assembly tree looked like the trap of the
+project: product hierarchy does not survive the import path, and the names come
+out as `Unnamed-0`, `Unnamed-1`. **The grouping survives, though**: fifteen
+bodies for the demo machine, thirty-seven for a KUKA robot. Names are lost, bodies are not, and naming pieces is not what is needed
 here — geometry is.
 
 So when nothing fits, the tool tries cutting planes from the top down and
@@ -256,33 +268,43 @@ here as-is. Declaring it is the honest thing to do and costs nothing:
 `reserveIds()`, needed to build a batch whose commands reference each other, and
 cleanup of the pending entry when serialisation throws — see FEEDBACK #6.
 
-## Demo file, and why it is generated
+## Machines: the studio opens on a real robot
 
-The rules require a public submission and a public video, so the licence of the
-demo file is not a detail. We checked, and the check eliminated every candidate:
-
-| Repository | Licence | Verdict |
-|---|---|---|
-| `tpaviot/pythonocc-demos` | **none** | not redistributable |
-| `NTNU-manulab/Cobots-RoboDK-Isaac-Sim` | **none** | not redistributable |
-| `Nhsrico/gltf-models` | **none** | not redistributable |
-| `qunat/Pythonocc-vericut` | LGPL-3.0 | parts under 40 cm, no threshold crossed |
-| `csbebetter/OCC_Qt_Robot` | **MIT** | KUKA KR 6 — 88 cm, no threshold crossed |
+The submission is public, so the licence of every file shown is not a detail.
+Every candidate we audited was eliminated but one — the audit is in
+[`fixtures/README.md`](fixtures/README.md).
 
 The general finding: **a machine big enough to cross a gauge threshold is a
 machine whose CAD belongs to its manufacturer.** Every freely licensed model we
-found is under one metre, and a one-metre crate fits everywhere — there is
-nothing left to demonstrate.
+found is under one metre, and a one-metre crate fits everywhere.
 
-So the demo machine is **generated by Zoo Text-to-CAD** (`npm run machine-demo`,
-prompt in `src/machine-demo.ts`, KCL in `fixtures/machine-demo.kcl`). No rights
-question, a third flagship API in the project, and a geometry chosen for what it
-has to demonstrate. The tool itself knows nothing of this: it receives a STEP
-and measures it.
+That gives the two machines of this repository, and they answer two different
+questions:
+
+**The KUKA KR 6 with tool** is what the studio opens on. Real manufacturer CAD,
+5.4 MB of STEP, 10 bodies, **MIT licence** — the only real machine we may fetch
+and show. It is what proves the tool reads industrial CAD rather than a shape we
+drew ourselves. And it is honest about its own verdict: at 88 cm it crosses no
+threshold, all four poses land in the same gauge, and the console report refuses
+to invent an arbitration rather than recommending a pose worth 40 € (`npm run
+etude out/async-kuka_kr6_with_tool.obj 2350`, translated from the French):
+
+> All poses fall in the same gauge — Ocean groupage (LCL), 12 days. The gap
+> between them is plywood: keep the CAD frame, there is nothing to arbitrate.
+
+That refusal to dramatise is a feature, and the KR 6 is what exercises it.
+
+**The generated demo machine** is what carries the numbers at the top of this
+README, because a threshold has to be crossed for there to be anything to show.
+It is **generated by Zoo Text-to-CAD** (`npm run machine-demo`, prompt in
+`src/machine-demo.ts`, KCL in `fixtures/machine-demo.kcl`): no rights question, a
+third flagship API in the project, and a geometry chosen for what it has to
+demonstrate. It is the only STEP committed here, and `./script.sh demo` replays
+the whole chain on it. The tool itself knows nothing of any of this: it receives
+a STEP and measures it.
 
 The KUKA KR 600 R2830 stayed as the **API measurement file** — most of
-`FEEDBACK.md` comes from it — but it is neither committed nor shown.
-See [`fixtures/README.md`](fixtures/README.md).
+`FEEDBACK.md` comes from it. See [`fixtures/README.md`](fixtures/README.md).
 
 ## What we found in the Zoo APIs
 
@@ -322,23 +344,19 @@ not reconstructed afterwards. The three that cost us the most:
 
 One-minute walkthrough: **<VIDEO_LINK>**
 
-The shot list, the exact figures to show and the three things not to say are in
-[`docs/video.md`](docs/video.md). The public post is drafted in
-[`docs/post.md`](docs/post.md).
-
 ## Repository map
 
 | Path | What is in it |
 |---|---|
-| `src/moteur/` | the pure engine: crate sizing, gauge verdicts, costs, lead times. No CAD, 19 tests |
-| `src/geometrie/` | oriented footprint, poses, unit and vertical-axis guards, placement. 20 tests |
-| `src/engine/` | Zoo Engine API: session, boxes, batched scene, crate layout. 6 tests |
+| `src/moteur/` | the pure engine: crate sizing, gauge verdicts, costs, lead times. No CAD, 29 tests |
+| `src/geometrie/` | oriented footprint, poses, unit and vertical-axis guards, placement. 22 tests |
+| `src/engine/` | Zoo Engine API: session, boxes, batched scene, crate layout. 17 tests |
 | `src/mesh/` | OBJ reading and compaction, glTF re-measurement. 6 tests |
 | `src/serveur.ts` + `public/` | the workshop: pose table and 3D view |
 | `src/bout-en-bout.ts` | the whole chain, timed post by post |
 | `tools/verifier-ui.mjs` | drives the workshop in a real browser, fails on any console error |
 | `FEEDBACK.md` | 12 notes on the Zoo APIs |
-| `fixtures/README.md` | demo file, licence audit, measurement files |
+| `fixtures/README.md` | the two machines, the licence audit, the measurement files |
 
 ## Licence
 
@@ -347,6 +365,3 @@ MIT. See [`LICENSE`](LICENSE).
 Code comments are in French, the author's working language. Everything a reader
 needs — this README, `FEEDBACK.md`, the assumptions and disclaimers shown in the
 product — is in English.
-# Zoo_Makeathon-Autocrate
-# Zoo_Makeathon-Autocrate
-# Zoo_Makeathon-Autocrate

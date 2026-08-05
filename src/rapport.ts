@@ -3,15 +3,15 @@ import { explain } from './moteur/verdict.js';
 import type { Study } from './domain/types.js';
 
 /**
- * Le tableau des poses (PROJECT.md §7.1), en texte.
+ * Le tableau des poses, en texte.
  *
- * Version console du seul écran qui compte avec la vue 3D (§13). L'écrire
+ * Version console du seul écran qui compte avec la vue 3D. L'écrire
  * maintenant coûte dix minutes et dérisque l'étape 5 : la mise en forme HTML
  * n'aura plus qu'à habiller une sortie dont on sait déjà qu'elle est juste.
  *
  * La première ligne du tableau est toujours la référence naïve. Le tableau doit
  * montrer d'abord le mauvais chiffre, celui d'aujourd'hui — c'est le delta qui
- * est le produit, pas la valeur absolue (§6.2).
+ * est le produit, pas la valeur absolue.
  */
 
 const eur = (v: number) => `${v.toLocaleString('fr-FR')} €`;

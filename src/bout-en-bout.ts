@@ -15,7 +15,7 @@ import { createBoxesBatched } from './engine/scene.js';
 import { gltfSizeMm } from './mesh/gltf.js';
 
 /**
- * La chaîne complète, chronométrée poste par poste (PROJECT.md §14).
+ * La chaîne complète, chronométrée poste par poste.
  *
  *     STEP client → Zoo lit → notre code mesure et décide → Zoo construit → STEP
  *

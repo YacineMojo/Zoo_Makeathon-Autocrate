@@ -17,7 +17,7 @@ import { study } from './moteur/etude.js';
 
 /**
  * Étape 4 : la caisse générée autour de la machine, dans une scène Zoo, et le
- * STEP commun (PROJECT.md §4, §7.3).
+ * STEP commun.
  *
  * C'est ici que le projet devient un showcase Zoo et non un script : la
  * géométrie produite est **la conséquence d'une autre géométrie**. On consomme
@@ -200,7 +200,7 @@ try {
       });
       // La machine en jaune machine-outil. Sans cela, une machine entrée en
       // b-rep est rendue du même gris que la caisse générée, et l'image la plus
-      // importante du projet ne montre plus rien (§13). Un maillage importé,
+      // importante du projet ne montre plus rien. Un maillage importé,
       // lui, est colorié différemment par le moteur — l'écart n'est pas
       // documenté, il se découvre en regardant.
       await session.send({
@@ -333,7 +333,7 @@ try {
 
   // Vue écorchée : on retire le chapeau et deux parois pour montrer la machine
   // **à l'intérieur** de la caisse générée. C'est la seule image qui compte
-  // (§13), et c'est aussi la convention de représentation en caisserie.
+  //, et c'est aussi la convention de représentation en caisserie.
   //
   // `entity_set_opacity` aurait été plus élégant, mais le moteur le refuse sur
   // un solide b-rep : « This object cannot be made semi-transparent ». Voir

@@ -180,7 +180,7 @@ test('le millimètre est cru quand il est vraisemblable', () => {
 
 test('une machine de 2,5 en lecture directe est en mètres, pas en millimètres', () => {
   // Sans ce contrôle on déclare une caisse de 2 cm et on passe pour un amateur
-  // en direct (§11).
+  // en direct.
   const r = resolveUnit('auto', 2.517);
   assert.equal(r.unit, 'm');
   assert.equal(Math.round(r.largestMm), 2517);

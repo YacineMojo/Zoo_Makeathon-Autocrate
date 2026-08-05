@@ -1,7 +1,7 @@
 import type { Gabarit } from './types.js';
 
 /**
- * Les gabarits de transport, en constantes (PROJECT.md §6.4).
+ * Les gabarits de transport, en constantes.
  *
  * « C'est littéralement une comparaison à des constantes. Le meilleur ratio
  * valeur/effort du projet est un `if`. »
@@ -99,7 +99,7 @@ export const GABARITS: ReadonlyArray<Gabarit> = [
  * Au-delà des gabarits standards : hors gabarit assumé.
  *
  * Ce n'est pas un gabarit de plus dans la liste, parce qu'il ne se teste pas —
- * il se subit. Il sert de branche de repli chiffrée (§6.5).
+ * il se subit. Il sert de branche de repli chiffrée.
  */
 export const OVERSIZE_LABEL = 'Flat rack / OOG or abnormal road convoy';
 

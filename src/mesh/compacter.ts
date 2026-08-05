@@ -14,7 +14,7 @@
  *
  * Les deux tiers du fichier sont donc des **normales**, que le moteur recalcule
  * à l'import et dont nous n'avons aucun usage : on ne veut que des sommets pour
- * une enveloppe (PROJECT.md §10). Les retirer emporte aussi les `//n` des
+ * une enveloppe. Les retirer emporte aussi les `//n` des
  * faces, qui font la moitié de leur poids.
  *
  * Aucune géométrie n'est perdue : mêmes sommets, mêmes faces, même

@@ -158,7 +158,7 @@ async function etude(body: EtudeBody) {
 
   const massKg = Number(body.massKg);
   if (!Number.isFinite(massKg) || massKg < MASSE_MIN_KG || massKg > MASSE_MAX_KG) {
-    // Un STEP ne porte pas de matériau. Le demander montre qu'on le sait (§5).
+    // Un STEP ne porte pas de matériau. Le demander montre qu'on le sait.
     throw new Error(
       `Invalid mass. A STEP file carries no material, so the mass has to be entered, between ${MASSE_MIN_KG} and ${MASSE_MAX_KG.toLocaleString('en-GB')} kg.`
     );

@@ -6,7 +6,7 @@ import { costForGabarit, costOversize, costSplit } from './chiffrage.js';
 import { proposeDecoupe, type PlacedBody } from './decoupe.js';
 
 /**
- * La fonction cœur du projet (PROJECT.md §12) :
+ * La fonction cœur du projet :
  *
  *     (emprises, masse) → dimensions de caisse + verdicts + coûts + délais
  *
@@ -15,7 +15,7 @@ import { proposeDecoupe, type PlacedBody } from './decoupe.js';
  *
  * Elle ne reçoit **que des triplets**. Le calcul des emprises orientées est le
  * travail de l'étape suivante : une fois les trois emprises obtenues, tout le
- * reste est de l'arithmétique, et le maillage n'est plus jamais retouché (§6.2).
+ * reste est de l'arithmétique, et le maillage n'est plus jamais retouché.
  */
 
 export interface PoseInput {
@@ -44,7 +44,7 @@ export interface StudyInput {
    * La référence naïve **plus** les trois poses.
    *
    * La référence n'est pas une pose de plus : c'est l'avant. C'est le delta
-   * entre elle et la meilleure pose qui est le produit (§6.2).
+   * entre elle et la meilleure pose qui est le produit.
    */
   poses: PoseInput[];
   massKg: number;
@@ -291,7 +291,7 @@ export function study(input: StudyInput): Study {
  * Le delta, qui est le produit.
  *
  * « Retourner le non en proposition » : « ça ne passe pas » vaut zéro, « couchée
- * ça passe, et voilà ce que ça économise » vaut le déplacement (§15).
+ * ça passe, et voilà ce que ça économise » vaut le déplacement.
  */
 export function savings(study: Study): { eur: number; days: number } | undefined {
   const reference = study.poses.find((p) => p.pose === 'reference');

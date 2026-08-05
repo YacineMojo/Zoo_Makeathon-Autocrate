@@ -14,7 +14,7 @@ import {
 } from '../domain/assumptions.js';
 
 /**
- * Le calage (PROJECT.md §6.3).
+ * Le calage.
  *
  * Jusqu'ici, « calage » désignait 60 mm de vide autour de la machine. Ces 60 mm
  * gardent leur sens — c'est l'épaisseur d'une cale — mais le vide devient des
@@ -293,7 +293,7 @@ function intersecter(
   return width > 1 && depth > 1 && height > 1 ? { ...b, x, y, z, width, depth, height } : undefined;
 }
 
-/** Les cales sont en bois massif : elles comptent pour la mention NIMP-15 (§7.5). */
+/** Les cales sont en bois massif : elles comptent pour la mention NIMP-15. */
 export function isBlocking(name: string): boolean {
   return /^(butee_|traverse_|cale_|lisse_)/.test(name);
 }

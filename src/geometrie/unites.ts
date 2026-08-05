@@ -1,5 +1,5 @@
 /**
- * Le garde-fou de l'unité (PROJECT.md §11).
+ * Le garde-fou de l'unité.
  *
  * « Un STEP est censé être en millimètres, mais on tombera sur des modèles en
  * pouces ou en mètres. Si l'emprise vaut 1,8 au lieu de 1800, on déclare une

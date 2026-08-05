@@ -14,7 +14,7 @@ import {
 import { buildCrate, crateQuantities } from './structure.js';
 
 /**
- * Coûts et délais (PROJECT.md §6.6).
+ * Coûts et délais.
  *
  * Deux régimes, nommés comme tels dans le type `Costing` :
  *
@@ -24,7 +24,7 @@ import { buildCrate, crateQuantities } from './structure.js';
  *   coûte un facteur, pas un pourcentage.
  *
  * Le délai est gratuit à coder et rend l'argument difficile à balayer : pour un
- * constructeur, rater une fenêtre d'expédition coûte plus cher que le fret (§2).
+ * constructeur, rater une fenêtre d'expédition coûte plus cher que le fret.
  */
 
 const volumeM3 = (t: Triplet) => (t.lengthMm * t.widthMm * t.heightMm) / 1e9;

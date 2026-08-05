@@ -3,7 +3,7 @@ import type { Crate } from '../domain/types.js';
 import { STUD_SECTION_MM } from '../domain/assumptions.js';
 
 /**
- * La caisse, en pavés (PROJECT.md §6.3).
+ * La caisse, en pavés.
  *
  * Que des boîtes. Aucun booléen, aucun congé, aucun assemblage réel — ni vis,
  * ni feuillure, ni équerre. Personne ne le remarquera sur un avant-projet, et
@@ -12,7 +12,7 @@ import { STUD_SECTION_MM } from '../domain/assumptions.js';
  * Repère : origine au centre de la caisse en X/Y, `z = 0` sous les patins. La
  * machine est placée dans le même repère par `placeForPose`, ce qui garantit
  * qu'elle apparaît **à l'intérieur** — le seul plan qui compte pour le jury
- * (§13).
+ *.
  *
  * L'empilement en Z suit exactement le calcul du verdict :
  *

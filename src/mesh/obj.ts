@@ -1,7 +1,7 @@
 /**
  * Lecture des sommets d'un OBJ.
  *
- * On ne veut que des sommets : l'emprise orientée (PROJECT.md §6.1) se calcule
+ * On ne veut que des sommets : l'emprise orientée se calcule
  * sur un nuage de points, jamais sur des faces. Les lignes `f`, `vn`, `vt`, les
  * groupes et les matériaux sont donc ignorés — c'est ce qui rend ce parseur
  * court et insensible aux variantes de dialecte OBJ.

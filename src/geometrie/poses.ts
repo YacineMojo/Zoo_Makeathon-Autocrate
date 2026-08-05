@@ -4,7 +4,7 @@ import { naiveFootprint, orientedFootprint, type Axis, type OrientedFootprint } 
 import { resolveUnit, type UnitChoice, type UnitResolution } from './unites.js';
 
 /**
- * Les poses (PROJECT.md §6.2).
+ * Les poses.
  *
  * **Trois poses, pas six.** Les six permutations du triplet ne valent que pour
  * une boîte alignée sur les axes du fichier. Dès qu'on optimise le lacet, la
@@ -45,7 +45,7 @@ export interface PosesResult {
  *
  * `declaredUp` est l'axe vertical saisi par l'utilisateur — beaucoup de CAO sont
  * en Y-up, et sans ce réglage la machine est couchée dès l'import et tout le
- * raisonnement s'effondre (§11).
+ * raisonnement s'effondre.
  */
 export function buildPoses(
   cloud: VertexCloud,

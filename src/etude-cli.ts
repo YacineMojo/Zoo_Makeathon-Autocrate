@@ -33,7 +33,7 @@ const arg = (name: string, fallback: string) =>
 const massKg = Number(massArg);
 if (!Number.isFinite(massKg) || massKg <= 0) {
   // Un STEP ne porte pas de matériau : la masse est saisie, et la demander
-  // montre qu'on le sait (§5).
+  // montre qu'on le sait.
   console.error(`Masse invalide : « ${massArg} ». Un STEP ne porte pas de matériau.`);
   process.exit(1);
 }

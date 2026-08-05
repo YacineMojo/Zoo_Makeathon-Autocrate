@@ -22,14 +22,14 @@ import {
 } from '../domain/assumptions.js';
 
 /**
- * Dimensionnement de la caisse (PROJECT.md §6.3).
+ * Dimensionnement de la caisse.
  *
  * Que des boîtes. Aucun booléen, aucun congé, aucun assemblage réel — ni vis,
  * ni feuillure, ni équerre. Personne ne le remarquera sur un avant-projet, et
  * c'est ce qui rend la caisse générable en une session Zoo.
  *
  * La fonction est pure : mêmes entrées, mêmes sorties, aucune CAO. C'est le
- * morceau dont on est certain qu'il marchera (§12).
+ * morceau dont on est certain qu'il marchera.
  */
 
 const mm3ToM3 = (v: number) => v / 1e9;
@@ -45,19 +45,19 @@ function pickSkid(massKg: number) {
  *
  * `machine` est l'emprise **dans la pose considérée** : la fonction ne sait rien
  * des poses et n'a pas à le savoir. Une fois les trois emprises obtenues, tout
- * le reste est de l'arithmétique sur un triplet (§6.2).
+ * le reste est de l'arithmétique sur un triplet.
  */
 export function buildCrate(machine: Triplet, massKg: number): Crate {
   if (machine.lengthMm <= 0 || machine.widthMm <= 0 || machine.heightMm <= 0) {
     throw new Error('Emprise machine invalide : les trois dimensions doivent être positives.');
   }
   if (massKg <= 0) {
-    throw new Error('Masse invalide : un STEP ne porte pas de matériau, la masse est saisie (§5).');
+    throw new Error('Masse invalide : un STEP ne porte pas de matériau, la masse est saisie.');
   }
 
   // Les patins se dimensionnent à la masse de la machine : c'est elle qu'ils
   // portent, et c'est de toute façon la règle du métier — raison pour laquelle
-  // le centre de gravité n'est pas nécessaire (§10).
+  // le centre de gravité n'est pas nécessaire.
   const skid = pickSkid(massKg);
 
   const clearance = CLEARANCE_MM;
@@ -74,7 +74,7 @@ export function buildCrate(machine: Triplet, massKg: number): Crate {
 
   // Encombrement extérieur. C'est **lui** qu'on confrontera au gabarit — jamais
   // l'emprise machine. Comparer la machine aux cotes de porte est une erreur
-  // silencieuse et fatale en Q&A (§6.4).
+  // silencieuse et fatale en Q&A.
   const outer: Triplet = {
     lengthMm: inner.lengthMm + 2 * (studT + PANEL_THICKNESS_MM),
     widthMm: inner.widthMm + 2 * (studT + PANEL_THICKNESS_MM),
@@ -125,7 +125,7 @@ export function buildCrate(machine: Triplet, massKg: number): Crate {
     tareKg,
     grossKg,
     // Patins, plancher et montants sont du bois massif : la mention NIMP-15
-    // s'applique. Les panneaux dérivés en sont exemptés (§7.5).
+    // s'applique. Les panneaux dérivés en sont exemptés.
     hasSolidWood: true,
   };
 }

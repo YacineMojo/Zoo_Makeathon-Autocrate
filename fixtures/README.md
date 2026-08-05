@@ -6,8 +6,9 @@
 `npm run machine-demo`. Le prompt et le KCL rendu par Zoo sont dans
 `../src/machine-demo.ts` et `machine-demo.kcl`.
 
-C'est le seul fichier de ce répertoire dont nous puissions garantir les droits,
-et c'est la raison pour laquelle il existe.
+C'est le seul fichier de ce répertoire que nous produisons nous-mêmes, donc le
+seul dont nous puissions garantir les droits sans dépendre d'un tiers. C'est la
+raison pour laquelle il existe.
 
 | | |
 |---|---|
@@ -17,23 +18,24 @@ et c'est la raison pour laquelle il existe.
 | Conversion STEP → maillage | 3,4 s |
 | Chaîne complète, STEP entrant → STEP sortant | **4,55 s**, dont 99 % chez Zoo |
 
-Il joue la démonstration du §16 en entier :
+C'est lui qui porte les chiffres du README, parce qu'il est le seul fichier
+publiable qui franchisse réellement un seuil de gabarit. `./script.sh demo`
+rejoue la chaîne entière dessus :
 
 ```
-Repère CAO (naïf)   2.23 × 2.13 × 3.31 m   hors gabarit             13 545 €   21 j
-Pose C — couchée    3.33 × 2.23 × 2.11 m   Conteneur 40' standard    6 776 €    5 j
-→ 6 769 € et 16 jours économisés
+Repère CAO (naïf)   2.25 × 2.15 × 3.33 m   hors gabarit             13 639 €   21 j
+Pose C — couchée    3.35 × 2.25 × 2.13 m   Groupage maritime (LCL)   3 766 €   12 j
+→ 9 873 € et 9 jours économisés
 ```
 
-Et le moteur sait l'importer en b-rep, ce qui rend possible l'artefact du §7.3 :
-un **STEP unique contenant la machine et la caisse** (`out/bout-en-bout.step`).
+Et le moteur sait l'importer en b-rep, ce qui rend possible un **STEP unique
+contenant la machine et la caisse** (`out/bout-en-bout.step`).
 
-## Pourquoi pas un vrai modèle constructeur
+## La machine de l'atelier : `kuka_kr6_with_tool.step`
 
-PROJECT.md §14 impose deux vérifications avant de s'attacher à un fichier : la
-licence, parce que la soumission et la vidéo sont publiques, et le poids, parce
-que la promesse des trente secondes en dépend. Les deux ont été faites, et elles
-éliminent tous les candidats testés.
+Deux vérifications avant de s'attacher à un fichier : la licence, parce que la
+soumission est publique, et le poids, parce que la promesse des quatre secondes
+en dépend. Un seul candidat les passe toutes les deux.
 
 | Dépôt | Licence | Verdict |
 |---|---|---|
@@ -41,21 +43,38 @@ que la promesse des trente secondes en dépend. Les deux ont été faites, et el
 | `NTNU-manulab/Cobots-RoboDK-Isaac-Sim` | **aucune** | écarté |
 | `Nhsrico/gltf-models` | **aucune** | écarté |
 | `qunat/Pythonocc-vericut` | LGPL-3.0 | pièces < 40 cm, aucun seuil franchi |
-| `csbebetter/OCC_Qt_Robot` | **MIT** | KUKA KR 6 — 88 cm, aucun seuil franchi |
+| `csbebetter/OCC_Qt_Robot` | **MIT** | **retenu** — KUKA KR 6 outillé, 88 cm |
 
-Le constat général : **une machine assez grande pour franchir un seuil de
-gabarit est une machine dont le modèle appartient à son constructeur.** Les
-modèles librement licenciés que nous avons trouvés font tous moins d'un mètre,
-et une caisse d'un mètre passe partout — il n'y a alors plus rien à démontrer.
+C'est donc le **KUKA KR 6 outillé** que l'atelier ouvre par défaut : de la CAO
+constructeur réelle, 10 corps, sous licence MIT. Son STEP n'est pas versionné
+ici — on ne redistribue pas le fichier d'un tiers quand on peut pointer sa
+source. `./script.sh` va le chercher au premier lancement et le fait convertir
+par Zoo, ce qui demande quatre à cinq minutes une fois pour toutes.
 
-Le STEP du KUKA KR 600 porte d'ailleurs un en-tête sans ambiguïté : produit sous
-Siemens NX 7.5 en 2014, auteur et organisation vides, redistribué sans mention.
+Il ne franchit aucun seuil de gabarit, et c'est assumé : à 88 cm, les quatre
+poses tombent dans le même gabarit, et l'outil le dit plutôt que de recommander
+une pose pour quarante euros d'écart.
+
+| | |
+|---|---|
+| Emprise | 880 × 280 × 960 mm |
+| Corps | 10 |
+| Poids du STEP | 5,4 Mo |
+| Conversion STEP → maillage | 273 s, par la route asynchrone |
+| Sommets du maillage | 42 216 |
+
+Le constat général derrière ce tableau : **une machine assez grande pour
+franchir un seuil de gabarit est une machine dont le modèle appartient à son
+constructeur.** Les modèles librement licenciés que nous avons trouvés font tous
+moins d'un mètre, et une caisse d'un mètre passe partout. C'est pourquoi les
+chiffres de la démonstration viennent de la machine générée ci-dessus, et la
+preuve qu'on lit de la CAO industrielle vient du KR 6.
 
 ## Fichiers de mesure, non redistribués
 
 Ces fichiers ont servi à mesurer les APIs Zoo — tout `FEEDBACK.md` en vient. Ils
-ne sont **ni versionnés, ni montrés dans la vidéo**, et ne sont pas nécessaires
-pour faire tourner la démonstration.
+ne sont **pas versionnés** et ne sont pas nécessaires pour faire tourner la
+démonstration.
 
 | Fichier | Taille | Conversion | Emprise |
 |---|---|---|---|
@@ -64,11 +83,11 @@ pour faire tourner la démonstration.
 | `11752.stp` | 1,5 Mo | 504 en synchrone, 107 s en asynchrone | 1,28 × 0,14 × 0,13 m |
 | `Ventilator.stp` | 2,2 Mo | 50,5 s | 0,08 × 0,08 × 0,02 m |
 | `kuka_kr600_r2830.stp` | 12,6 Mo | 365 s | 2,52 × 1,30 × 2,94 m |
-| `kuka_kr6_with_tool.step` | 5,4 Mo | 273 s | 0,88 × 0,28 × 0,96 m |
 | `cellule_ur10_ur5.stp` | 206 Ko | 3,6 s | 0,85 × 1,25 × 0,80 m |
 | `machine1..4.stp`, `spindle.stp` | 0,1–0,7 Mo | 3–8 s | < 0,4 m |
 
-Pour les récupérer :
+Pour les récupérer — la dernière ligne est celle que `script.sh` joue tout seul
+au premier lancement :
 
 ```bash
 B=https://raw.githubusercontent.com

@@ -4,7 +4,7 @@
  * Toutes les longueurs sont en **millimètres**, toutes les masses en
  * **kilogrammes**, tous les montants en **euros**. Aucune fonction ne convertit
  * d'unité en interne : la conversion se fait une seule fois, à la lecture du
- * fichier (PROJECT.md §11).
+ * fichier.
  */
 
 /** Triplet de dimensions, dans l'ordre longueur × largeur × hauteur. */
@@ -14,7 +14,7 @@ export interface Triplet {
   heightMm: number;
 }
 
-/** Une hypothèse affichée à l'écran, en lecture seule (PROJECT.md §7.4). */
+/** Une hypothèse affichée à l'écran, en lecture seule. */
 export interface Assumption {
   id: string;
   label: string;
@@ -23,7 +23,7 @@ export interface Assumption {
   rationale: string;
 }
 
-/** Les trois orientations possibles de la machine — quel axe pointe vers le haut (§6.2). */
+/** Les trois orientations possibles de la machine — quel axe pointe vers le haut. */
 export type PoseId = 'reference' | 'A' | 'B' | 'C';
 
 /** Section d'un bois massif, en millimètres. */
@@ -32,11 +32,11 @@ export interface Section {
   widthMm: number;
 }
 
-/** Structure de caisse dimensionnée à partir d'une emprise et d'une masse (§6.3). */
+/** Structure de caisse dimensionnée à partir d'une emprise et d'une masse. */
 export interface Crate {
   /** Emprise de la machine qui a servi au dimensionnement. */
   machine: Triplet;
-  /** Encombrement extérieur de la caisse — c'est **lui** qu'on confronte au gabarit (§6.4). */
+  /** Encombrement extérieur de la caisse — c'est **lui** qu'on confronte au gabarit. */
   outer: Triplet;
   /** Volume intérieur libre, calage compris. */
   inner: Triplet;
@@ -54,7 +54,7 @@ export interface Crate {
   /** Masse machine + caisse. */
   grossKg: number;
 
-  /** Bois massif présent : déclenche la mention NIMP-15 (§7.5). */
+  /** Bois massif présent : déclenche la mention NIMP-15. */
   hasSolidWood: boolean;
 }
 
@@ -69,7 +69,7 @@ export interface Crate {
  */
 export type ShippingMode = 'maritime' | 'route';
 
-/** Un gabarit de transport et ses contraintes (§6.4). */
+/** Un gabarit de transport et ses contraintes. */
 export interface Gabarit {
   id: string;
   label: string;
@@ -84,7 +84,7 @@ export interface Gabarit {
    * Ouverture de porte, quand elle est distincte de la section intérieure.
    *
    * Une charge peut rentrer dans le volume et ne pas passer les portes : les
-   * deux contraintes sont vérifiées séparément, jamais confondues (§6.4).
+   * deux contraintes sont vérifiées séparément, jamais confondues.
    */
   doorWidthMm?: number;
   doorHeightMm?: number;
@@ -126,7 +126,7 @@ export interface GabaritCheck {
   tightestOn: RejectionReason;
 }
 
-/** Chiffrage d'une solution de transport (§6.6). */
+/** Chiffrage d'une solution de transport. */
 export interface Costing {
   /** Fabrication de la caisse. */
   crateEur: number;
@@ -165,11 +165,11 @@ export interface PoseResult {
   otherMode?: { gabarit: GabaritCheck; costing: Costing };
   /** La caisse est-elle gerbable une fois chargée ? */
   stackable: boolean;
-  /** Pose écartée par l'utilisateur : couchage interdit (§5). */
+  /** Pose écartée par l'utilisateur : couchage interdit. */
   forbidden?: string;
 }
 
-/** Les deux issues chiffrées quand aucune pose ne passe (§6.5). */
+/** Les deux issues chiffrées quand aucune pose ne passe. */
 export interface Fallbacks {
   /** Hors gabarit assumé : flat rack, OOG, convoi exceptionnel. */
   oversize: Costing & { label: string };
@@ -178,7 +178,7 @@ export interface Fallbacks {
    *
    * **L'outil ne découpe pas.** Il ne lit pas l'arbre d'assemblage et ne décide
    * pas du découpage : il chiffre l'hypothèse d'un partage en deux et laisse
-   * choisir (§6.5).
+   * choisir.
    */
   split: Costing & { label: string; assumedHalves: Triplet };
 }
@@ -196,7 +196,7 @@ export interface Study {
    * lent : il faut attendre que le conteneur du groupeur se remplisse. Trancher
    * en silence sur le prix contredirait la thèse du projet — pour un
    * constructeur, rater une fenêtre d'expédition coûte plus cher que le fret
-   * (§2). On pose donc les deux, et on laisse choisir.
+   *. On pose donc les deux, et on laisse choisir.
    */
   faster?: { pose: PoseId; label: string; gabaritLabel: string; costing: Costing };
   /** Renseigné uniquement si aucune pose ne passe. */
@@ -207,7 +207,7 @@ export interface Study {
    * Bien plus utile que la coupe au milieu de `fallbacks.split` : au lieu de
    * chiffrer un démontage imaginaire, on désigne les pièces qui coûtent. Reste
    * une **hypothèse** — un corps distinct dans un maillage n'est pas une pièce
-   * démontable — et l'outil ne décide toujours pas (§6.5).
+   * démontable — et l'outil ne décide toujours pas.
    */
   decoupe?: import('../moteur/decoupe.js').Decoupe;
   /**

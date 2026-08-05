@@ -7,7 +7,7 @@ import { createZooClient } from './zoo-client.js';
 import { parseObjVertices, axisAlignedBounds } from './mesh/obj.js';
 
 /**
- * Spike Zoo — PROJECT.md §9.
+ * Spike Zoo : les deux questions à trancher avant d'écrire quoi que ce soit.
  *
  * Deux questions, deux seulement :
  *
@@ -24,7 +24,7 @@ import { parseObjVertices, axisAlignedBounds } from './mesh/obj.js';
  *
  * Une troisième mesure est ajoutée, parce qu'elle ne coûte qu'une commande et
  * qu'elle dérisque l'étape 4 : réexporter un STEP contenant à la fois la
- * machine importée et une caisse fictive construite autour (§7.3).
+ * machine importée et une caisse fictive construite autour.
  *
  * Usage : tsx src/spike.ts [chemin.stp]
  */

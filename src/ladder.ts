@@ -7,7 +7,7 @@ import { parseObjVertices, axisAlignedBounds } from './mesh/obj.js';
  * Où est le plafond de taille ?
  *
  * Le spike a répondu oui sur 137 Ko et non sur 12,6 Mo, des deux côtés. Avant
- * de choisir un fichier de démo (PROJECT.md §14) il faut savoir *où* ça casse,
+ * de choisir un fichier de démo il faut savoir *où* ça casse,
  * pas seulement que ça casse.
  *
  * On sonde avec la File Format API seule : elle ne consomme pas de session, donc

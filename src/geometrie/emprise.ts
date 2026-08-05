@@ -2,7 +2,7 @@ import type { VertexCloud } from '../mesh/obj.js';
 import type { Triplet } from '../domain/types.js';
 
 /**
- * Emprise orientée (PROJECT.md §6.1).
+ * Emprise orientée.
  *
  * Le STEP est modélisé dans un **repère arbitraire**. Une boîte englobante
  * alignée sur les axes du fichier, pour une machine dessinée de travers, est
@@ -21,7 +21,7 @@ import type { Triplet } from '../domain/types.js';
  * nous intéresse, et tient en trente lignes qu'on peut relire.
  */
 
-/** Axe vertical de la machine dans le repère du fichier (§11). */
+/** Axe vertical de la machine dans le repère du fichier. */
 export type Axis = 'x' | 'y' | 'z';
 
 const AXIS_INDEX: Record<Axis, 0 | 1 | 2> = { x: 0, y: 1, z: 2 };
@@ -232,7 +232,7 @@ function verticalExtent(cloud: VertexCloud, up: Axis): number {
   return max - min;
 }
 
-/** Boîte englobante alignée sur les axes du fichier — la référence naïve, l'« avant » (§6.2). */
+/** Boîte englobante alignée sur les axes du fichier — la référence naïve, l'« avant ». */
 export function naiveFootprint(cloud: VertexCloud, up: Axis, scale = 1): Triplet {
   const [a, b] = planeAxes(up);
   const extent = (axis: 0 | 1 | 2) => {

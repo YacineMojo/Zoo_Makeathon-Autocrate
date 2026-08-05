@@ -1,5 +1,5 @@
 /**
- * Grille de prix et de délais (PROJECT.md §6.6).
+ * Grille de prix et de délais.
  *
  * **Assumée comme indicative, et affichée avec ses valeurs.** Elle n'a pas
  * vocation à être juste au centime : elle a vocation à rendre visible un
@@ -62,7 +62,7 @@ export const CRATE_WOOD_EUR_PER_M3 = 620;
 /** Main-d'œuvre et fournitures, forfaitaire. */
 export const CRATE_FIXED_EUR = 350;
 
-/** Surcoût d'étude et de manutention quand on scinde en deux caisses (§6.5). */
+/** Surcoût d'étude et de manutention quand on scinde en deux caisses. */
 export const SPLIT_ENGINEERING_EUR = 2_800;
 /** Jours perdus à décider, démonter et reconditionner. */
 export const SPLIT_EXTRA_DAYS = 7;

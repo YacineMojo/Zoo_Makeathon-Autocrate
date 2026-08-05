@@ -3,7 +3,7 @@ import type { Assumption } from './types.js';
 /**
  * Les règles de l'art, paramétrées.
  *
- * **Ce fichier n'est pas une note de calcul bois** (PROJECT.md §6.3). Ce sont des
+ * **Ce fichier n'est pas une note de calcul bois**. Ce sont des
  * valeurs d'avant-projet, tenables en réunion, affichées à l'écran avec leur
  * justification pour que le lecteur sache exactement ce qu'il regarde.
  *
@@ -63,7 +63,7 @@ export const PANEL_THICKNESS_MM = 10;
  *
  * C'est la ligne la plus importante du fichier : la hauteur de patin s'ajoute
  * intégralement à la hauteur hors tout, et 100 à 140 mm suffisent à faire
- * basculer un verdict de gabarit (§6.4).
+ * basculer un verdict de gabarit.
  */
 export const SKID_TABLE: ReadonlyArray<{ upToKg: number; heightMm: number; widthMm: number }> = [
   { upToKg: 1_000, heightMm: 75, widthMm: 100 },
@@ -116,7 +116,7 @@ export const STACKABLE_MAX_SLENDERNESS = 1.6;
  * Table affichée à l'écran.
  *
  * En lecture seule : le principe des hypothèses éditables est gardé, l'édition
- * ne l'est pas — c'est du state management pour zéro point au jury (§10).
+ * ne l'est pas — c'est du state management pour zéro point au jury.
  */
 export const ASSUMPTIONS: ReadonlyArray<Assumption> = [
   {
