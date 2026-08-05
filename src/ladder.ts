@@ -54,7 +54,7 @@ for (const path of FILES) {
     }
 
     console.log(
-      `✅ ${(ms / 1000).toFixed(1)} s  ${vertices.toLocaleString('fr-FR')} sommets  ${size.join('×')} mm`
+      `✅ ${(ms / 1000).toFixed(1)} s  ${vertices.toLocaleString('en-GB')} vertices  ${size.join('×')} mm`
     );
   } catch (err) {
     console.log(`❌ ${((performance.now() - t0) / 1000).toFixed(1)} s  ${err instanceof Error ? err.message : err}`);

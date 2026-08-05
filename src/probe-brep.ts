@@ -30,10 +30,10 @@ try {
     900_000
   );
   const ok = resp.type === 'modeling' && resp.data.modeling_response.type === 'import_files';
-  console.log(`✅ importé en ${((performance.now() - t) / 1000).toFixed(1)} s — ${ok ? 'b-rep en scène' : resp.type}`);
+  console.log(`✅ imported in ${((performance.now() - t) / 1000).toFixed(1)} s — ${ok ? 'b-rep in scene' : resp.type}`);
 } catch (err) {
   console.log(`❌ ${((performance.now() - t) / 1000).toFixed(1)} s — ${err instanceof Error ? err.message : err}`);
 } finally {
   await session.close();
-  console.log(`session : ${(session.elapsedMs() / 1000).toFixed(1)} s facturées`);
+  console.log(`session : ${(session.elapsedMs() / 1000).toFixed(1)} s billed`);
 }

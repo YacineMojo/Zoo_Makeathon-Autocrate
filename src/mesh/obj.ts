@@ -71,7 +71,7 @@ export function parseObjVertices(text: string): VertexCloud {
 /** Boîte englobante du nuage, dans le repère du fichier. */
 export function axisAlignedBounds(cloud: VertexCloud): Bounds {
   if (cloud.count === 0) {
-    throw new Error('Nuage de sommets vide : aucune emprise calculable.');
+    throw new Error('Empty vertex cloud: no footprint can be computed.');
   }
 
   const min: [number, number, number] = [Infinity, Infinity, Infinity];

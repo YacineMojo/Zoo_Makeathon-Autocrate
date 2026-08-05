@@ -38,7 +38,7 @@ export function crateCostEur(crate: Crate): number {
 /** Chiffrage d'une caisse acheminée dans un gabarit standard. */
 export function costForGabarit(crate: Crate, check: GabaritCheck): Costing {
   const tariff = TARIFFS[check.gabarit.id];
-  if (!tariff) throw new Error(`Aucun tarif pour le gabarit ${check.gabarit.id}.`);
+  if (!tariff) throw new Error(`No tariff for gauge ${check.gabarit.id}.`);
 
   const crateEur = crateCostEur(crate);
   const volumeEur = Math.round(volumeM3(crate.outer) * (tariff.volumeEurPerM3 ?? VOLUME_EUR_PER_M3));

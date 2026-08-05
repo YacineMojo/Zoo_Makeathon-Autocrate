@@ -21,7 +21,7 @@ if ('error_code' in (page as object)) {
   process.exit(1);
 }
 
-console.log('Derniers appels enregistrés sur le compte :\n');
+console.log('Most recent calls recorded on the account :\n');
 for (const call of page.items ?? []) {
   const started = call.started_at ?? call.created_at;
   const ended = call.completed_at;

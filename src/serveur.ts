@@ -760,7 +760,7 @@ const server = createServer((req, res) => {
       if (req.method === 'POST' && url === '/api/decoupe') return json(res, 200, await decoupe((await readBody(req)) as never));
       if (req.method === 'POST' && url === '/api/conversion') return json(res, 200, await conversion((await readBody(req)) as never));
       if (req.method === 'GET') return await serveStatic(url, res);
-      res.writeHead(405).end('Méthode non autorisée');
+      res.writeHead(405).end('Method not allowed');
     } catch (err) {
       json(res, 400, { error: err instanceof Error ? err.message : String(err) });
     }
@@ -770,5 +770,5 @@ const server = createServer((req, res) => {
 await mkdir('out', { recursive: true });
 
 server.listen(PORT, () => {
-  console.log(`Atelier Caisse — http://localhost:${PORT}`);
+  console.log(`AutoCrate studio — http://localhost:${PORT}`);
 });

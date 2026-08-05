@@ -69,7 +69,7 @@ async function openSessionWithRetry(attempts = 3): Promise<EngineSession> {
       return await EngineSession.open();
     } catch (err) {
       last = err;
-      console.log(`  tentative ${i}/${attempts} refusée : ${err instanceof Error ? err.message : err}`);
+      console.log(`  attempt ${i}/${attempts} refused : ${err instanceof Error ? err.message : err}`);
       await new Promise((r) => setTimeout(r, 3000 * i));
     }
   }
@@ -113,7 +113,7 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
     // Seul l'export échappe à cette enveloppe, ce qui n'est signalé nulle part.
     if (resp.type !== 'modeling' || resp.data.modeling_response.type !== 'import_files') {
       throw new Error(
-        `réponse inattendue à l'import : ${resp.type === 'modeling' ? resp.data.modeling_response.type : resp.type}`
+        `unexpected response to the import : ${resp.type === 'modeling' ? resp.data.modeling_response.type : resp.type}`
       );
     }
     const objectId = resp.data.modeling_response.data.object_id;
@@ -133,10 +133,10 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
       const d = bboxResp.data.modeling_response.data.dimensions;
       engineSize = [d.x, d.y, d.z];
       console.log(
-        `  bounding_box moteur        ${s(bboxMs)}  → ${engineSize.map((v) => Math.round(v)).join(' × ')} mm`
+        `  bounding_box engine        ${s(bboxMs)}  → ${engineSize.map((v) => Math.round(v)).join(' × ')} mm`
       );
     } else {
-      console.log(`  bounding_box moteur        ${s(bboxMs)}  → réponse ${bboxResp.type}`);
+      console.log(`  bounding_box engine        ${s(bboxMs)}  → response ${bboxResp.type}`);
     }
 
     // Sommets : l'export OBJ du solide importé. C'est la question 1 du §9.
@@ -151,7 +151,7 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
     );
     const objMs = performance.now() - tObj;
 
-    if (objResp.type !== 'export') throw new Error(`réponse inattendue à l'export OBJ : ${objResp.type}`);
+    if (objResp.type !== 'export') throw new Error(`unexpected response to the OBJ export : ${objResp.type}`);
 
     let vertices = 0;
     let meshSize: [number, number, number] | undefined;
@@ -165,10 +165,10 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
       }
     }
     console.log(
-      `  export OBJ                 ${s(objMs)}  → ${vertices.toLocaleString('fr-FR')} sommets`
+      `  export OBJ                 ${s(objMs)}  → ${vertices.toLocaleString('en-GB')} vertices`
     );
     if (meshSize) {
-      console.log(`    emprise du maillage      ${meshSize.map((v) => Math.round(v)).join(' × ')} mm`);
+      console.log(`    mesh footprint      ${meshSize.map((v) => Math.round(v)).join(' × ')} mm`);
     }
 
     results.push({
@@ -210,7 +210,7 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
         for (const f of stepResp.data.files) {
           const buf = Buffer.from(f.contents as unknown as Uint8Array);
           await writeFile(`${OUT_DIR}/scene-commune.step`, buf);
-          console.log(`  export STEP machine+caisse ${s(stepMs)}  → out/scene-commune.step (${mo(buf.length)})`);
+          console.log(`  STEP export machine+crate ${s(stepMs)}  → out/scene-commune.step (${mo(buf.length)})`);
         }
       }
     }
@@ -220,7 +220,7 @@ async function routeEngine(path: string, bytes: Buffer): Promise<void> {
     results.push({ label: 'A — Engine import_files', ok: false, ms: performance.now() - t0, note: message });
   } finally {
     await session.close();
-    console.log(`  session fermée             ${s(session.elapsedMs())} facturées`);
+    console.log(`  session closed             ${s(session.elapsedMs())} billed`);
   }
 }
 
@@ -250,7 +250,7 @@ async function routeFileFormat(path: string, bytes: Buffer): Promise<void> {
     const outputs = conversion.outputs ?? {};
     const names = Object.keys(outputs);
     if (names.length === 0) {
-      throw new Error(`aucune sortie — statut ${conversion.status}, opération ${conversion.id}`);
+      throw new Error(`no output — status ${conversion.status}, operation ${conversion.id}`);
     }
 
     let vertices = 0;
@@ -263,8 +263,8 @@ async function routeFileFormat(path: string, bytes: Buffer): Promise<void> {
       if (cloud.count > 0) size = axisAlignedBounds(cloud).size;
     }
 
-    console.log(`  conversion                 ${s(ms)}  → ${vertices.toLocaleString('fr-FR')} sommets`);
-    if (size) console.log(`    emprise du maillage      ${size.map((v) => Math.round(v)).join(' × ')} mm`);
+    console.log(`  conversion                 ${s(ms)}  → ${vertices.toLocaleString('en-GB')} vertices`);
+    if (size) console.log(`    mesh footprint      ${size.map((v) => Math.round(v)).join(' × ')} mm`);
 
     results.push({ label: 'B — File Format API STEP → OBJ', ok: vertices > 0, ms, vertices, size });
   } catch (err) {
@@ -288,8 +288,8 @@ async function main() {
   await mkdir(OUT_DIR, { recursive: true });
 
   console.log(`Spike Zoo — ${path} (${mo(bytes.length)})`);
-  console.log('Question 1 : de la géométrie exploitable sort-elle d\'un STEP importé ?');
-  console.log('Question 2 : en combien de temps ?');
+  console.log('Question 1 : does usable geometry come out of \'un STEP importé ?');
+  console.log('Question 2 : how long does it take?');
 
   await routeEngine(path, bytes);
   await routeFileFormat(path, bytes);
@@ -298,7 +298,7 @@ async function main() {
   for (const r of results) {
     const head = `${r.ok ? '✅' : '❌'} ${r.label.padEnd(38)}`;
     const detail = r.ok
-      ? `${s(r.ms).padStart(7)}  ${r.vertices?.toLocaleString('fr-FR')} sommets  ${r.size?.map((v) => Math.round(v)).join('×') ?? ''} mm`
+      ? `${s(r.ms).padStart(7)}  ${r.vertices?.toLocaleString('en-GB')} vertices  ${r.size?.map((v) => Math.round(v)).join('×') ?? ''} mm`
       : `${s(r.ms).padStart(7)}  ${r.note}`;
     console.log(`  ${head} ${detail}`);
   }
@@ -306,8 +306,8 @@ async function main() {
   const go = results.some((r) => r.ok);
   console.log(
     go
-      ? '\n✅ GO — de la géométrie exploitable entre. On garde la route la plus rapide.'
-      : "\n❌ NO-GO — repli §9 : saisie manuelle des cotes."
+      ? '\n✅ GO — usable geometry goes in. We keep the fastest route.'
+      : "\n❌ NO-GO — fallback §9: manual dimension entry."
   );
   process.exit(go ? 0 : 1);
 }

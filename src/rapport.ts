@@ -14,23 +14,23 @@ import type { Study } from './domain/types.js';
  * est le produit, pas la valeur absolue.
  */
 
-const eur = (v: number) => `${v.toLocaleString('fr-FR')} €`;
+const eur = (v: number) => `${v.toLocaleString('en-GB')} €`;
 const mm = (v: number) => `${(v / 1000).toFixed(2)} m`;
 
 export function render(title: string, result: Study): void {
   console.log(`\n${title}`);
   console.log('─'.repeat(title.length));
-  console.log(`Masse machine : ${result.massKg.toLocaleString('fr-FR')} kg\n`);
+  console.log(`Machine mass: ${result.massKg.toLocaleString('en-GB')} kg\n`);
 
-  const header = ['Pose', 'Caisse L×l×h', 'Gabarit', 'Coût', 'Délai'];
+  const header = ['Pose', 'Crate L × W × H', 'Gauge', 'Cost', 'Lead time'];
   const rows = result.poses.map((p) => [
     p.forbidden ? `${p.label} ✕` : result.best?.pose === p.pose && result.arbitrage === 'gabarit' ? `${p.label} ★` : p.label,
     `${mm(p.crate.outer.lengthMm)} × ${mm(p.crate.outer.widthMm)} × ${mm(p.crate.outer.heightMm)}`,
-    p.forbidden ? 'écartée' : p.retained ? p.retained.gabarit.label : 'hors gabarit',
+    p.forbidden ? 'ruled out' : p.retained ? p.retained.gabarit.label : 'out of gauge',
     // Une pose écartée n'a pas de prix : afficher un montant inviterait à
     // comparer, alors qu'elle est interdite, pas chère.
     p.forbidden ? '—' : eur(p.costing.totalEur),
-    p.forbidden ? '—' : `${p.costing.leadTimeDays} j`,
+    p.forbidden ? '—' : `${p.costing.leadTimeDays} days`,
   ]);
 
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)));
@@ -53,60 +53,60 @@ export function render(title: string, result: Study): void {
     // phrase au lieu d'afficher un tableau de poses qui suggérerait le contraire.
     const o = result.overloaded;
     console.log(
-      `\n→ Refus par charge utile : ${o.grossKg.toLocaleString('fr-FR')} kg brut pour ` +
-        `${o.maxPayloadKg.toLocaleString('fr-FR')} kg admissibles sur le gabarit le plus capable ` +
-        `(${o.gabaritLabel}). Aucune orientation ne change cela, et le hors gabarit non plus : ` +
-        `c'est un problème de masse, pas d'encombrement.`
+      `\n→ Rejected on payload: ${o.grossKg.toLocaleString('en-GB')} kg gross against ` +
+        `${o.maxPayloadKg.toLocaleString('en-GB')} kg allowed on the most capable gauge ` +
+        `(${o.gabaritLabel}). No orientation changes that, and neither does going out of gauge: ` +
+        `this is a mass problem, not a size problem.`
     );
   } else if (result.arbitrage === 'aucun') {
     console.log(
-      `\n→ Toutes les poses tombent dans le même gabarit — ${result.best!.retained!.gabarit.label}, ` +
-        `${result.best!.costing.leadTimeDays} j. L'écart entre elles n'est que du contreplaqué : ` +
-        `gardez le repère CAO, il n'y a rien à arbitrer.`
+      `\n→ All poses fall in the same gauge — ${result.best!.retained!.gabarit.label}, ` +
+        `${result.best!.costing.leadTimeDays} days. The gap between them is plywood: ` +
+        `keep the CAD frame, there is nothing to arbitrate.`
     );
   } else if (delta) {
     console.log(
-      `\n→ ${eur(delta.eur)} et ${delta.days} jours économisés par rapport au repère CAO.`
+      `\n→ ${eur(delta.eur)} and ${delta.days} days saved against the CAD frame.`
     );
     if (result.faster) {
       const f = result.faster;
       const jours = result.best!.costing.leadTimeDays - f.costing.leadTimeDays;
       const surcout = f.costing.totalEur - result.best!.costing.totalEur;
       console.log(
-        `  Plus rapide : ${f.gabaritLabel}, ${eur(f.costing.totalEur)} en ${f.costing.leadTimeDays} j — ` +
-          `${jours} jours de moins pour ${eur(surcout)} de plus. À vous de voir ce que vaut la fenêtre d'expédition.`
+        `  Faster: ${f.gabaritLabel}, ${eur(f.costing.totalEur)} in ${f.costing.leadTimeDays} days — ` +
+          `${jours} days less for ${eur(surcout)} more. Up to you what the shipping window is worth.`
       );
     }
   } else if (result.fallbacks) {
     if (result.otherMode) {
       const o = result.otherMode;
       console.log(
-        `\n→ Aucun gabarit maritime. En revanche, « ${o.label} » passe en ` +
-          `${o.gabaritLabel} avec ${o.marginMm} mm de marge : ${eur(o.costing.totalEur)}, ` +
-          `${o.costing.leadTimeDays} j. Changer de mode est votre décision, pas celle de l’outil.`
+        `\n→ No ocean gauge fits. “${o.label}” does fit ` +
+          `${o.gabaritLabel} with ${o.marginMm} mm of margin: ${eur(o.costing.totalEur)}, ` +
+          `${o.costing.leadTimeDays} days. Changing mode is your decision, not the tool's.`
       );
     }
     if (result.decoupe) {
       const d = result.decoupe;
-      const axe = d.axe === 2 ? 'en hauteur' : 'en largeur';
+      const axe = d.axe === 2 ? 'in height' : 'in width';
       console.log(
-        `\n→ ${d.caisses.length} caisses. Coupes ${axe} à ` +
-          `${d.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' et ')} :`
+        `\n→ ${d.caisses.length} crates. Cuts ${axe} at ` +
+          `${d.plansMm.map((v) => (v / 1000).toFixed(2) + ' m').join(' and ')}:`
       );
       for (const c of d.caisses) {
         console.log(
-          `    caisse ${c.rang + 1}  ${mm(c.crate.outer.lengthMm)} × ${mm(c.crate.outer.widthMm)} × ${mm(c.crate.outer.heightMm)}   ` +
-            `${(c.retained?.gabarit.label ?? 'hors gabarit').padEnd(24)} ${eur(c.costing.totalEur).padStart(9)}   ` +
-            `${c.corps.length} corps`
+          `    crate ${c.rang + 1}  ${mm(c.crate.outer.lengthMm)} × ${mm(c.crate.outer.widthMm)} × ${mm(c.crate.outer.heightMm)}   ` +
+            `${(c.retained?.gabarit.label ?? 'out of gauge').padEnd(24)} ${eur(c.costing.totalEur).padStart(9)}   ` +
+            `${c.corps.length} bodies`
         );
       }
-      console.log(`    total ${eur(d.totalEur)} en ${d.leadTimeDays} j, étude et démontage compris.`);
+      console.log(`    total ${eur(d.totalEur)} in ${d.leadTimeDays} days, study and disassembly included.`);
       console.log(
-        `    L'outil ne découpe pas : un corps distinct dans un maillage n'est pas une pièce démontable. Il dit lesquels coûtent.`
+        `    The tool does not cut: a distinct body in a mesh is not a removable part. It says which ones cost.`
       );
     }
 
-    console.log('\n→ Sinon, les deux issues du hors gabarit, chiffrées :');
+    console.log('\n→ Otherwise, the two out-of-gauge outcomes, priced:');
     console.log(
       `    ${result.fallbacks.oversize.label.padEnd(30)} ${eur(result.fallbacks.oversize.totalEur).padStart(10)}  ${result.fallbacks.oversize.leadTimeDays} j`
     );
@@ -114,12 +114,12 @@ export function render(title: string, result: Study): void {
       `    ${result.fallbacks.split.label.padEnd(30)} ${eur(result.fallbacks.split.totalEur).padStart(10)}  ${result.fallbacks.split.leadTimeDays} j`
     );
     console.log(
-      `    hypothèse de partage : deux caisses de ${mm(result.fallbacks.split.assumedHalves.lengthMm)} × ${mm(result.fallbacks.split.assumedHalves.widthMm)} × ${mm(result.fallbacks.split.assumedHalves.heightMm)}`
+      `    split assumption: two crates of ${mm(result.fallbacks.split.assumedHalves.lengthMm)} × ${mm(result.fallbacks.split.assumedHalves.widthMm)} × ${mm(result.fallbacks.split.assumedHalves.heightMm)}`
     );
-    console.log('    L’outil ne découpe pas : il chiffre les deux issues et laisse choisir.');
+    console.log('    The tool does not cut: it prices both outcomes and lets you choose.');
   }
 
-  console.log('\nHypothèses');
+  console.log('\nAssumptions');
   for (const a of result.assumptions) console.log(`  ${a.label.padEnd(28)} ${a.value}`);
 
   console.log();

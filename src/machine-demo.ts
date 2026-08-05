@@ -58,7 +58,7 @@ const started = await ml.create_text_to_cad({
 });
 
 if ('error_code' in (started as object)) {
-  console.error(`❌ refusé : ${JSON.stringify(started).slice(0, 400)}`);
+  console.error(`❌ refused: ${JSON.stringify(started).slice(0, 400)}`);
   process.exit(1);
 }
 
@@ -72,13 +72,13 @@ while (['queued', 'uploaded', 'in_progress'].includes(operation.status)) {
   await new Promise((r) => setTimeout(r, 3000));
   polls++;
   operation = (await api_calls.get_async_operation({ client, id: started.id })) as never;
-  if (polls % 5 === 0) console.log(`  … ${operation.status} après ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+  if (polls % 5 === 0) console.log(`  … ${operation.status} after ${((performance.now() - t0) / 1000).toFixed(0)} s`);
 }
 
-console.log(`statut final : ${operation.status} après ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+console.log(`final status : ${operation.status} after ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 
 if (operation.status !== 'completed' || !operation.outputs) {
-  console.error(`❌ ${operation.error ?? 'échec sans détail'}`);
+  console.error(`❌ ${operation.error ?? 'failure with no detail'}`);
   process.exit(1);
 }
 

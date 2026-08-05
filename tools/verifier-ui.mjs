@@ -54,11 +54,11 @@ await page.goto(`${URL_BASE}/`, { waitUntil: 'load' });
 await page.waitForSelector('.cta');
 
 const cible = await page.getAttribute('.cta', 'href');
-if (cible !== '/app.html') erreurs.push(`le bouton « try it now » pointe sur ${cible}`);
-if (await deborde()) erreurs.push("la page d'accueil déborde horizontalement");
+if (cible !== '/app.html') erreurs.push(`the “try it now” button points at ${cible}`);
+if (await deborde()) erreurs.push("the landing page overflows horizontally");
 
-console.log('accueil :', propre(await page.textContent('.hero-lead')));
-console.log('apis    :', (await page.$$('.apis li')).length, 'entrées');
+console.log('landing :', propre(await page.textContent('.hero-lead')));
+console.log('apis    :', (await page.$$('.apis li')).length, 'entries');
 await page.screenshot({ path: `${OUT}/ui-accueil.png`, fullPage: true });
 
 /* ------------------------------------------------------------------- studio */
@@ -77,10 +77,10 @@ const voile = await page.evaluate(() => {
   const cible = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
   return cible && cible.id !== 'scene' ? `${cible.tagName}.${cible.className}` : null;
 });
-if (voile) erreurs.push(`la vue 3D est masquée par ${voile}`);
-if (await deborde()) erreurs.push('le studio déborde horizontalement');
+if (voile) erreurs.push(`the 3D view is hidden by ${voile}`);
+if (await deborde()) erreurs.push('the studio overflows horizontally');
 
-console.log('état    :', propre(await page.textContent('#etat-calcul')));
+console.log('state   :', propre(await page.textContent('#etat-calcul')));
 for (const ligne of await page.$$eval('#readout > div', (ds) =>
   ds.map((d) => `${d.querySelector('dt').textContent} : ${d.querySelector('dd').textContent}`)
 )) {
@@ -105,19 +105,19 @@ for (const id of ['dl-step', 'dl-gltf']) {
     return { href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled') };
   }, id);
   if (lien.disabled !== 'false' || !lien.href) {
-    erreurs.push(`${id} n'a pas été armé après la génération`);
+    erreurs.push(`${id} was not armed after generation`);
     continue;
   }
   const reponse = await page.request.get(`${URL_BASE}${lien.href}`);
-  if (!reponse.ok()) erreurs.push(`${id} pointe sur ${lien.href}, qui répond ${reponse.status()}`);
-  else console.log(`sortie  : ${lien.href} — ${(await reponse.body()).length} octets`);
+  if (!reponse.ok()) erreurs.push(`${id} points at ${lien.href}, which answers ${reponse.status()}`);
+  else console.log(`output  : ${lien.href} — ${(await reponse.body()).length} bytes`);
 }
 
 await browser.close();
 
 if (erreurs.length) {
-  console.error(`\n❌ ${erreurs.length} problème(s) :`);
+  console.error(`\n❌ ${erreurs.length} problem(s) :`);
   for (const e of erreurs.slice(0, 10)) console.error(`   ${e}`);
   process.exit(1);
 }
-console.log('\n✅ aucune erreur console, les deux sorties sont servies');
+console.log('\n✅ no console errors, both outputs are served');

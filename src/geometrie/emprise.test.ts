@@ -60,7 +60,7 @@ function tiltedBox(l: number, w: number, h: number, degZ: number, degX: number):
 
 /* -------------------------------------------------------------------- hull */
 
-test('l’enveloppe convexe ignore les points intérieurs', () => {
+test('the convex hull ignores interior points', () => {
   const hull = convexHull2d([
     [0, 0],
     [10, 0],
@@ -72,7 +72,7 @@ test('l’enveloppe convexe ignore les points intérieurs', () => {
   assert.equal(hull.length, 4);
 });
 
-test('trois points colinéaires ne font pas une enveloppe à trois sommets', () => {
+test('three collinear points do not make a three-vertex hull', () => {
   const hull = convexHull2d([
     [0, 0],
     [5, 0],
@@ -83,7 +83,7 @@ test('trois points colinéaires ne font pas une enveloppe à trois sommets', () 
 
 /* --------------------------------------------------------- aire minimale */
 
-test('le rectangle d’aire minimale retrouve les cotes d’une boîte tournée', () => {
+test('the minimum-area rectangle recovers the dimensions of a rotated box', () => {
   // Une boîte de 2000 × 800 tournée de 37° : la boîte naïve est bien plus grosse,
   // le balayage doit retrouver 2000 × 800.
   const box = rotatedBox(2000, 800, 1000, 37);
@@ -93,7 +93,7 @@ test('le rectangle d’aire minimale retrouve les cotes d’une boîte tournée'
   assert.ok(Math.abs(oriented.widthMm - 800) < 20, `largeur ${oriented.widthMm}`);
 });
 
-test('l’emprise orientée est plus petite que la boîte naïve sur une machine de travers', () => {
+test('the oriented footprint is smaller than the naive box on a skewed machine', () => {
   const box = rotatedBox(2000, 800, 1000, 37);
   const naive = naiveFootprint(box, 'z');
   const oriented = orientedFootprint(box, 'z');
@@ -101,11 +101,11 @@ test('l’emprise orientée est plus petite que la boîte naïve sur une machine
   const aireNaive = naive.lengthMm * naive.widthMm;
   assert.ok(
     oriented.areaMm2 < aireNaive * 0.75,
-    `attendu un gain net, obtenu ${Math.round(oriented.areaMm2)} contre ${Math.round(aireNaive)} mm²`
+    `expected a net gain, got ${Math.round(oriented.areaMm2)} against ${Math.round(aireNaive)} mm²`
   );
 });
 
-test('le balayage minimise la largeur, pas l’aire', () => {
+test('the sweep minimises width, not area', () => {
   // Une enveloppe où les deux critères divergent : un angle donne une aire
   // légèrement plus faible mais une largeur plus grande. C'est la largeur qui
   // touche le gabarit, donc c'est elle qui doit gagner.
@@ -122,11 +122,11 @@ test('le balayage minimise la largeur, pas l’aire', () => {
 
   assert.ok(
     retenu.widthMm <= aireMin.widthMm,
-    `largeur retenue ${retenu.widthMm.toFixed(0)} contre ${aireMin.widthMm.toFixed(0)} pour l’aire minimale`
+    `width retained ${retenu.widthMm.toFixed(0)} against ${aireMin.widthMm.toFixed(0)} for the minimum area`
   );
 });
 
-test('une largeur gagnée au prix d’une longueur intransportable est refusée', () => {
+test('a width gained at the price of an untransportable length is refused', () => {
   // Enveloppe très allongée : l'angle le plus étroit dépasserait la longueur
   // utile d'un conteneur. Le balayage doit préférer un angle transportable.
   const hull: Array<[number, number]> = [
@@ -138,7 +138,7 @@ test('une largeur gagnée au prix d’une longueur intransportable est refusée'
   assert.ok(minimalWidthRectangle(hull).lengthMm <= 11_700 + 1e-6 || minimalWidthRectangle(hull).lengthMm === 11_900);
 });
 
-test('une machine déjà alignée ne perd rien à être orientée', () => {
+test('an already aligned machine loses nothing by being oriented', () => {
   const box = rotatedBox(2000, 800, 1000, 0);
   const naive = naiveFootprint(box, 'z');
   const oriented = orientedFootprint(box, 'z');
@@ -147,20 +147,20 @@ test('une machine déjà alignée ne perd rien à être orientée', () => {
   assert.ok(Math.abs(oriented.widthMm - naive.widthMm) < 1);
 });
 
-test('la hauteur ne dépend pas du lacet : elle est gratuite', () => {
+test('height does not depend on yaw: it is free', () => {
   for (const deg of [0, 13, 45, 71]) {
     assert.equal(orientedFootprint(rotatedBox(2000, 800, 1234, deg), 'z').heightMm, 1234);
   }
 });
 
-test('un nuage vide échoue au lieu de rendre une emprise nulle', () => {
-  assert.throws(() => orientedFootprint(cloud([]), 'z'), /vide/);
-  assert.throws(() => sweepRectangles([]), /vide/);
+test('an empty cloud fails instead of returning a null footprint', () => {
+  assert.throws(() => orientedFootprint(cloud([]), 'z'), /Empty/);
+  assert.throws(() => sweepRectangles([]), /Empty/);
 });
 
 /* -------------------------------------------------------------- axe vertical */
 
-test('changer d’axe vertical change l’emprise et la hauteur', () => {
+test('changing the vertical axis changes the footprint and the height', () => {
   const box = rotatedBox(2000, 800, 1200, 0);
 
   const surZ = orientedFootprint(box, 'z');
@@ -172,13 +172,13 @@ test('changer d’axe vertical change l’emprise et la hauteur', () => {
 
 /* -------------------------------------------------------------------- unités */
 
-test('le millimètre est cru quand il est vraisemblable', () => {
+test('the millimetre is believed when it is plausible', () => {
   const r = resolveUnit('auto', 2517);
   assert.equal(r.unit, 'mm');
   assert.ok(r.plausible);
 });
 
-test('une machine de 2,5 en lecture directe est en mètres, pas en millimètres', () => {
+test('a machine reading 2.5 raw is in metres, not millimetres', () => {
   // Sans ce contrôle on déclare une caisse de 2 cm et on passe pour un amateur
   // en direct.
   const r = resolveUnit('auto', 2.517);
@@ -186,20 +186,20 @@ test('une machine de 2,5 en lecture directe est en mètres, pas en millimètres'
   assert.equal(Math.round(r.largestMm), 2517);
 });
 
-test('le pouce est le dernier recours', () => {
+test('the inch is the last resort', () => {
   const r = resolveUnit('auto', 99); // 99 pouces = 2515 mm
   assert.equal(r.unit, 'in');
   assert.ok(r.plausible);
 });
 
-test('une unité imposée est respectée, même invraisemblable, mais signalée', () => {
+test('a forced unit is honoured, however implausible, but flagged', () => {
   const r = resolveUnit('mm', 2.5);
   assert.equal(r.unit, 'mm');
   assert.equal(r.plausible, false);
   assert.match(r.note, /Check the file unit/);
 });
 
-test('aucune interprétation vraisemblable : on le dit au lieu de deviner', () => {
+test('no plausible interpretation: we say so instead of guessing', () => {
   const r = resolveUnit('auto', 0.0001);
   assert.equal(r.plausible, false);
   assert.match(r.note, /by hand/);
@@ -207,7 +207,7 @@ test('aucune interprétation vraisemblable : on le dit au lieu de deviner', () =
 
 /* --------------------------------------------------------------------- poses */
 
-test('trois poses et une référence, jamais six', () => {
+test('three poses and one reference, never six', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 20), 'z');
   assert.equal(result.poses.length, 4);
   assert.deepEqual(
@@ -216,7 +216,7 @@ test('trois poses et une référence, jamais six', () => {
   );
 });
 
-test('la pose A est toujours la machine debout, même en Y-up', () => {
+test('pose A is always the machine upright, even in Y-up', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 20), 'y');
   const a = result.poses.find((p) => p.pose === 'A')!;
   assert.equal(a.lying, false);
@@ -224,19 +224,19 @@ test('la pose A est toujours la machine debout, même en Y-up', () => {
   assert.equal(result.poses.filter((p) => p.lying).length, 2);
 });
 
-test('le gain d’emprise au sol est mesuré et positif sur une machine de travers', () => {
+test('the footprint area gain is measured and positive on a skewed machine', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 37), 'z');
   assert.ok(result.areaGainPct > 20, `gain ${result.areaGainPct.toFixed(1)} %`);
 });
 
-test('une machine alignée ne prétend pas gagner quelque chose', () => {
+test('an aligned machine does not claim to gain anything', () => {
   const result = buildPoses(rotatedBox(2000, 800, 1200, 0), 'z');
   assert.ok(Math.abs(result.areaGainPct) < 1);
 });
 
 /* ----------------------------------------------------------------- placement */
 
-test('le placement reproduit exactement l’emprise annoncée', () => {
+test('the placement reproduces exactly the announced footprint', () => {
   // C'est la vérification qui compte : si le signe du lacet était faux, la
   // machine tournerait dans le mauvais sens et déborderait de sa caisse sans
   // qu'aucun calcul ne s'en plaigne. La boîte est basculée pour qu'aucune des
@@ -249,7 +249,7 @@ test('le placement reproduit exactement l’emprise annoncée', () => {
 
     assert.ok(
       Math.abs(placement.size[2] - footprint.heightMm) < 1,
-      `hauteur ${up} : ${placement.size[2]} contre ${footprint.heightMm}`
+      `height ${up}: ${placement.size[2]} against ${footprint.heightMm}`
     );
 
     // La longueur doit tomber sur X et la largeur sur Y, pas seulement « l'une
@@ -257,16 +257,16 @@ test('le placement reproduit exactement l’emprise annoncée', () => {
     // machine posée en travers de sa caisse serait un quart de tour d'écart.
     assert.ok(
       Math.abs(placement.size[0] - footprint.lengthMm) < 1,
-      `longueur sur X pour ${up} : ${placement.size[0]} contre ${footprint.lengthMm}`
+      `length on X for ${up}: ${placement.size[0]} against ${footprint.lengthMm}`
     );
     assert.ok(
       Math.abs(placement.size[1] - footprint.widthMm) < 1,
-      `largeur sur Y pour ${up} : ${placement.size[1]} contre ${footprint.widthMm}`
+      `width on Y for ${up}: ${placement.size[1]} against ${footprint.widthMm}`
     );
   }
 });
 
-test('la machine repose sur le plancher, centrée, jamais flottante', () => {
+test('the machine rests on the floor, centred, never floating', () => {
   const box = rotatedBox(2000, 800, 1200, 20);
   const footprint = orientedFootprint(box, 'z');
   const floorTop = 122;
@@ -277,7 +277,7 @@ test('la machine repose sur le plancher, centrée, jamais flottante', () => {
   assert.ok(Math.abs(placement.translateMm[2] - floorTop) < 1e-6);
 });
 
-test('la rotation composée est équivalente aux deux rotations successives', () => {
+test('the composed rotation is equivalent to the two successive rotations', () => {
   // On envoie une seule rotation à Zoo plutôt que deux, pour ne pas dépendre
   // de la sémantique d'empilement de `set_object_transform`. Encore faut-il
   // que la composition soit juste.
@@ -304,7 +304,7 @@ test('la rotation composée est équivalente aux deux rotations successives', ()
     for (let a = 0; a < 3; a++) {
       assert.ok(
         Math.abs(max[a]! - min[a]! - placement.size[a]!) < 1e-6,
-        `axe ${a} pour ${up} : ${max[a]! - min[a]!} contre ${placement.size[a]}`
+        `axis ${a} for ${up}: ${max[a]! - min[a]!} against ${placement.size[a]}`
       );
     }
   }

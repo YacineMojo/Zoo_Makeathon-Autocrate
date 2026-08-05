@@ -49,10 +49,10 @@ function pickSkid(massKg: number) {
  */
 export function buildCrate(machine: Triplet, massKg: number): Crate {
   if (machine.lengthMm <= 0 || machine.widthMm <= 0 || machine.heightMm <= 0) {
-    throw new Error('Emprise machine invalide : les trois dimensions doivent être positives.');
+    throw new Error('Invalid machine footprint: all three dimensions must be positive.');
   }
   if (massKg <= 0) {
-    throw new Error('Masse invalide : un STEP ne porte pas de matériau, la masse est saisie.');
+    throw new Error('Invalid mass: a STEP file carries no material, the mass is entered by hand.');
   }
 
   // Les patins se dimensionnent à la masse de la machine : c'est elle qu'ils

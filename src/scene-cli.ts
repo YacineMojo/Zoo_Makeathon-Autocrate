@@ -44,7 +44,7 @@ const ZOO_COORDS: System = {
 
 const [, , path, massArg] = process.argv;
 if (!path || !massArg) {
-  console.error('Usage : tsx src/scene-cli.ts <fichier.obj> <masse_kg> [--pose=B] [--mode=route]');
+  console.error('Usage: tsx src/scene-cli.ts <file.obj> <mass_kg> [--pose=B] [--mode=route]');
   process.exit(1);
 }
 
@@ -85,16 +85,16 @@ const profile = machineProfile(cloud, axis.axis, placement, geometry.unit.scale,
 const boxes = [...crateBoxes(crate), ...blockingBoxes(crate, profile)];
 const envelope = boxesEnvelope(boxes);
 
-console.log(`${path} — ${cloud.count.toLocaleString('fr-FR')} sommets`);
+console.log(`${path} — ${cloud.count.toLocaleString('en-GB')} vertices`);
 console.log(`${geometry.unit.note}`);
-console.log(`\nPose retenue : ${pose.label}`);
+console.log(`\nRetained pose : ${pose.label}`);
 console.log(`  machine  ${placement.size.map((v) => Math.round(v)).join(' × ')} mm`);
 console.log(
-  `  caisse   ${envelope.size.map((v) => Math.round(v)).join(' × ')} mm  ` +
-    `(${boxes.length} pavés, dont ${blockingBoxes(crate, profile).length} de calage)`
+  `  crate    ${envelope.size.map((v) => Math.round(v)).join(' × ')} mm  ` +
+    `(${boxes.length} boxes, of which ${blockingBoxes(crate, profile).length} are blocking)`
 );
 console.log(
-  `  verdict  ${pose.retained ? pose.retained.gabarit.label : 'hors gabarit'} — ${pose.costing.totalEur.toLocaleString('fr-FR')} €, ${pose.costing.leadTimeDays} j`
+  `  verdict  ${pose.retained ? pose.retained.gabarit.label : 'out of gauge'} — ${pose.costing.totalEur.toLocaleString('en-GB')} €, ${pose.costing.leadTimeDays} j`
 );
 
 /* ------------------------------------------------------------- scène Zoo */
@@ -106,7 +106,7 @@ async function openWithRetry(attempts = 3): Promise<EngineSession> {
       return await EngineSession.open();
     } catch (err) {
       last = err;
-      console.log(`  tentative ${i}/${attempts} refusée : ${err instanceof Error ? err.message : err}`);
+      console.log(`  attempt ${i}/${attempts} refused : ${err instanceof Error ? err.message : err}`);
       await new Promise((r) => setTimeout(r, 3000 * i));
     }
   }
@@ -115,7 +115,7 @@ async function openWithRetry(attempts = 3): Promise<EngineSession> {
 
 await mkdir(OUT_DIR, { recursive: true });
 
-console.log('\nScène Zoo');
+console.log('\nZoo scene');
 const session = await openWithRetry();
 const entityIds: string[] = [];
 
@@ -139,11 +139,11 @@ try {
         // retire les normales que le moteur recalcule. Voir mesh/compacter.ts.
         const compact = compactObj(objText);
         console.log(
-          `  maillage compacté          ${(compact.beforeBytes / 1024 / 1024).toFixed(1)} → ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo  (${compact.vertices.toLocaleString('fr-FR')} sommets, ${compact.faces.toLocaleString('fr-FR')} faces)`
+          `  mesh compacted          ${(compact.beforeBytes / 1024 / 1024).toFixed(1)} → ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo  (${compact.vertices.toLocaleString('en-GB')} vertices, ${compact.faces.toLocaleString('en-GB')} faces)`
         );
         if (compact.afterBytes > BSON_MAX_BYTES) {
           throw new Error(
-            `maillage encore trop lourd pour une trame BSON : ${(compact.afterBytes / 1024 / 1024).toFixed(1)} Mo pour ${(BSON_MAX_BYTES / 1024 / 1024).toFixed(0)} Mo autorisés`
+            `mesh still too heavy for a BSON frame: ${(compact.afterBytes / 1024 / 1024).toFixed(1)} MB against ${(BSON_MAX_BYTES / 1024 / 1024).toFixed(0)} Mo autorisés`
           );
         }
         payload = Buffer.from(compact.obj);
@@ -162,11 +162,11 @@ try {
       );
 
       if (resp.type !== 'modeling' || resp.data.modeling_response.type !== 'import_files') {
-        throw new Error(`réponse inattendue : ${resp.type}`);
+        throw new Error(`unexpected response : ${resp.type}`);
       }
 
       const machineId = resp.data.modeling_response.data.object_id;
-      console.log(`  machine importée           ${s(performance.now() - t)}`);
+      console.log(`  machine imported           ${s(performance.now() - t)}`);
 
       // `set: false` — transformation **relative**. Le schéma documente
       // pourtant `set: true` comme « écraser la valeur précédente », mais le
@@ -212,19 +212,19 @@ try {
         ambient_occlusion: 0.4,
       });
 
-      console.log(`  machine posée dans la pose`);
+      console.log(`  machine placed in its pose`);
       entityIds.push(machineId);
     } catch (err) {
       // Une machine qui n'entre pas ne doit pas emporter la caisse : le STEP
       // de caisse seule reste utile, et l'échec est une mesure à documenter.
-      console.log(`  ⚠ machine non importée : ${err instanceof Error ? err.message : err}`);
+      console.log(`  ⚠ machine not imported : ${err instanceof Error ? err.message : err}`);
     }
   }
 
   const t = performance.now();
   const crateIds = await createBoxesBatched(session, boxes);
   entityIds.push(...crateIds);
-  console.log(`  caisse construite          ${s(performance.now() - t)}  ${crateIds.length} solides`);
+  console.log(`  crate built          ${s(performance.now() - t)}  ${crateIds.length} solids`);
 
   // Le calage en bois plus foncé : dans une vue écorchée, il faut pouvoir
   // distinguer ce qui tient la machine de ce qui l'enferme.
@@ -271,7 +271,7 @@ try {
           { type: 'export', entity_ids: ids, format: outputFormat },
           600_000
         );
-        if (resp.type !== 'export') throw new Error(`réponse ${resp.type}`);
+        if (resp.type !== 'export') throw new Error(`response ${resp.type}`);
 
         for (const f of resp.data.files) {
           const buf = Buffer.from(f.contents as unknown as Uint8Array);
@@ -279,13 +279,13 @@ try {
           console.log(
             `  ${`${OUT_DIR}/${name}`.padEnd(20)} ${s(performance.now() - t0).padStart(7)}  ` +
               `${(buf.length / 1024 / 1024).toFixed(1).padStart(5)} Mo  ` +
-              `${complet ? 'machine + caisse' : 'caisse seule (b-rep)'}`
+              `${complet ? 'machine + crate' : 'crate only (b-rep)'}`
           );
         }
         return;
       } catch (err) {
         console.log(
-          `  ⚠ export ${format} avec la machine : ${err instanceof Error ? err.message : err}`
+          `  ⚠ ${format} export with the machine: ${err instanceof Error ? err.message : err}`
         );
       }
     }
@@ -321,12 +321,12 @@ try {
       const ecart = exported.map((v, i) => Math.abs(v - attendu[i]!));
       const pire = Math.max(...ecart);
       console.log(
-        `  contrôle glTF              ${exported.map((v) => Math.round(v)).join(' × ')} mm  ` +
-          (pire < 1 ? '✅ conforme au verdict' : `❌ écart de ${Math.round(pire)} mm avec le verdict`)
+        `  glTF check              ${exported.map((v) => Math.round(v)).join(' × ')} mm  ` +
+          (pire < 1 ? '✅ matches the verdict' : `❌ off by ${Math.round(pire)} mm against the verdict`)
       );
     }
   } catch (err) {
-    console.log(`  ⚠ contrôle glTF impossible : ${err instanceof Error ? err.message : err}`);
+    console.log(`  ⚠ glTF check impossible : ${err instanceof Error ? err.message : err}`);
   }
 
   await snapshot('caisse-fermee.png');
@@ -350,5 +350,5 @@ try {
 
 } finally {
   await session.close();
-  console.log(`  session fermée             ${s(session.elapsedMs())} facturées`);
+  console.log(`  session closed             ${s(session.elapsedMs())} billed`);
 }

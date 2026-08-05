@@ -82,7 +82,7 @@ export class EngineSession {
 
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error) =>
-        reject(new Error(`Connexion à l'Engine API refusée : ${err.message}`));
+        reject(new Error(`Engine API connection refused : ${err.message}`));
       ws.once('open', () => {
         ws.off('error', onError);
         resolve();
@@ -133,7 +133,7 @@ export class EngineSession {
         const detail = msg.errors
           .map((e: { error_code: string; message: string }) => `[${e.error_code}] ${e.message}`)
           .join(' | ');
-        console.error(`  ⚠ erreur moteur non corrélée : ${detail}`);
+        console.error(`  ⚠ uncorrelated engine error: ${detail}`);
       }
       return; // message non sollicité (ice_server_info, session data, metrics…)
     }
@@ -149,7 +149,7 @@ export class EngineSession {
       const detail = errors
         .map((e: { error_code: string; message: string }) => `[${e.error_code}] ${e.message}`)
         .join(' | ');
-      waiter.reject(new Error(detail || 'échec de commande sans détail'));
+      waiter.reject(new Error(detail || 'command failure with no detail'));
     }
   }
 
@@ -175,7 +175,7 @@ export class EngineSession {
       return decodeMsgPack(raw) as WebSocketResponse;
     } catch (err) {
       console.error(
-        `  ⚠ frame indécodable (${raw.length} octets) : ${err instanceof Error ? err.message : err}`
+        `  ⚠ undecodable frame (${raw.length} bytes) : ${err instanceof Error ? err.message : err}`
       );
       return undefined;
     }
@@ -236,7 +236,7 @@ export class EngineSession {
     const response = new Promise<OkWebSocketResponseData>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(cmdId);
-        reject(new Error(`Timeout (${timeoutMs} ms) sur la commande ${cmd.type}`));
+        reject(new Error(`Timeout (${timeoutMs} ms) on command ${cmd.type}`));
       }, timeoutMs);
 
       this.pending.set(cmdId, {
@@ -291,7 +291,7 @@ export class EngineSession {
     // commandes du lot se citent entre elles. Ajout du projet Caisse.
     const ids = reserved ?? cmds.map(() => this.nextId());
     if (ids.length !== cmds.length) {
-      throw new Error(`${ids.length} identifiants réservés pour ${cmds.length} commandes.`);
+      throw new Error(`${ids.length} ids reserved for ${cmds.length} commands.`);
     }
     const batchId = this.nextId();
 
@@ -306,7 +306,7 @@ export class EngineSession {
     const done = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(batchId);
-        reject(new Error(`Timeout (${timeoutMs} ms) sur un lot de ${cmds.length} commandes`));
+        reject(new Error(`Timeout (${timeoutMs} ms) on a batch of ${cmds.length} commands`));
       }, timeoutMs);
 
       this.pending.set(batchId, {
@@ -316,7 +316,7 @@ export class EngineSession {
         },
         reject: (e) => {
           clearTimeout(timer);
-          reject(new Error(`lot de ${cmds.length} commandes : ${e.message}`));
+          reject(new Error(`batch of ${cmds.length} commands : ${e.message}`));
         },
       });
     });
@@ -336,7 +336,7 @@ export class EngineSession {
   /** Ferme proprement. À appeler systématiquement, y compris en cas d'erreur. */
   async close(): Promise<void> {
     for (const [, waiter] of this.pending) {
-      waiter.reject(new Error('session fermée avant réponse'));
+      waiter.reject(new Error('session closed before response'));
     }
     this.pending.clear();
 

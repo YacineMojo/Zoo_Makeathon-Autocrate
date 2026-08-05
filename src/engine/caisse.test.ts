@@ -10,7 +10,7 @@ import type { VertexCloud } from '../mesh/obj.js';
 
 const crate = buildCrate({ lengthMm: 3168, widthMm: 2201, heightMm: 1303 }, 2_350);
 
-test('les pavés reproduisent exactement l’encombrement qui a été confronté au gabarit', () => {
+test('the boxes reproduce exactly the envelope that was checked against the gauge', () => {
   // Si la caisse dessinée n'est pas celle qui a reçu le verdict, la
   // démonstration est fausse en silence. C'est le test le plus important du
   // fichier.
@@ -21,29 +21,29 @@ test('les pavés reproduisent exactement l’encombrement qui a été confronté
   assert.ok(Math.abs(env.size[2] - crate.outer.heightMm) < 1e-6, `h ${env.size[2]}`);
 });
 
-test('la caisse est centrée sur l’origine en X et Y, posée sur z = 0', () => {
+test('the crate is centred on the origin in X and Y, sitting on z = 0', () => {
   const env = boxesEnvelope(crateBoxes(crate));
   assert.ok(Math.abs(env.min[0] + env.max[0]) < 1e-6);
   assert.ok(Math.abs(env.min[1] + env.max[1]) < 1e-6);
   assert.equal(env.min[2], 0);
 });
 
-test('aucun pavé n’est dégénéré', () => {
+test('no box is degenerate', () => {
   for (const b of crateBoxes(crate)) {
     assert.ok(b.width > 0 && b.depth > 0 && b.height > 0, `${b.name} : ${b.width}×${b.depth}×${b.height}`);
   }
 });
 
-test('tous les pavés tiennent dans l’encombrement annoncé', () => {
+test('every box fits inside the announced envelope', () => {
   const { outer } = crate;
   for (const b of crateBoxes(crate)) {
-    assert.ok(b.x >= -outer.lengthMm / 2 - 1e-6 && b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} en X`);
-    assert.ok(b.y >= -outer.widthMm / 2 - 1e-6 && b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} en Y`);
-    assert.ok(b.z >= -1e-6 && b.z + b.height <= outer.heightMm + 1e-6, `${b.name} en Z`);
+    assert.ok(b.x >= -outer.lengthMm / 2 - 1e-6 && b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} in X`);
+    assert.ok(b.y >= -outer.widthMm / 2 - 1e-6 && b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} in Y`);
+    assert.ok(b.z >= -1e-6 && b.z + b.height <= outer.heightMm + 1e-6, `${b.name} in Z`);
   }
 });
 
-test('on retrouve les postes attendus, et le bon nombre de patins', () => {
+test('the expected members are there, and the right number of skids', () => {
   const boxes = crateBoxes(crate);
   const names = boxes.map((b) => b.name);
 
@@ -54,7 +54,7 @@ test('on retrouve les postes attendus, et le bon nombre de patins', () => {
   assert.ok(names.filter((n) => n.startsWith('montant_')).length >= 4);
 });
 
-test('la machine placée tient dans le volume intérieur de sa caisse', () => {
+test('the placed machine fits inside the inner volume of its crate', () => {
   // Le calage est de 60 mm par face : la machine doit être strictement à
   // l'intérieur, sans jamais toucher un panneau.
   const machine = { lengthMm: 3168, widthMm: 2201, heightMm: 1303 };
@@ -80,9 +80,9 @@ test('la machine placée tient dans le volume intérieur de sa caisse', () => {
   const halfL = crate.outer.lengthMm / 2 - crate.panelThicknessMm;
   const halfW = crate.outer.widthMm / 2 - crate.panelThicknessMm;
 
-  assert.ok(placement.size[0] / 2 < halfL, 'la machine déborde en longueur');
-  assert.ok(placement.size[1] / 2 < halfW, 'la machine déborde en largeur');
-  assert.ok(floorTop + placement.size[2] < crate.outer.heightMm, 'la machine touche le chapeau');
+  assert.ok(placement.size[0] / 2 < halfL, 'the machine overflows in length');
+  assert.ok(placement.size[1] / 2 < halfW, 'the machine overflows in width');
+  assert.ok(floorTop + placement.size[2] < crate.outer.heightMm, 'the machine touches the cap');
 });
 
 /* ------------------------------------------------------------------ calage */
@@ -106,7 +106,7 @@ const profilPlein = {
   topMm: zSol + 1303,
 };
 
-test('un jeu court se comble d’une pièce, de la paroi jusqu’à la machine', () => {
+test('a short gap is filled by one piece, from the wall to the machine', () => {
   const interieurY = crate.outer.widthMm / 2 - crate.panelThicknessMm - 45;
   // Machine presque contre la paroi : le jeu tient en une seule cale.
   const serre = {
@@ -116,34 +116,34 @@ test('un jeu court se comble d’une pièce, de la paroi jusqu’à la machine',
   };
 
   const cotesA = blockingBoxes(crate, serre).filter((b) => b.name.startsWith('butee_long_a'));
-  assert.equal(cotesA.length, 1, 'une seule pièce pour un jeu court');
+  assert.equal(cotesA.length, 1, 'a single piece for a short gap');
   const b = cotesA[0]!;
-  assert.ok(Math.abs(b.y - -interieurY) < 1e-6, 'ne part pas de la paroi');
-  assert.ok(Math.abs(b.y + b.depth - (-interieurY + 80)) < 1e-6, 'n’atteint pas la machine');
+  assert.ok(Math.abs(b.y - -interieurY) < 1e-6, 'does not start at the wall');
+  assert.ok(Math.abs(b.y + b.depth - (-interieurY + 80)) < 1e-6, 'does not reach the machine');
 });
 
-test('un jeu profond se comble de deux pièces, avec le vide entre elles', () => {
+test('a deep gap is filled by two pieces, with the void between them', () => {
   // Un bloc de bois plein de trois mètres n'existe pas en caisserie. Sur la
   // machine de démonstration couchée, une butée de pignon faisait exactement
   // cela avant correction.
   const interieurY = crate.outer.widthMm / 2 - crate.panelThicknessMm - 45;
   const cales = blockingBoxes(crate, profilPlein).filter((b) => b.name.startsWith('butee_long_a'));
 
-  assert.ok(cales.length >= 2, 'attendu deux pièces');
+  assert.ok(cales.length >= 2, 'expected two pieces');
   const paroi = cales.find((b) => b.name.endsWith('_paroi'))!;
   const machine = cales.find((b) => b.name.endsWith('_machine'))!;
 
-  assert.ok(Math.abs(paroi.y - -interieurY) < 1e-6, 'la pièce de paroi ne touche pas la paroi');
-  assert.ok(Math.abs(machine.y + machine.depth - -600) < 1e-6, 'la pièce de machine ne touche pas la machine');
-  assert.ok(machine.y > paroi.y + paroi.depth, 'les deux pièces devraient laisser un vide');
+  assert.ok(Math.abs(paroi.y - -interieurY) < 1e-6, 'the wall piece does not touch the wall');
+  assert.ok(Math.abs(machine.y + machine.depth - -600) < 1e-6, 'the machine piece does not touch the machine');
+  assert.ok(machine.y > paroi.y + paroi.depth, 'the two pieces should leave a void');
 
   // Et surtout : le volume de bois s'effondre par rapport au bloc plein.
   const plein = (-600 - -interieurY) * 300 * paroi.height;
   const reel = (paroi.depth + machine.depth) * 300 * paroi.height;
-  assert.ok(reel < plein / 2, `${Math.round(reel / 1e6)} dm³ contre ${Math.round(plein / 1e6)} dm³ en plein`);
+  assert.ok(reel < plein / 2, `${Math.round(reel / 1e6)} dm³ against ${Math.round(plein / 1e6)} dm³ if solid`);
 });
 
-test('une colonne où la machine n’est pas au sol ne reçoit pas de butée', () => {
+test('a column where the machine is off the floor gets no stop', () => {
   // C'est le défaut qui a motivé la réécriture : une butée posée là où la
   // machine n'est pas s'appuie sur la paroi et sur rien d'autre. Elle a l'air
   // d'une cale sans en être.
@@ -157,23 +157,23 @@ test('une colonne où la machine n’est pas au sol ne reçoit pas de butée', (
   for (const b of cales) {
     assert.ok(
       Math.abs(b.x + b.width / 2 - 1400) < BUTEE_LARGEUR_MM,
-      `${b.name} est posée en ${Math.round(b.x)} alors que la machine n’est qu’en 1400`
+      `${b.name} sits at ${Math.round(b.x)} while the machine only reaches 1400`
     );
   }
 });
 
-test('une butée ne monte jamais plus haut que la machine qu’elle retient', () => {
+test('a stop never rises higher than the machine it restrains', () => {
   const basse = {
     ...profilPlein,
     basParX: [col(0, -600, 600, zSol + 60)],
     basParY: [col(0, -1200, 1200, zSol + 60)],
   };
   for (const b of blockingBoxes(crate, basse).filter((x) => x.name.startsWith('butee_'))) {
-    assert.ok(b.height <= 60 + 1e-6, `${b.name} monte à ${b.height} pour une machine à 60`);
+    assert.ok(b.height <= 60 + 1e-6, `${b.name} rises to ${b.height} for a machine at 60`);
   }
 });
 
-test('une traverse ne se pose que sur une partie haute, et repose dessus', () => {
+test('a cross member only sits on a high part, and rests on it', () => {
   // Une traverse posée au droit d'une partie basse descendrait jusqu'à elle et
   // deviendrait un poteau d'un mètre quatre-vingts. Vu sur la machine de
   // démonstration : une « traverse » de 382 à 2 217 mm.
@@ -187,14 +187,14 @@ test('une traverse ne se pose que sur une partie haute, et repose dessus', () =>
   };
 
   const traverses = blockingBoxes(crate, irregulier).filter((b) => b.name.startsWith('traverse_'));
-  assert.ok(traverses.length >= 1, 'la partie haute doit recevoir sa traverse');
+  assert.ok(traverses.length >= 1, 'the high part must get its cross member');
   for (const t of traverses) {
-    assert.ok(t.z >= zSol + 1303 - 1e-6, `traverse posée à ${Math.round(t.z)}, sous la partie haute`);
-    assert.ok(t.height < 200, `traverse de ${Math.round(t.height)} mm : c’est un poteau, pas une traverse`);
+    assert.ok(t.z >= zSol + 1303 - 1e-6, `cross member sits at ${Math.round(t.z)}, below the high part`);
+    assert.ok(t.height < 200, `cross member of ${Math.round(t.height)} mm: that is a stud, not a cross member`);
   }
 });
 
-test('une colonne au ras de la paroi produit quand même sa cale', () => {
+test('a column flush with the wall still produces its chock', () => {
   // Deux traverses de maintien avaient disparu en silence : centrées sur les
   // colonnes extrêmes, elles débordaient, et le bornage les rabotait à néant.
   // La caisse était juste et la machine n'était plus tenue par le haut.
@@ -209,45 +209,45 @@ test('une colonne au ras de la paroi produit quand même sa cale', () => {
   };
 
   const traverses = blockingBoxes(crate, auRas).filter((b) => b.name.startsWith('traverse_'));
-  assert.ok(traverses.length >= 2, 'les traverses des colonnes extrêmes doivent survivre au bornage');
+  assert.ok(traverses.length >= 2, 'the cross members of the outermost columns must survive clamping');
   for (const t of traverses) {
-    assert.ok(t.width > 1 && t.height > 1, `${t.name} rabotée`);
+    assert.ok(t.width > 1 && t.height > 1, `${t.name} planed away`);
   }
 });
 
-test('aucune cale ne sort de la caisse ni ne traverse le plancher', () => {
+test('no chock leaves the crate or crosses the floor', () => {
   const { outer, skid, floorThicknessMm } = crate;
   for (const b of blockingBoxes(crate, profilPlein)) {
-    assert.ok(b.x >= -outer.lengthMm / 2 - 1e-6 && b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} en X`);
-    assert.ok(b.y >= -outer.widthMm / 2 - 1e-6 && b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} en Y`);
-    assert.ok(b.z >= skid.heightMm + floorThicknessMm - 1e-6, `${b.name} traverse le plancher`);
-    assert.ok(b.z + b.height <= outer.heightMm + 1e-6, `${b.name} traverse le chapeau`);
+    assert.ok(b.x >= -outer.lengthMm / 2 - 1e-6 && b.x + b.width <= outer.lengthMm / 2 + 1e-6, `${b.name} in X`);
+    assert.ok(b.y >= -outer.widthMm / 2 - 1e-6 && b.y + b.depth <= outer.widthMm / 2 + 1e-6, `${b.name} in Y`);
+    assert.ok(b.z >= skid.heightMm + floorThicknessMm - 1e-6, `${b.name} crosses the floor`);
+    assert.ok(b.z + b.height <= outer.heightMm + 1e-6, `${b.name} crosses the cap`);
   }
 });
 
-test('le calage n’agrandit jamais la caisse', () => {
+test('blocking never enlarges the crate', () => {
   const avant = boxesEnvelope(crateBoxes(crate));
   const apres = boxesEnvelope([...crateBoxes(crate), ...blockingBoxes(crate, profilPlein)]);
   assert.deepEqual(apres.size, avant.size);
 });
 
-test('pas de colonne exploitable, pas de butée inventée', () => {
+test('no usable column, no invented stop', () => {
   const cales = blockingBoxes(crate, { basParX: [], basParY: [], hautParX: [], topMm: zSol + 1303 });
   assert.equal(cales.filter((b) => b.name.startsWith('butee_')).length, 0);
-  assert.ok(cales.some((b) => b.name.startsWith('lisse_')), 'les lisses, elles, ne dépendent que de la caisse');
+  assert.ok(cales.some((b) => b.name.startsWith('lisse_')), 'the rails, however, depend only on the crate');
 });
 
-test('une machine qui touche déjà la paroi ne reçoit pas de cale dégénérée', () => {
+test('a machine already touching the wall gets no degenerate chock', () => {
   const colle = {
     ...profilPlein,
     basParX: [col(0, -crate.outer.widthMm / 2, crate.outer.widthMm / 2)],
   };
   for (const b of blockingBoxes(crate, colle)) {
-    assert.ok(b.width > 1 && b.depth > 1 && b.height > 1, `${b.name} dégénérée`);
+    assert.ok(b.width > 1 && b.depth > 1 && b.height > 1, `${b.name} degenerate`);
   }
 });
 
-test('aucune cale ne traverse la machine, sur une géométrie irrégulière', () => {
+test('no chock crosses the machine, on an irregular geometry', () => {
   // Invariant de bout en bout : nuage → placement → profil → cales, puis on
   // vérifie qu'aucun sommet de la machine n'est à l'intérieur d'une cale.
   // C'est ce test qui manquait : trois défauts successifs — cale déplacée hors
@@ -273,7 +273,7 @@ test('aucune cale ne traverse la machine, sur une géométrie irrégulière', ()
 
   const placement = placeForPose(cloud, 'z', 0, 1, floorTop);
   const cales = blockingBoxes(machine, machineProfile(cloud, 'z', placement, 1, floorTop));
-  assert.ok(cales.length > 0, 'la géométrie doit produire des cales');
+  assert.ok(cales.length > 0, 'the geometry must produce chocks');
 
   for (const b of cales) {
     for (const [px, py, pz] of pts) {
@@ -284,7 +284,7 @@ test('aucune cale ne traverse la machine, sur une géométrie irrégulière', ()
         x > b.x + 1 && x < b.x + b.width - 1 &&
         y > b.y + 1 && y < b.y + b.depth - 1 &&
         z > b.z + 1 && z < b.z + b.height - 1;
-      assert.ok(!dedans, `${b.name} traverse la machine en ${Math.round(x)}, ${Math.round(y)}, ${Math.round(z)}`);
+      assert.ok(!dedans, `${b.name} crosses the machine at ${Math.round(x)}, ${Math.round(y)}, ${Math.round(z)}`);
     }
   }
 });

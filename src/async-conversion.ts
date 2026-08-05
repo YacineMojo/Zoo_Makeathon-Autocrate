@@ -57,11 +57,11 @@ const started = await file.create_file_conversion_options({
 });
 
 if ('error_code' in (started as object)) {
-  console.error(`❌ démarrage refusé : ${JSON.stringify(started).slice(0, 400)}`);
+  console.error(`❌ start refused: ${JSON.stringify(started).slice(0, 400)}`);
   process.exit(1);
 }
 
-console.log(`job démarré en ${((performance.now() - t0) / 1000).toFixed(1)} s — ${started.status}, id ${started.id}`);
+console.log(`job started in ${((performance.now() - t0) / 1000).toFixed(1)} s — ${started.status}, id ${started.id}`);
 
 // Le job peut déjà être terminé dans la réponse initiale : on ne repart en
 // scrutation que s'il ne l'est pas.
@@ -78,17 +78,17 @@ while (operation.status === 'queued' || operation.status === 'uploaded' || opera
   }
   operation = next as typeof operation;
   if (polls % 5 === 0) {
-    console.log(`  … ${operation.status} après ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+    console.log(`  … ${operation.status} after ${((performance.now() - t0) / 1000).toFixed(0)} s`);
   }
 }
 
 const totalMs = performance.now() - t0;
-console.log(`\nstatut final : ${operation.status} après ${(totalMs / 1000).toFixed(1)} s (${polls} scrutations)`);
+console.log(`\nfinal status: ${operation.status} after ${(totalMs / 1000).toFixed(1)} s (${polls} polls)`);
 
 // `get_async_operation` rend une union de tous les types d'opérations : la
 // conversion n'expose ses `outputs` que dans la variante `file_conversion`.
 if (operation.status !== 'completed' || !('outputs' in operation)) {
-  console.error(`❌ ${operation.error ?? 'échec sans détail'}`);
+  console.error(`❌ ${operation.error ?? 'failure with no detail'}`);
   process.exit(1);
 }
 
@@ -107,11 +107,11 @@ for (const [name, b64] of Object.entries(operation.outputs ?? {})) {
   const size = axisAlignedBounds(cloud).size.map((v) => Math.round(v));
   console.log(
     `✅ out/async-${name} — ${(buf.length / 1024 / 1024).toFixed(1)} Mo, ` +
-      `${cloud.count.toLocaleString('fr-FR')} sommets, emprise naïve ${size.join(' × ')} mm`
+      `${cloud.count.toLocaleString('en-GB')} vertices, naive footprint ${size.join(' × ')} mm`
   );
 }
 
 if (vertices === 0) {
-  console.error('❌ conversion terminée mais aucun sommet : géométrie inexploitable.');
+  console.error('❌ conversion finished but no vertices: unusable geometry.');
   process.exit(1);
 }

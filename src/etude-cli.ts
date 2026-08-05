@@ -22,7 +22,7 @@ import { render } from './rapport.js';
 const [, , path, massArg] = process.argv;
 if (!path || !massArg) {
   console.error(
-    'Usage : tsx src/etude-cli.ts <fichier.obj> <masse_kg> [--up=z] [--unit=auto] [--no-couchage] [--mode=maritime]'
+    'Usage: tsx src/etude-cli.ts <file.obj> <mass_kg> [--up=z] [--unit=auto] [--no-couchage] [--mode=maritime]'
   );
   process.exit(1);
 }
@@ -34,7 +34,7 @@ const massKg = Number(massArg);
 if (!Number.isFinite(massKg) || massKg <= 0) {
   // Un STEP ne porte pas de matériau : la masse est saisie, et la demander
   // montre qu'on le sait.
-  console.error(`Masse invalide : « ${massArg} ». Un STEP ne porte pas de matériau.`);
+  console.error(`Invalid mass: “${massArg}”. A STEP file carries no material.`);
   process.exit(1);
 }
 
@@ -64,9 +64,9 @@ const result = study({
   mode: arg('mode', 'maritime') as 'maritime' | 'route',
 });
 
-render(`${path} — ${cloud.count.toLocaleString('fr-FR')} sommets`, result);
+render(`${path} — ${cloud.count.toLocaleString('en-GB')} vertices`, result);
 
 console.log(`\n  ${geometry.unit.note}`);
 console.log(
-  `  Emprise orientée, machine debout : ${geometry.areaGainPct.toFixed(1)} % d'emprise au sol gagnés sur le repère CAO (lacet ${geometry.oriented[0]!.footprint.yawDeg.toFixed(1)}°).`
+  `  Oriented footprint, machine upright : ${geometry.areaGainPct.toFixed(1)} % of footprint area gained on the CAD frame (yaw ${geometry.oriented[0]!.footprint.yawDeg.toFixed(1)}°).`
 );

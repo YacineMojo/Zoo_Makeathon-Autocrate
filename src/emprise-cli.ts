@@ -16,7 +16,7 @@ import type { UnitChoice } from './geometrie/unites.js';
 
 const path = process.argv[2];
 if (!path) {
-  console.error('Usage : tsx src/emprise-cli.ts <fichier.obj> [--up=z] [--unit=auto]');
+  console.error('Usage: tsx src/emprise-cli.ts <file.obj> [--up=z] [--unit=auto]');
   process.exit(1);
 }
 
@@ -38,17 +38,17 @@ const mm = (v: number) => `${Math.round(v)}`.padStart(5);
 const m2 = (v: number) => (v / 1e6).toFixed(2);
 
 console.log(`${path}`);
-console.log(`  ${cloud.count.toLocaleString('fr-FR')} sommets lus en ${parseMs.toFixed(0)} ms`);
-console.log(`  emprises calculées en ${computeMs.toFixed(0)} ms`);
+console.log(`  ${cloud.count.toLocaleString('en-GB')} vertices read in ${parseMs.toFixed(0)} ms`);
+console.log(`  footprints computed in ${computeMs.toFixed(0)} ms`);
 console.log(`  ${result.unit.note}\n`);
 
-console.log(`  Référence (repère CAO)  ${mm(result.reference.lengthMm)} × ${mm(result.reference.widthMm)} × ${mm(result.reference.heightMm)} mm   ${m2(result.reference.areaMm2)} m² au sol`);
+console.log(`  Reference (CAD frame)  ${mm(result.reference.lengthMm)} × ${mm(result.reference.widthMm)} × ${mm(result.reference.heightMm)} mm   ${m2(result.reference.areaMm2)} m² footprint`);
 for (const { axis, footprint } of result.oriented) {
   console.log(
-    `  Orientée, ${axis.toUpperCase()} en haut     ${mm(footprint.lengthMm)} × ${mm(footprint.widthMm)} × ${mm(footprint.heightMm)} mm   ${m2(footprint.areaMm2)} m² au sol   lacet ${footprint.yawDeg.toFixed(1)}°`
+    `  Oriented, ${axis.toUpperCase()} up          ${mm(footprint.lengthMm)} × ${mm(footprint.widthMm)} × ${mm(footprint.heightMm)} mm   ${m2(footprint.areaMm2)} m² footprint   yaw ${footprint.yawDeg.toFixed(1)}°`
   );
 }
 
 console.log(
-  `\n  Gain d'emprise au sol, machine debout : ${result.areaGainPct.toFixed(1)} %`
+  `\n  Footprint area gained, machine upright : ${result.areaGainPct.toFixed(1)} %`
 );

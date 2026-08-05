@@ -49,7 +49,7 @@ const total0 = performance.now();
 
 const bytes = await readFile(path);
 
-const objText = await mesurer('lecture du STEP (File Format API)', 'Zoo', async () => {
+const objText = await mesurer('reading the STEP (File Format API)', 'Zoo', async () => {
   const started = await file.create_file_conversion_options({
     client,
     files: [{ name: basename(path), data: new Blob([new Uint8Array(bytes)]) }],
@@ -71,9 +71,9 @@ const objText = await mesurer('lecture du STEP (File Format API)', 'Zoo', async 
 
 /* 2 ─ notre code mesure et décide ------------------------------------------ */
 
-const cloud = await mesurer('lecture du maillage', 'nous', () => parseObjVertices(objText));
-const geometry = await mesurer('emprises et poses', 'nous', () => buildPoses(cloud, 'z', 'auto'));
-const result = await mesurer('caisse, verdicts, coûts', 'nous', () =>
+const cloud = await mesurer('reading the mesh', 'nous', () => parseObjVertices(objText));
+const geometry = await mesurer('footprints and poses', 'nous', () => buildPoses(cloud, 'z', 'auto'));
+const result = await mesurer('crate, verdicts, costs', 'nous', () =>
   study({ poses: geometry.poses, massKg })
 );
 
@@ -89,11 +89,11 @@ const boxes = [
 
 /* 3 ─ Zoo construit la caisse et ressort le STEP --------------------------- */
 
-const session = await mesurer('ouverture de session (Engine API)', 'Zoo', () => EngineSession.open());
+const session = await mesurer('opening the session (Engine API)', 'Zoo', () => EngineSession.open());
 await mkdir('out', { recursive: true });
 
 try {
-  const machineId = await mesurer('import du STEP en b-rep', 'Zoo', async () => {
+  const machineId = await mesurer('importing the STEP as b-rep', 'Zoo', async () => {
     const { resp } = await session.send(
       {
         type: 'import_files',
@@ -103,12 +103,12 @@ try {
       900_000
     );
     if (resp.type !== 'modeling' || resp.data.modeling_response.type !== 'import_files') {
-      throw new Error(`réponse ${resp.type}`);
+      throw new Error(`response ${resp.type}`);
     }
     return resp.data.modeling_response.data.object_id;
   });
 
-  await mesurer('mise en pose de la machine', 'Zoo', () =>
+  await mesurer('placing the machine in its pose', 'Zoo', () =>
     session.send({
       type: 'set_object_transform',
       object_id: machineId,
@@ -136,28 +136,28 @@ try {
     })
   );
 
-  const crateIds = await mesurer('construction de la caisse en b-rep', 'Zoo', () =>
+  const crateIds = await mesurer('building the crate as b-rep', 'Zoo', () =>
     createBoxesBatched(session, boxes)
   );
 
   const ids = [machineId, ...crateIds];
 
-  const step = await mesurer('export du STEP commun', 'Zoo', async () => {
+  const step = await mesurer('exporting the common STEP', 'Zoo', async () => {
     const { resp } = await session.send(
       { type: 'export', entity_ids: ids, format: { type: 'step', coords: ZOO_COORDS, created: undefined } },
       600_000
     );
-    if (resp.type !== 'export') throw new Error(`réponse ${resp.type}`);
+    if (resp.type !== 'export') throw new Error(`response ${resp.type}`);
     return Buffer.from(resp.data.files[0]!.contents as unknown as Uint8Array);
   });
   await writeFile('out/bout-en-bout.step', step);
 
-  const gltf = await mesurer('export du glTF pour le viewer', 'Zoo', async () => {
+  const gltf = await mesurer('exporting the glTF for the viewer', 'Zoo', async () => {
     const { resp } = await session.send(
       { type: 'export', entity_ids: ids, format: { type: 'gltf', storage: 'embedded', presentation: 'compact' } },
       600_000
     );
-    if (resp.type !== 'export') throw new Error(`réponse ${resp.type}`);
+    if (resp.type !== 'export') throw new Error(`response ${resp.type}`);
     return Buffer.from(resp.data.files[0]!.contents as unknown as Uint8Array);
   });
   await writeFile('out/bout-en-bout.gltf', gltf);
@@ -168,7 +168,7 @@ try {
   const zooMs = chrono.filter((c) => c.ou === 'Zoo').reduce((a, c) => a + c.ms, 0);
   const nousMs = chrono.filter((c) => c.ou === 'nous').reduce((a, c) => a + c.ms, 0);
 
-  console.log(`\n${path} — ${(bytes.length / 1024).toFixed(0)} Ko, ${cloud.count} sommets, ${massKg} kg\n`);
+  console.log(`\n${path} — ${(bytes.length / 1024).toFixed(0)} Ko, ${cloud.count} vertices, ${massKg} kg\n`);
   for (const c of chrono) {
     const barre = '█'.repeat(Math.max(1, Math.round((c.ms / totalMs) * 40)));
     console.log(
@@ -177,18 +177,18 @@ try {
   }
 
   console.log(`\n  ${'total'.padEnd(38)} ${(totalMs / 1000).toFixed(2).padStart(6)} s`);
-  console.log(`  ${'dont Zoo'.padEnd(38)} ${(zooMs / 1000).toFixed(2).padStart(6)} s  ${((zooMs / totalMs) * 100).toFixed(0)} %`);
-  console.log(`  ${'dont notre code'.padEnd(38)} ${(nousMs / 1000).toFixed(2).padStart(6)} s  ${((nousMs / totalMs) * 100).toFixed(0)} %`);
+  console.log(`  ${'of which Zoo'.padEnd(38)} ${(zooMs / 1000).toFixed(2).padStart(6)} s  ${((zooMs / totalMs) * 100).toFixed(0)} %`);
+  console.log(`  ${'of which our code'.padEnd(38)} ${(nousMs / 1000).toFixed(2).padStart(6)} s  ${((nousMs / totalMs) * 100).toFixed(0)} %`);
 
   const controle = gltfSizeMm(JSON.parse(gltf.toString('utf8')));
   const eco = savings(result);
   console.log(
-    `\n  ${pose.label} — ${pose.retained?.gabarit.label ?? 'hors gabarit'}, ` +
-      `${pose.costing.totalEur.toLocaleString('fr-FR')} €, ${pose.costing.leadTimeDays} j` +
-      (eco ? `, soit ${eco.eur.toLocaleString('fr-FR')} € et ${eco.days} jours économisés` : '')
+    `\n  ${pose.label} — ${pose.retained?.gabarit.label ?? 'out of gauge'}, ` +
+      `${pose.costing.totalEur.toLocaleString('en-GB')} €, ${pose.costing.leadTimeDays} j` +
+      (eco ? `, i.e. ${eco.eur.toLocaleString('en-GB')} € and ${eco.days} days saved` : '')
   );
   console.log(
-    `  out/bout-en-bout.step — ${(step.length / 1024 / 1024).toFixed(2)} Mo, machine + caisse, ` +
+    `  out/bout-en-bout.step — ${(step.length / 1024 / 1024).toFixed(2)} Mo, machine + crate, ` +
       `${controle ? controle.map((v) => Math.round(v)).join(' × ') : '?'} mm`
   );
 } finally {

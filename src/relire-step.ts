@@ -39,11 +39,11 @@ try {
   );
 
   if (resp.type !== 'modeling' || resp.data.modeling_response.type !== 'import_files') {
-    throw new Error(`Zoo refuse son propre export : ${resp.type}`);
+    throw new Error(`Zoo refuses its own export : ${resp.type}`);
   }
 
   const objectId = resp.data.modeling_response.data.object_id;
-  console.log(`✅ relu par Zoo en ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  console.log(`✅ read back by Zoo in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 
   // Combien de solides, et de quelle taille ? On ressort en glTF, dont on sait
   // relire l'encombrement, plutôt que de refaire un parseur de STEP.
@@ -59,7 +59,7 @@ try {
   if (exp.type === 'export' && exp.data.files[0]) {
     const gltf = JSON.parse(Buffer.from(exp.data.files[0].contents as unknown as Uint8Array).toString('utf8'));
     const size = gltfSizeMm(gltf);
-    console.log(`   ${gltf.meshes?.length ?? 0} solides relus`);
+    console.log(`   ${gltf.meshes?.length ?? 0} solids relus`);
     if (size) console.log(`   encombrement ${size.map((v) => Math.round(v)).join(' × ')} mm`);
   }
 

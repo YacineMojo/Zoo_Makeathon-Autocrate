@@ -99,12 +99,25 @@ export function cheapestFit(
     .sort((a, b) => a.total - b.total)[0]?.c;
 }
 
+/**
+ * Les contraintes portent des identifiants français, partagés avec le front.
+ * Cette table est le seul endroit où ils deviennent du texte affichable.
+ */
+const DIMENSION: Record<RejectionReason, string> = {
+  longueur: 'length',
+  largeur: 'width',
+  hauteur: 'height',
+  'porte-largeur': 'door width',
+  'porte-hauteur': 'door height',
+  charge: 'payload',
+};
+
 /** Formulation lisible d'un refus. « Ça ne passe pas » vaut zéro. */
 export function explain(check: GabaritCheck): string {
   if (check.fits) {
     return check.confidence === 'juste'
-      ? `just fits: ${check.tightestMarginMm} mm on ${check.tightestOn}, confirm with the crate maker`
-      : `fits: tightest margin ${check.tightestMarginMm} mm on ${check.tightestOn}`;
+      ? `just fits: ${check.tightestMarginMm} mm on ${DIMENSION[check.tightestOn]}, confirm with the crate maker`
+      : `fits: tightest margin ${check.tightestMarginMm} mm on ${DIMENSION[check.tightestOn]}`;
   }
   const parts = check.reasons.map((r) => {
     switch (r) {

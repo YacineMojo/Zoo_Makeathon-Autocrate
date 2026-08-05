@@ -76,7 +76,7 @@ function evaluatePose(
 
   const forbidden =
     forbidLying && input.lying
-      ? 'Couchage interdit : bain d’huile, axes précontraints ou consigne constructeur.'
+      ? 'Lying down forbidden: oil bath, preloaded axes or manufacturer instruction.'
       : undefined;
 
   // Une pose interdite est calculée quand même, et affichée barrée. Masquer une
@@ -132,7 +132,7 @@ export function study(input: StudyInput): Study {
   const { massKg, forbidLying = false, mode = 'maritime' } = input;
 
   if (input.poses.length === 0) {
-    throw new Error('Aucune pose à évaluer.');
+    throw new Error('No pose to evaluate.');
   }
 
   const poses = input.poses.map((p) => evaluatePose(p, massKg, forbidLying, mode));

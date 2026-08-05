@@ -130,7 +130,7 @@ export function minimalWidthRectangle(hull: Array<[number, number]>, stepDeg = 0
 
 /** Tous les rectangles englobants du balayage, un par angle. */
 export function sweepRectangles(hull: Array<[number, number]>, stepDeg = 0.5): Rectangle[] {
-  if (hull.length === 0) throw new Error('Enveloppe vide : aucune emprise calculable.');
+  if (hull.length === 0) throw new Error('Empty hull: no footprint can be computed.');
 
   const out: Rectangle[] = [];
 
@@ -263,7 +263,7 @@ export function orientedFootprint(
   scale = 1,
   stepDeg = 0.5
 ): OrientedFootprint {
-  if (cloud.count === 0) throw new Error('Nuage de sommets vide : aucune emprise calculable.');
+  if (cloud.count === 0) throw new Error('Empty vertex cloud: no footprint can be computed.');
 
   // Aligner d'abord, balayer ensuite : le lacet rendu est alors une rotation
   // autour du Z du monde, directement utilisable pour placer la machine.

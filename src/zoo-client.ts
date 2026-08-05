@@ -24,7 +24,7 @@ export function getToken(): string {
   const token = process.env.ZOO_API_TOKEN ?? process.env.KITTYCAD_TOKEN;
   if (!token) {
     throw new Error(
-      'Aucun token trouvé. Copie .env.example vers .env et renseigne ZOO_API_TOKEN.'
+      'No token found. Copy .env.example to .env and set ZOO_API_TOKEN.'
     );
   }
   return token;

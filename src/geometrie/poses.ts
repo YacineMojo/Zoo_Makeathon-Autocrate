@@ -52,7 +52,7 @@ export function buildPoses(
   declaredUp: Axis = 'z',
   unitChoice: UnitChoice = 'auto'
 ): PosesResult {
-  if (cloud.count === 0) throw new Error('Nuage de sommets vide : aucune pose calculable.');
+  if (cloud.count === 0) throw new Error('Empty vertex cloud: no pose can be computed.');
 
   // L'unité se décide sur les dimensions brutes, avant toute mise à l'échelle.
   const raw = naiveFootprint(cloud, declaredUp, 1);

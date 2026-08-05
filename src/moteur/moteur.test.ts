@@ -30,7 +30,7 @@ function machinePourCaisseLargeur(largeurCaisseMm: number, massKg: number): numb
 
 /* ------------------------------------------------------------------ caisse */
 
-test('la caisse est plus grande que la machine, dans les trois dimensions', () => {
+test('the crate is bigger than the machine in all three dimensions', () => {
   const machine: Triplet = { lengthMm: 2000, widthMm: 1500, heightMm: 1800 };
   const crate = buildCrate(machine, 2_000);
 
@@ -39,7 +39,7 @@ test('la caisse est plus grande que la machine, dans les trois dimensions', () =
   assert.ok(crate.outer.heightMm > machine.heightMm);
 });
 
-test('la hauteur hors tout est la somme explicite de ses postes', () => {
+test('the overall height is the explicit sum of its members', () => {
   // Si cette égalité casse, c'est qu'un poste a été ajouté sans être compté
   // dans le verdict — exactement l'erreur silencieuse que redoute le §6.4.
   const crate = buildCrate({ lengthMm: 2000, widthMm: 1500, heightMm: 1800 }, 2_000);
@@ -49,7 +49,7 @@ test('la hauteur hors tout est la somme explicite de ses postes', () => {
   );
 });
 
-test('les patins grossissent avec la masse, et la caisse monte avec eux', () => {
+test('skids grow with mass, and the crate rises with them', () => {
   const machine: Triplet = { lengthMm: 2000, widthMm: 1500, heightMm: 1800 };
   const leger = buildCrate(machine, 800);
   const lourd = buildCrate(machine, 20_000);
@@ -58,14 +58,14 @@ test('les patins grossissent avec la masse, et la caisse monte avec eux', () => 
   assert.ok(lourd.outer.heightMm > leger.outer.heightMm);
 });
 
-test('une masse ou une emprise absurde est refusée, pas silencieusement acceptée', () => {
-  assert.throws(() => buildCrate({ lengthMm: 0, widthMm: 1, heightMm: 1 }, 100), /Emprise/);
-  assert.throws(() => buildCrate({ lengthMm: 1, widthMm: 1, heightMm: 1 }, 0), /Masse/);
+test('an absurd mass or footprint is refused, not silently accepted', () => {
+  assert.throws(() => buildCrate({ lengthMm: 0, widthMm: 1, heightMm: 1 }, 100), /footprint/);
+  assert.throws(() => buildCrate({ lengthMm: 1, widthMm: 1, heightMm: 1 }, 0), /mass/);
 });
 
 /* ----------------------------------------------------------------- verdict */
 
-test('c’est la caisse qui est confrontée au gabarit, pas la machine', () => {
+test('it is the crate that is checked against the gauge, not the machine', () => {
   // Machine à 2,30 m : elle « rentrerait » dans un 40' standard (2,39 m).
   // Sa caisse, patins compris, non. C'est tout l'objet du §6.4.
   const machine: Triplet = { lengthMm: 3000, widthMm: 1800, heightMm: 2300 };
@@ -76,7 +76,7 @@ test('c’est la caisse qui est confrontée au gabarit, pas la machine', () => {
   assert.equal(checkGabarit(crate, gabarit('40-std')).fits, false);
 });
 
-test('la porte est vérifiée séparément du volume intérieur', () => {
+test('the door is checked separately from the inner volume', () => {
   // Cible : une caisse plus basse que la hauteur intérieure du 40' HC (2690)
   // mais plus haute que son ouverture de porte (2580).
   const hc = gabarit('40-hc');
@@ -85,7 +85,7 @@ test('la porte est vérifiée séparément du volume intérieur', () => {
 
   assert.ok(
     crate.outer.heightMm < hc.maxHeightMm && crate.outer.heightMm > hc.doorHeightMm!,
-    `hauteur de caisse ${crate.outer.heightMm} mm hors de la fenêtre visée`
+    `crate height ${crate.outer.heightMm} mm outside the target window`
   );
 
   const check = checkGabarit(crate, hc);
@@ -93,13 +93,13 @@ test('la porte est vérifiée séparément du volume intérieur', () => {
   assert.deepEqual(check.reasons, ['porte-hauteur']);
 });
 
-test('la charge utile est une raison de refus à part entière', () => {
+test('payload is a rejection reason in its own right', () => {
   const crate = buildCrate({ lengthMm: 3000, widthMm: 1600, heightMm: 1500 }, 30_000);
   const check = checkGabarit(crate, gabarit('40-std'));
   assert.ok(check.reasons.includes('charge'));
 });
 
-test('la marge la plus faible est rendue, y compris quand ça passe', () => {
+test('the tightest margin is returned, including when it fits', () => {
   const crate = buildCrate({ lengthMm: 3000, widthMm: 1600, heightMm: 1200 }, 2_000);
   const check = checkGabarit(crate, gabarit('40-std'));
   assert.equal(check.fits, true);
@@ -108,7 +108,7 @@ test('la marge la plus faible est rendue, y compris quand ça passe', () => {
 
 /* -------------------------------------------------- le seuil, à 3 cm près */
 
-test('trois centimètres font basculer le verdict et multiplient la facture', () => {
+test('three centimetres flip the verdict and multiply the bill', () => {
   // C'est la thèse du projet : « le coût réel n'est pas le m³ d'air
   // transporté, c'est le franchissement de seuil ».
   const base = { lengthMm: 2000, widthMm: 1500 };
@@ -121,12 +121,12 @@ test('trois centimètres font basculer le verdict et multiplient la facture', ()
   const passe = cheapestFit(dessous, checkAll(dessous));
   const passePlus = cheapestFit(dessus, checkAll(dessus));
 
-  assert.ok(passe, 'la caisse basse doit trouver un gabarit');
+  assert.ok(passe, 'the low crate must find a gauge');
   assert.equal(passe.gabarit.id, 'semi');
-  assert.equal(passePlus, undefined, 'trois centimètres plus haut, plus aucun gabarit');
+  assert.equal(passePlus, undefined, 'three centimetres taller, no gauge left');
 });
 
-test('le franchissement de seuil coûte un facteur, pas un pourcentage', () => {
+test('crossing a threshold costs a factor, not a percentage', () => {
   const base = { lengthMm: 2000, widthMm: 1500 };
   const poses = (heightMm: number): PoseInput[] => [
     { pose: 'A', label: 'Pose A', footprint: { ...base, heightMm }, lying: false },
@@ -138,13 +138,13 @@ test('le franchissement de seuil coûte un facteur, pas un pourcentage', () => {
   const dessous = study({ poses: poses(juste), massKg: 2_000, mode: 'route' });
   const dessus = study({ poses: poses(juste + 30), massKg: 2_000, mode: 'route' });
 
-  assert.ok(dessous.best, 'sous le seuil, une pose passe');
-  assert.equal(dessus.best, undefined, 'au-dessus, aucune');
-  assert.ok(dessus.fallbacks, 'et les deux issues du §6.5 sont chiffrées');
+  assert.ok(dessous.best, 'below the threshold, one pose fits');
+  assert.equal(dessus.best, undefined, 'above it, none');
+  assert.ok(dessus.fallbacks, 'and both outcomes of §6.5 are priced');
 
   const avant = dessous.best.costing.totalEur;
   const apres = dessus.fallbacks.oversize.totalEur;
-  assert.ok(apres > 2 * avant, `attendu un facteur, obtenu ${avant} € → ${apres} €`);
+  assert.ok(apres > 2 * avant, `expected a factor, got ${avant} € → ${apres} €`);
 
   // Le délai est l'argument qu'on ne peut pas balayer : rater une fenêtre
   // d'expédition coûte plus cher que le fret.
@@ -153,7 +153,7 @@ test('le franchissement de seuil coûte un facteur, pas un pourcentage', () => {
 
 /* ------------------------------------------------------------------ étude */
 
-test('les deux issues sont chiffrées quand aucune pose ne passe', () => {
+test('both outcomes are priced when no pose fits', () => {
   const enorme: Triplet = { lengthMm: 6000, widthMm: 3200, heightMm: 3400 };
   const result = study({
     poses: [{ pose: 'A', label: 'Pose A', footprint: enorme, lying: false }],
@@ -168,7 +168,7 @@ test('les deux issues sont chiffrées quand aucune pose ne passe', () => {
   assert.ok(result.fallbacks.split.assumedHalves.lengthMm < enorme.lengthMm);
 });
 
-test('au-delà de la largeur réglementaire, c’est du convoi exceptionnel', () => {
+test('beyond the legal width, it is an oversize convoy', () => {
   const large: Triplet = { lengthMm: 6000, widthMm: 3200, heightMm: 3400 };
   const etroit: Triplet = { lengthMm: 6000, widthMm: 1500, heightMm: 3400 };
 
@@ -179,7 +179,7 @@ test('au-delà de la largeur réglementaire, c’est du convoi exceptionnel', ()
   assert.ok(a.fallbacks!.oversize.leadTimeDays > b.fallbacks!.oversize.leadTimeDays);
 });
 
-test('quand aucun conteneur ne passe, une solution routière est proposée avant le convoi', () => {
+test('when no container fits, a road solution is offered before the convoy', () => {
   // Caisse à 2,73 m : au-dessus de tout gabarit maritime, sous le plafond du
   // semi-remorque. Annoncer un convoi exceptionnel ici serait faux.
   const machine: Triplet = { lengthMm: 3000, widthMm: 1300, heightMm: 2517 };
@@ -188,13 +188,13 @@ test('quand aucun conteneur ne passe, une solution routière est proposée avant
     massKg: 2_350,
   });
 
-  assert.equal(result.best, undefined, 'rien ne passe en maritime');
-  assert.ok(result.otherMode, 'mais la route est proposée');
+  assert.equal(result.best, undefined, 'nothing fits by sea');
+  assert.ok(result.otherMode, 'but road is offered');
 
   // Et la pose elle-même porte sa solution : la colonne du tableau ne doit pas
   // afficher « hors gabarit » sur une ligne dont le bandeau dit qu'elle passe.
   const pose = result.poses.find((p) => p.pose === 'C')!;
-  assert.ok(pose.otherMode, 'la pose porte l’option de l’autre mode');
+  assert.ok(pose.otherMode, 'the pose carries the option of the other mode');
   assert.equal(pose.otherMode.gabarit.gabarit.id, 'semi');
   assert.ok(pose.otherMode.costing.totalEur < pose.costing.totalEur);
   assert.equal(result.otherMode.mode, 'route');
@@ -205,11 +205,11 @@ test('quand aucun conteneur ne passe, une solution routière est proposée avant
   assert.ok(result.otherMode.costing.totalEur < result.fallbacks!.oversize.totalEur / 2);
 });
 
-test('la référence naïve ne peut pas être retenue comme meilleure pose', () => {
+test('the naive reference cannot be retained as the best pose', () => {
   const petit: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 1000 };
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: petit, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: petit, lying: false },
       { pose: 'A', label: 'Pose A', footprint: { ...petit, heightMm: 1100 }, lying: false },
     ],
     massKg: 1_500,
@@ -218,55 +218,55 @@ test('la référence naïve ne peut pas être retenue comme meilleure pose', () 
   assert.equal(result.best?.pose, 'A');
 });
 
-test('couchage interdit : la pose est écartée mais reste calculée et affichée', () => {
+test('lying down forbidden: the pose is ruled out but still computed and shown', () => {
   // Debout : caisse à 2,51 m — passe en High Cube, pas en 40' standard.
-  // Couchée : caisse à 1,41 m — le 40' standard s'ouvre, et il est moins cher.
+  // Laid down : caisse à 1,41 m — le 40' standard s'ouvre, et il est moins cher.
   const debout: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 2300 };
   const couchee: Triplet = { lengthMm: 2300, widthMm: 1500, heightMm: 1200 };
 
   const poses: PoseInput[] = [
     { pose: 'A', label: 'Debout', footprint: debout, lying: false },
-    { pose: 'B', label: 'Couchée', footprint: couchee, lying: true },
+    { pose: 'B', label: 'Laid down', footprint: couchee, lying: true },
   ];
 
   const libre = study({ poses, massKg: 1_500 });
   const bride = study({ poses, massKg: 1_500, forbidLying: true });
 
-  assert.equal(libre.best?.pose, 'B', 'sans contrainte, la pose couchée gagne');
-  // Couchée, la caisse tombe sous 2,20 m et six mètres cubes : le groupage la
+  assert.equal(libre.best?.pose, 'B', 'with no constraint, the laid-down pose wins');
+  // Laid down, la caisse tombe sous 2,20 m et six mètres cubes : le groupage la
   // prend, et il est bien moins cher qu'un conteneur complet. C'est exactement
   // le seuil que rencontre un constructeur qui expédie cinq machines par an.
   assert.equal(libre.best?.retained?.gabarit.id, 'lcl');
-  assert.equal(bride.best?.pose, 'A', 'avec la contrainte, on retombe sur la pose debout');
+  assert.equal(bride.best?.pose, 'A', 'with the constraint, we fall back to the upright pose');
   // Debout, 2,51 m : trop haute pour le groupage comme pour un 40' standard.
   assert.equal(bride.best?.retained?.gabarit.id, '40-hc');
   assert.ok(bride.best!.costing.totalEur > libre.best!.costing.totalEur * 2);
 
   const ecartee = bride.poses.find((p) => p.pose === 'B')!;
-  assert.ok(ecartee.forbidden, 'la pose interdite porte son motif');
-  assert.ok(ecartee.crate.outer.heightMm > 0, 'et reste calculée : on n’efface pas la ligne');
+  assert.ok(ecartee.forbidden, 'the forbidden pose carries its reason');
+  assert.ok(ecartee.crate.outer.heightMm > 0, 'and stays computed: the row is not erased');
 });
 
-test('le delta référence → meilleure pose est la sortie qui compte', () => {
+test('the reference to best-pose delta is the output that matters', () => {
   const naif: Triplet = { lengthMm: 2400, widthMm: 2000, heightMm: 2600 };
   const optimise: Triplet = { lengthMm: 2600, widthMm: 1500, heightMm: 1200 };
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: naif, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: naif, lying: false },
       { pose: 'B', label: 'Pose B', footprint: optimise, lying: true },
     ],
     massKg: 2_000,
   });
 
   const delta = savings(result)!;
-  assert.ok(delta.eur > 0, 'la pose optimisée doit économiser');
+  assert.ok(delta.eur > 0, 'the optimised pose must save money');
   assert.ok(delta.days >= 0);
 });
 
 /* ------------------------------------------------------- cas KUKA KR 600 */
 
-test('KUKA KR 600 : coucher la machine déplace la contrainte de la hauteur vers la largeur', () => {
+test('KUKA KR 600: laying the machine down moves the binding constraint from height to width', () => {
   // Emprise **naïve** mesurée sur le vrai STEP pendant le spike, en mm.
   // C'est la boîte alignée sur le repère du fichier : celle du §6.2, l'« avant ».
   const mesure = { l: 2517, w: 1303, h: 2941 };
@@ -276,13 +276,13 @@ test('KUKA KR 600 : coucher la machine déplace la contrainte de la hauteur vers
     poses: [
       {
         pose: 'reference',
-        label: 'Repère CAO (naïf)',
+        label: 'CAD frame (naive)',
         footprint: { lengthMm: mesure.l, widthMm: mesure.w, heightMm: mesure.h },
         lying: false,
       },
       {
         pose: 'B',
-        label: 'Pose B — couchée',
+        label: 'Pose B — laid down',
         footprint: { lengthMm: mesure.h, widthMm: mesure.l, heightMm: mesure.w },
         lying: true,
       },
@@ -302,7 +302,7 @@ test('KUKA KR 600 : coucher la machine déplace la contrainte de la hauteur vers
   // passer les portes.
   assert.equal(reference.checks.find((c) => c.gabarit.id === '40-hc')!.tightestOn, 'porte-hauteur');
 
-  // Couchée, la hauteur cesse d'être le problème : elle tombe sous 1,6 m.
+  // Laid down, la hauteur cesse d'être le problème : elle tombe sous 1,6 m.
   assert.ok(couchee.crate.outer.heightMm < 1_600);
 
   // Mais la contrainte se déplace sur la largeur, et **ça ne passe toujours
@@ -319,13 +319,13 @@ test('KUKA KR 600 : coucher la machine déplace la contrainte de la hauteur vers
   // conteneur s'ouvre, l'emprise orientée doit ramener la largeur machine sous
   // 2 120 mm — 2 350 moins les 230 mm de calage, montants et panneaux.
   assert.equal(result.best, undefined);
-  assert.ok(result.fallbacks, 'les deux issues sont chiffrées en attendant');
+  assert.ok(result.fallbacks, 'both outcomes are priced in the meantime');
   assert.equal(savings(result), undefined);
 });
 
 /* ------------------------------------------------------------ gerbabilité */
 
-test('une caisse haute et lourde n’est pas déclarée gerbable', () => {
+test('a tall, heavy crate is not declared stackable', () => {
   const trapue = buildCrate({ lengthMm: 3000, widthMm: 2000, heightMm: 900 }, 2_000);
   const elancee = buildCrate({ lengthMm: 1200, widthMm: 1000, heightMm: 2400 }, 12_000);
 
@@ -335,7 +335,7 @@ test('une caisse haute et lourde n’est pas déclarée gerbable', () => {
 
 /* ------------------------------------------------------------- mentions */
 
-test('les mentions obligatoires sont dans la sortie, pas seulement dans le discours', () => {
+test('the mandatory notices are in the output, not only in the pitch', () => {
   const result = study({
     poses: [{ pose: 'A', label: 'A', footprint: { lengthMm: 1500, widthMm: 1200, heightMm: 1000 }, lying: false }],
     massKg: 1_000,
@@ -348,7 +348,7 @@ test('les mentions obligatoires sont dans la sortie, pas seulement dans le disco
 
 /* ------------------------------------------------- nuances du lot A */
 
-test('une marge faible est annoncée comme serrée, pas comme un simple « passe »', () => {
+test('a small margin is announced as tight, not as a plain “fits”', () => {
   // 19 mm de marge, c'est un panneau qui gondole. L'annoncer sans nuance est le
   // genre de chose qui fait revenir une caisse du port.
   // Vingt millimètres sous l'ouverture de porte : la marge est serrée par
@@ -366,31 +366,31 @@ test('une marge faible est annoncée comme serrée, pas comme un simple « passe
   assert.equal(confortable.confidence, 'confortable');
 });
 
-test('un refus par charge utile est invariant par orientation, et le dit', () => {
+test('a payload rejection is invariant under orientation, and says so', () => {
   // 45 t dans une caisse d'un mètre cube : aucune pose n'y changera rien, et un
   // flat rack non plus. Proposer du hors gabarit ici serait mensonger.
   const petit: Triplet = { lengthMm: 1200, widthMm: 900, heightMm: 800 };
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: petit, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: petit, lying: false },
       { pose: 'A', label: 'Pose A', footprint: petit, lying: false },
     ],
     massKg: 45_000,
   });
 
   assert.equal(result.best, undefined);
-  assert.ok(result.overloaded, 'le refus par masse doit être nommé');
+  assert.ok(result.overloaded, 'the mass rejection must be named');
   assert.ok(result.overloaded.grossKg > result.overloaded.maxPayloadKg);
-  assert.equal(result.fallbacks, undefined, 'et aucun hors gabarit ne doit être proposé');
+  assert.equal(result.fallbacks, undefined, 'and no out-of-gauge option must be offered');
 });
 
-test('rien à arbitrer quand toutes les poses tombent dans le même gabarit', () => {
+test('nothing to arbitrate when every pose falls in the same gauge', () => {
   // Recommander de coucher une machine pour 38 € de contreplaqué apprend au
   // lecteur à ignorer nos recommandations.
   const petit: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 1000 };
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: petit, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: petit, lying: false },
       { pose: 'A', label: 'Pose A', footprint: petit, lying: false },
       { pose: 'B', label: 'Pose B', footprint: { lengthMm: 1500, widthMm: 1000, heightMm: 1200 }, lying: true },
     ],
@@ -399,16 +399,16 @@ test('rien à arbitrer quand toutes les poses tombent dans le même gabarit', ()
 
   assert.ok(result.best);
   assert.equal(result.arbitrage, 'aucun');
-  assert.equal(savings(result), undefined, 'et donc aucun « 0 € économisés » à afficher');
+  assert.equal(savings(result), undefined, 'and therefore no “0 € saved” to display');
 });
 
-test('il y a un arbitrage dès que le gabarit ou le délai change', () => {
+test('there is an arbitration as soon as the gauge or the lead time changes', () => {
   const debout: Triplet = { lengthMm: 1500, widthMm: 1200, heightMm: 2400 };
   const couchee: Triplet = { lengthMm: 2400, widthMm: 1500, heightMm: 1200 };
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: debout, lying: false },
       { pose: 'B', label: 'Pose B', footprint: couchee, lying: true },
     ],
     massKg: 1_500,
@@ -418,7 +418,7 @@ test('il y a un arbitrage dès que le gabarit ou le délai change', () => {
   assert.ok(savings(result)!.eur > 0);
 });
 
-test('le calage est compté dans la tare, et l’estimation reste conservatrice', () => {
+test('blocking is counted in the tare, and the estimate stays conservative', () => {
   // La tare entre dans la charge utile du gabarit : un calage non pesé
   // sous-estimait la masse brute de près d'un tiers.
   const machine: Triplet = { lengthMm: 3100, widthMm: 2000, heightMm: 1900 };
@@ -426,7 +426,7 @@ test('le calage est compté dans la tare, et l’estimation reste conservatrice'
 
   const sansCalage =
     crate.tareKg - (blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e9) * WOOD_DENSITY_KG_M3;
-  assert.ok(sansCalage < crate.tareKg, 'la tare doit inclure le calage');
+  assert.ok(sansCalage < crate.tareKg, 'the tare must include the blocking');
   assert.ok(crate.grossKg === Math.round(4_000 + crate.tareKg));
 
   // Et l'estimation doit majorer ce qui sera réellement dessiné.
@@ -442,7 +442,7 @@ test('le calage est compté dans la tare, et l’estimation reste conservatrice'
 
   assert.ok(
     dessine <= blockingAllowanceMm3(crate.inner, crate.clearanceMm),
-    `${Math.round(dessine / 1e6)} dm³ dessinés pour ${Math.round(blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e6)} dm³ estimés`
+    `${Math.round(dessine / 1e6)} dm³ drawn against ${Math.round(blockingAllowanceMm3(crate.inner, crate.clearanceMm) / 1e6)} dm³ estimated`
   );
 });
 
@@ -456,7 +456,7 @@ const corps = (name: string, x: [number, number], y: [number, number], z: [numbe
   volumeMm3: (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]),
 });
 
-test('le découpage désigne les corps qui portent le dépassement', () => {
+test('the split names the bodies that carry the overrun', () => {
   // Un socle bas et large, plus deux corps qui montent trop haut. La coupe doit
   // porter sur ces deux-là, et sur eux seuls.
   const bodies = [
@@ -468,25 +468,25 @@ test('le découpage désigne les corps qui portent le dépassement', () => {
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3000 }, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3000 }, lying: false },
       { pose: 'A', label: 'Pose A', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3000 }, lying: false, bodies },
     ],
     massKg: 2_000,
   });
 
-  assert.equal(result.best, undefined, 'debout, rien ne passe');
-  assert.ok(result.decoupe, 'le découpage doit être proposé');
+  assert.equal(result.best, undefined, 'upright, nothing fits');
+  assert.ok(result.decoupe, 'the split must be offered');
 
   assert.equal(result.decoupe.corpsTotal, 4);
   assert.ok(result.decoupe.caisses.length >= 2);
-  for (const c of result.decoupe.caisses) assert.ok(c.retained, `la caisse ${c.rang + 1} doit passer`);
+  for (const c of result.decoupe.caisses) assert.ok(c.retained, `crate ${c.rang + 1} must fit`);
 
   // Les deux corps hauts doivent finir dans une caisse autre que la première.
   const hautes = result.decoupe.caisses.slice(1).flatMap((c) => c.corps);
   assert.ok(hautes.includes('colonne') && hautes.includes('poutre'));
 });
 
-test('le découpage est moins cher que le hors gabarit, sinon il ne vaut rien', () => {
+test('the split is cheaper than going out of gauge, otherwise it is worthless', () => {
   const bodies = [
     corps('socle', [-1000, 1000], [-800, 800], [0, 600]),
     corps('mat', [0, 200], [-100, 100], [0, 3200]),
@@ -494,7 +494,7 @@ test('le découpage est moins cher que le hors gabarit, sinon il ne vaut rien', 
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3200 }, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3200 }, lying: false },
       { pose: 'A', label: 'Pose A', footprint: { lengthMm: 2000, widthMm: 1600, heightMm: 3200 }, lying: false, bodies },
     ],
     massKg: 2_000,
@@ -503,11 +503,11 @@ test('le découpage est moins cher que le hors gabarit, sinon il ne vaut rien', 
   assert.ok(result.decoupe);
   assert.ok(
     result.decoupe.totalEur < result.fallbacks!.oversize.totalEur,
-    `${result.decoupe.totalEur} € contre ${result.fallbacks!.oversize.totalEur} € hors gabarit`
+    `${result.decoupe.totalEur} € against ${result.fallbacks!.oversize.totalEur} € out of gauge`
   );
 });
 
-test('une pose écartée ne sert pas de base au découpage', () => {
+test('a ruled-out pose is not used as the basis for the split', () => {
   // Une pose interdite passe souvent très bien : la prendre pour base faisait
   // disparaître toute proposition dès que le couchage était interdit.
   const debout = { lengthMm: 1600, widthMm: 1400, heightMm: 3000 };
@@ -519,7 +519,7 @@ test('une pose écartée ne sert pas de base au découpage', () => {
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: debout, lying: false },
       { pose: 'A', label: 'Pose A', footprint: debout, lying: false, bodies },
       { pose: 'B', label: 'Pose B', footprint: couchee, lying: true, bodies },
     ],
@@ -528,11 +528,11 @@ test('une pose écartée ne sert pas de base au découpage', () => {
   });
 
   assert.equal(result.best, undefined);
-  assert.ok(result.decoupe, 'le découpage doit se baser sur la pose autorisée');
+  assert.ok(result.decoupe, 'the split must be based on the allowed pose');
   assert.ok(result.decoupe.caisses.slice(1).flatMap((c) => c.corps).includes('colonne'));
 });
 
-test('rien à découper quand la machine passe déjà', () => {
+test('nothing to split when the machine already fits', () => {
   const bodies = [corps('bloc', [-600, 600], [-500, 500], [0, 900])];
   const result = study({
     poses: [
@@ -545,7 +545,7 @@ test('rien à découper quand la machine passe déjà', () => {
   assert.equal(result.decoupe, undefined);
 });
 
-test('le découpage dit sur quelle pose il a été calculé', () => {
+test('the split says which pose it was computed on', () => {
   // Sans cela, la scène est construite avec le placement d'une autre pose : la
   // caisse attend les pièces couchées, le maillage arrive debout, et il sort de
   // la caisse d'un mètre. Vu sur un KUKA KR 6.
@@ -558,7 +558,7 @@ test('le découpage dit sur quelle pose il a été calculé', () => {
 
   const result = study({
     poses: [
-      { pose: 'reference', label: 'Repère CAO', footprint: debout, lying: false },
+      { pose: 'reference', label: 'CAD frame', footprint: debout, lying: false },
       { pose: 'A', label: 'Pose A', footprint: debout, lying: false, bodies },
       { pose: 'B', label: 'Pose B', footprint: couchee, lying: true, bodies },
     ],
@@ -567,5 +567,5 @@ test('le découpage dit sur quelle pose il a été calculé', () => {
   });
 
   assert.ok(result.decoupe);
-  assert.ok(['A', 'B'].includes(result.decoupe.pose!), `pose « ${result.decoupe.pose} » inattendue`);
+  assert.ok(['A', 'B'].includes(result.decoupe.pose!), `pose « ${result.decoupe.pose} » unexpected`);
 });

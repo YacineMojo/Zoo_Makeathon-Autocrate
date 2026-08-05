@@ -9,7 +9,7 @@ import { parseObjVertices, axisAlignedBounds } from './obj.js';
  */
 
 const SAMPLE = [
-  '# un cube minimal, avec du bruit autour',
+  '# a minimal cube, with noise around it',
   'mtllib machine.mtl',
   'v 0 0 0',
   'v 100.5 0 0',
@@ -22,35 +22,35 @@ const SAMPLE = [
   '',
 ].join('\n');
 
-test('ne compte que les lignes de sommet', () => {
+test('counts vertex lines only', () => {
   const cloud = parseObjVertices(SAMPLE);
   assert.equal(cloud.count, 4);
   assert.equal(cloud.xyz.length, 12);
 });
 
-test('lit les coordonnées dans l’ordre', () => {
+test('reads the coordinates in order', () => {
   const cloud = parseObjVertices(SAMPLE);
   assert.deepEqual(Array.from(cloud.xyz.subarray(3, 6)), [100.5, 0, 0]);
 });
 
-test('tolère une dernière ligne sans retour chariot', () => {
+test('tolerates a last line with no newline', () => {
   assert.equal(parseObjVertices('v 1 2 3').count, 1);
 });
 
-test('la boîte englobante encadre tous les sommets', () => {
+test('the bounding box encloses every vertex', () => {
   const bounds = axisAlignedBounds(parseObjVertices(SAMPLE));
   assert.deepEqual(bounds.min, [0, 0, -50]);
   assert.deepEqual(bounds.max, [100.5, 200, 0]);
   assert.deepEqual(bounds.size, [100.5, 200, 50]);
 });
 
-test('un nuage vide est une erreur, pas une boîte de taille nulle', () => {
+test('an empty cloud is an error, not a zero-sized box', () => {
   // Une emprise de 0 × 0 × 0 se propagerait en silence jusqu'au tableau des
   // poses. Mieux vaut échouer à la lecture.
-  assert.throws(() => axisAlignedBounds(parseObjVertices('# rien')), /vide/);
+  assert.throws(() => axisAlignedBounds(parseObjVertices('# rien')), /Empty/);
 });
 
-test('grandit au-delà de la capacité initiale', () => {
+test('grows beyond the initial capacity', () => {
   const many = Array.from({ length: 5000 }, (_, i) => `v ${i} ${i} ${i}`).join('\n');
   const cloud = parseObjVertices(many);
   assert.equal(cloud.count, 5000);
