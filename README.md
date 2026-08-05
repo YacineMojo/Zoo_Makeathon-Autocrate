@@ -164,9 +164,11 @@ doing anything else.
 **Oriented footprint.** A STEP file is modelled in an arbitrary frame. An
 axis-aligned bounding box on a machine drawn askew is visibly too big. We
 project the vertices onto the horizontal plane, take the 2D convex hull, then
-sweep 180 rotations at 0.5° and keep the smallest area. The vertical axis never
-moves, so height is free. No rotating calipers: brute force at half a degree is
-exact at the precision that matters and fits in thirty readable lines.
+sweep 180 steps of 0.5° over 90° and keep the **narrowest** rectangle, not the
+smallest one (see *Yaw minimises width, not area* below; area only breaks ties
+between two angles of equal width). The vertical axis never moves, so height is
+free. No rotating calipers: brute force at half a degree is exact at the
+precision that matters and fits in thirty readable lines.
 
 **Three poses, not six.** The six permutations of a triplet only make sense for
 a box aligned to the file's axes. Once yaw is optimised, the (length, width)
@@ -220,10 +222,18 @@ what we actually place — a mid-height side rail that stiffens the panel.
 **Yaw minimises width, not area.** This is not a detail. The verdict never
 depends on floor area: it depends on one dimension, the one that touches the
 gauge. Height is fixed by the pose, length only binds at twelve metres — width
-is all yaw can act on. Minimising area is a proxy, and it betrays: on the demo
-machine it gives 3100 × 1900 where minimising width gives 3635 × **1725**. On
-the KUKA those 111 mm are the difference between a 40-foot container and a
-truck.
+is all yaw can act on. Minimising area is a proxy, and it betrays. Measured on
+our two large files:
+
+```
+machine-demo, X axis   min area 3100 × 1900   min width 3635 × 1725   175 mm
+KUKA KR 600,  Y axis   min area 3168 × 2201   min width 3627 × 2090   111 mm
+```
+
+On the KR 600 those 111 mm take the crate from 2431 to 2320 mm, under the
+2340 mm door opening of a 40-foot container: the same machine changes gauge.
+(The KR 600 R2830, the measurement file — not the KR 6 the studio opens on,
+which at 88 cm crosses no threshold at all.)
 
 **Five gauges, two cost regimes.** LCL groupage, 20' and 40' standard, 40' High
 Cube, road trailer. Groupage is not a container, it is a **pricing regime**: you
@@ -251,15 +261,16 @@ choose.
 **But it can say what costs.** The assembly tree looked like the trap of the
 project: product hierarchy does not survive the import path, and the names come
 out as `Unnamed-0`, `Unnamed-1`. **The grouping survives, though**: fifteen
-bodies for the demo machine, thirty-seven for a KUKA robot. Names are lost, bodies are not, and naming pieces is not what is needed
+bodies for the demo machine, thirty-seven for the KUKA KR 600, ten for the KR 6.
+Names are lost, bodies are not, and naming pieces is not what is needed
 here — geometry is.
 
 So when nothing fits, the tool tries cutting planes from the top down and
 reports which bodies stick out. On the demo machine standing upright:
 
-> Three bodies out of fifteen carry the overrun. Cut at 2.00 m and shipped
-> separately: main crate 2.25 × 2.15 × 2.11 m, second crate 3.19 × 2.25 ×
-> 0.38 m, **7 156 € in 19 days** — against 13 639 € and 21 days out of gauge.
+> Five bodies out of fifteen carry the overrun. Cut at 1.67 m and shipped
+> separately: main crate 2.25 × 2.15 × 1.73 m, second crate 3.19 × 2.25 ×
+> 0.54 m, **7 013 € in 19 days** — against 13 639 € and 21 days out of gauge.
 
 It still does not decide. A distinct body in a mesh is not a removable part: it
 may be a weld, or a converter artefact. The tool says which ones cost; the
@@ -348,7 +359,8 @@ not reconstructed afterwards. The three that cost us the most:
 ## Limits, stated plainly
 
 - **The oriented footprint gains nothing on the files we had.** 0 % on the demo
-  machine, 1.8 % on the KUKA: both are drawn aligned to their own axes. The
+  machine, 0.2 % on the KR 6, 1.8 % on the KR 600: all three are drawn aligned
+  to their own axes. The
   algorithm is right — it recovers 2000 × 800 from a box rotated by 37°, and the
   tests prove it — but the "your CAD is in an arbitrary frame" argument did not
   pay off on any real file we got our hands on. The demonstration rests on the
@@ -367,6 +379,7 @@ not reconstructed afterwards. The three that cost us the most:
 
 | Path | What is in it |
 |---|---|
+| `src/domain/` | the tables: five gauges, price grid, crating assumptions, shared types |
 | `src/moteur/` | the pure engine: crate sizing, gauge verdicts, costs, lead times. No CAD, 29 tests |
 | `src/geometrie/` | oriented footprint, poses, unit and vertical-axis guards, placement. 22 tests |
 | `src/engine/` | Zoo Engine API: session, boxes, batched scene, crate layout. 17 tests |

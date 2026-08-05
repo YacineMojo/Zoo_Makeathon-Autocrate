@@ -5,7 +5,10 @@
  * hiérarchie produit ne survit pas au chemin d'import, et les noms sortent
  * illisibles. C'est vrai — mais **le regroupement, lui, survit**. L'OBJ rendu
  * par la File Format API porte des sections `o Unnamed-0`, `o Unnamed-1` … :
- * seize pour notre machine de démonstration, soixante pour un robot KUKA.
+ * seize pour notre machine de démonstration, soixante pour le KUKA KR 600,
+ * quarante-sept pour le KR 6 outillé. Après le filtre de volume ci-dessous il en
+ * reste respectivement quinze, trente-sept et dix : ce sont ces comptes-là que
+ * l'outil annonce.
  *
  * Les noms sont perdus, les corps sont là. Et pour dire quelles pièces portent
  * un dépassement de gabarit, on n'a pas besoin de noms : on a besoin de
