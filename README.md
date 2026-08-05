@@ -6,6 +6,9 @@ shipping crate fits in a container — and what it costs if it doesn't.**
 Built for the [Zoo API Makeathon](https://zoo.dev/events/api-makeathon), a fully virtual
 makeathon running 22 July to 5 August 2026.
 
+**[Watch the one-minute demo video](https://github.com/YacineMojo/Zoo_Makeathon-Autocrate/blob/main/docs/demo.mp4)**
+— the whole chain, from a customer STEP file to a costed crate.
+
 ![The landing page: what the tool does, and which Zoo APIs it uses](docs/accueil.png)
 
 ![The studio: parameters on the left, the generated crate in 3D, and the two exports](docs/atelier.png)
@@ -121,10 +124,18 @@ solids, the customer's b-rep and ours, in the same scene.
 
 ```bash
 git clone git@github.com:YacineMojo/Zoo_Makeathon-Autocrate.git && cd Zoo_Makeathon-Autocrate
-./script.sh          # installs, fetches and converts the KUKA KR 6, opens the studio
+cp .env.example .env     # then open .env and set ZOO_API_TOKEN=your_token
+./script.sh              # installs, fetches and converts the KUKA KR 6, opens the studio
 ```
 
 Then open <http://localhost:5174>.
+
+**Without a Zoo API token, nothing runs.** Every conversion, every crate and every
+render goes through the Zoo API, so the token is not optional: create one at
+<https://zoo.dev/account/api-tokens> and put it in `.env` as `ZOO_API_TOKEN=…`.
+If `.env` is missing, `script.sh` creates it from `.env.example` and stops with an
+explicit message rather than letting you discover the problem on the first API
+call. `KITTYCAD_TOKEN` is accepted as an alias.
 
 **The first launch takes four to five minutes**, and says so before it waits: no
 third-party STEP is committed here, so `script.sh` fetches the KR 6 from its MIT
@@ -132,9 +143,8 @@ source and has Zoo convert it — 5.4 MB of STEP is 273 s of conversion. Every
 launch after that is immediate. Drop your own STEP or OBJ at any time and the
 studio uses it instead.
 
-You need Node 20+ and a Zoo API token in `.env` (`ZOO_API_TOKEN=…`, from
-<https://zoo.dev/account/api-tokens>). `script.sh` creates the file and tells you
-if the token is missing rather than letting you discover it on the first call.
+The other requirement is Node 20 or later; `script.sh` checks the version before
+doing anything else.
 
 ```bash
 ./script.sh demo       # the full chain in the console, timed post by post
@@ -346,12 +356,6 @@ not reconstructed afterwards. The three that cost us the most:
 - **ISPM-15** applies to the solid timber only — skids, floor, studs. Panel
   products are exempt. Also stated in the output.
 
-## Demo video
-
-One-minute walkthrough, committed alongside the code:
-**[docs/demo.mp4](https://github.com/YacineMojo/Zoo_Makeathon-Autocrate/blob/main/docs/demo.mp4)**
-— 75 s, plays in the browser on GitHub.
-
 ## Repository map
 
 | Path | What is in it |
@@ -365,6 +369,7 @@ One-minute walkthrough, committed alongside the code:
 | `tools/verifier-ui.mjs` | drives the workshop in a real browser, fails on any console error |
 | `FEEDBACK.md` | 12 notes on the Zoo APIs |
 | `fixtures/README.md` | the two machines, the licence audit, the measurement files |
+| `docs/demo.mp4` | the one-minute demo video linked at the top |
 
 ## Licence
 
