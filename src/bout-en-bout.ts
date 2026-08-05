@@ -34,8 +34,8 @@ const ZOO_COORDS: System = {
 const path = process.argv[2] ?? 'fixtures/machine-demo.step';
 const massKg = Number(process.argv[3] ?? 2350);
 
-const chrono: Array<{ poste: string; ms: number; ou: 'Zoo' | 'nous' }> = [];
-const mesurer = async <T>(poste: string, ou: 'Zoo' | 'nous', f: () => Promise<T> | T): Promise<T> => {
+const chrono: Array<{ poste: string; ms: number; ou: 'Zoo' | 'us' }> = [];
+const mesurer = async <T>(poste: string, ou: 'Zoo' | 'us', f: () => Promise<T> | T): Promise<T> => {
   const t = performance.now();
   const r = await f();
   chrono.push({ poste, ms: performance.now() - t, ou });
@@ -71,9 +71,9 @@ const objText = await mesurer('reading the STEP (File Format API)', 'Zoo', async
 
 /* 2 ─ notre code mesure et décide ------------------------------------------ */
 
-const cloud = await mesurer('reading the mesh', 'nous', () => parseObjVertices(objText));
-const geometry = await mesurer('footprints and poses', 'nous', () => buildPoses(cloud, 'z', 'auto'));
-const result = await mesurer('crate, verdicts, costs', 'nous', () =>
+const cloud = await mesurer('reading the mesh', 'us', () => parseObjVertices(objText));
+const geometry = await mesurer('footprints and poses', 'us', () => buildPoses(cloud, 'z', 'auto'));
+const result = await mesurer('crate, verdicts, costs', 'us', () =>
   study({ poses: geometry.poses, massKg })
 );
 
@@ -166,9 +166,9 @@ try {
 
   const totalMs = performance.now() - total0;
   const zooMs = chrono.filter((c) => c.ou === 'Zoo').reduce((a, c) => a + c.ms, 0);
-  const nousMs = chrono.filter((c) => c.ou === 'nous').reduce((a, c) => a + c.ms, 0);
+  const nousMs = chrono.filter((c) => c.ou === 'us').reduce((a, c) => a + c.ms, 0);
 
-  console.log(`\n${path} — ${(bytes.length / 1024).toFixed(0)} Ko, ${cloud.count} vertices, ${massKg} kg\n`);
+  console.log(`\n${path} — ${(bytes.length / 1024).toFixed(0)} kB, ${cloud.count} vertices, ${massKg} kg\n`);
   for (const c of chrono) {
     const barre = '█'.repeat(Math.max(1, Math.round((c.ms / totalMs) * 40)));
     console.log(
@@ -184,11 +184,11 @@ try {
   const eco = savings(result);
   console.log(
     `\n  ${pose.label} — ${pose.retained?.gabarit.label ?? 'out of gauge'}, ` +
-      `${pose.costing.totalEur.toLocaleString('en-GB')} €, ${pose.costing.leadTimeDays} j` +
+      `${pose.costing.totalEur.toLocaleString('en-GB')} €, ${pose.costing.leadTimeDays} days` +
       (eco ? `, i.e. ${eco.eur.toLocaleString('en-GB')} € and ${eco.days} days saved` : '')
   );
   console.log(
-    `  out/bout-en-bout.step — ${(step.length / 1024 / 1024).toFixed(2)} Mo, machine + crate, ` +
+    `  out/bout-en-bout.step — ${(step.length / 1024 / 1024).toFixed(2)} MB, machine + crate, ` +
       `${controle ? controle.map((v) => Math.round(v)).join(' × ') : '?'} mm`
   );
 } finally {

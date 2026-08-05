@@ -1,7 +1,7 @@
 # AutoCrate ✕ Zoo.dev
 
-**Drop in the STEP file of a machine. Four seconds later, know whether its
-shipping crate fits in a container — and what it costs if it doesn't.**
+**Drop in the STEP file of a machine. Seconds later, know whether its shipping
+crate fits in a container — and what it costs if it doesn't.**
 
 Built for the [Zoo API Makeathon](https://zoo.dev/events/api-makeathon), a fully virtual
 makeathon running 22 July to 5 August 2026.
@@ -34,7 +34,7 @@ until it is too late.
 ## What this does
 
 You drop in the machine's STEP file — or a mesh, if you already have one — and
-enter its mass. Four seconds later you get a **crate pre-design**: the real
+enter its mass. Seconds later you get a **crate pre-design**: the real
 footprint, the generated crate structure, and a table of orientations with a
 gauge verdict, a cost and a lead time for each.
 
@@ -49,12 +49,12 @@ reproducible. All of them are measured, none projected.
 
 | Step | Whose | Measured |
 |---|---|---|
-| customer STEP → mesh | Zoo **File Format API**, async route | 273 s for 5.4 MB |
-| reading the mesh | ours | 42 216 vertices, 172 676 faces, 10 bodies |
+| customer STEP → mesh | Zoo **File Format API**, async route | 239 s for 5.4 MB |
+| reading the mesh | ours | 42,216 vertices, 172,676 faces, 10 bodies |
 | footprint, poses, gauge verdicts | ours | 382 ms |
 | the crate as b-rep | Zoo **Engine API** | 33 solids, 19 of them blocking, 0.1 s |
 | STEP and glTF export | Zoo **Engine API** | one session, 4.5 s billed |
-| re-measuring our own export | ours, on the returned glTF | 1 450 × 846 × 478 mm, matches the verdict |
+| re-measuring our own export | ours, on the returned glTF | 1,450 × 846 × 478 mm, matches the verdict |
 
 The mesh is compacted 9.0 → 4.1 MB before it goes out, and the machine itself is
 left out of the b-rep export: above 2 MB the Engine API fails after several
@@ -79,13 +79,13 @@ recommends nothing, and says why:
 An 88 cm robot crosses no gauge threshold, and that is the honest result at this
 size. It is also the point: the tool arbitrates when there is something to
 arbitrate, and stays quiet when there is not. On a machine that does cross a
-threshold the same study saves **9 873 € and 9 days** — `./script.sh demo` runs
+threshold the same study saves **9,873 € and 9 days** — `./script.sh demo` runs
 that case, on the one machine we are free to publish.
 
 ### Why the crate, and never the machine
 
-The KR 6 laid on Y measures 1 200 × 596 × 276 mm. Its crate measures
-1 450 × 846 × 478 mm: blocking, studs and panels add **250 mm on width and
+The KR 6 laid on Y measures 1,200 × 596 × 276 mm. Its crate measures
+1,450 × 846 × 478 mm: blocking, studs and panels add **250 mm on width and
 202 mm on height**. It is the crate that meets the container door, never the
 machine, so a margin measured on the machine is a number that will never be
 loaded. On this robot it costs nothing. On the demo machine it turns a
@@ -111,18 +111,26 @@ around it, and emit STEP that goes back into their PLM.
 Three capabilities no three.js can replace, and which the project therefore
 exercises end to end: **import real STEP**, **generate b-rep**, **export STEP**.
 
-Timed end to end, twice in a row, on the demo machine:
+Timed end to end on the demo machine, by `./script.sh demo`:
 
 ```
-reading the STEP (File Format API)       1.24 s  Zoo
-footprints, poses, crate, verdicts       0.02 s  us
-session open + b-rep import              1.37 s  Zoo
-building the crate, placing the machine  0.13 s  Zoo
-exporting the common STEP and the glTF   1.78 s  Zoo
+reading the STEP (File Format API)       1.06 s  Zoo
+reading the mesh, footprints, poses      0.01 s  us
+crate, verdicts, costs                   0.00 s  us
+opening the session (Engine API)         1.13 s  Zoo
+importing the STEP as b-rep              0.35 s  Zoo
+placing the machine in its pose          0.04 s  Zoo
+building the crate as b-rep              0.12 s  Zoo
+exporting the common STEP                0.13 s  Zoo
+exporting the glTF for the viewer        2.20 s  Zoo
 ─────────────────────────────────────────────────
-total                                    4.55 s     (then 4.56 s)
+total                                    5.11 s
                                          99 % Zoo, 1 % us
 ```
+
+**The ratio is the point, not the absolute.** Three consecutive runs gave 5.11 s,
+5.78 s and 8.56 s: Zoo-side latency moves, and since 99 % of the wall clock is
+Zoo, so does the total. Our own arithmetic stays at 0.01 s whatever happens.
 
 `out/bout-en-bout.step` contains **the machine and the crate in one file**: 32
 solids, the customer's b-rep and ours, in the same scene.
@@ -146,7 +154,7 @@ call. `KITTYCAD_TOKEN` is accepted as an alias.
 
 **The first launch takes four to five minutes**, and says so before it waits: no
 third-party STEP is committed here, so `script.sh` fetches the KR 6 from its MIT
-source and has Zoo convert it — 5.4 MB of STEP is 273 s of conversion. Every
+source and has Zoo convert it — 5.4 MB of STEP is about four minutes. Every
 launch after that is immediate. Drop your own STEP or OBJ at any time and the
 studio uses it instead.
 
@@ -207,7 +215,7 @@ under it.
 
 **No three-metre blocks.** When a machine sits far from a wall, the gap is
 closed with two pieces and a void between them, the way a crate maker does it.
-Before that fix one chock came out 3 000 mm deep in solid timber.
+Before that fix one chock came out 3,000 mm deep in solid timber.
 
 This is a **blocking principle**: position and envelope, nothing else. No bill of
 materials, no nailing pattern, no section justified by a calculation. And it
@@ -270,7 +278,7 @@ reports which bodies stick out. On the demo machine standing upright:
 
 > Five bodies out of fifteen carry the overrun. Cut at 1.67 m and shipped
 > separately: main crate 2.25 × 2.15 × 1.73 m, second crate 3.19 × 2.25 ×
-> 0.54 m, **7 013 € in 19 days** — against 13 639 € and 21 days out of gauge.
+> 0.54 m, **7,013 € in 19 days** — against 13,639 € and 21 days out of gauge.
 
 It still does not decide. A distinct body in a mesh is not a removable part: it
 may be a weld, or a converter artefact. The tool says which ones cost; the
@@ -278,7 +286,7 @@ engineering department rules.
 
 **And before announcing an oversize convoy**, it checks the other shipping mode:
 on one test machine no container fitted, but a standard trailer cleared by
-21 mm. Announcing 20 205 € of special convoy there would have been wrong.
+21 mm. Announcing 20,205 € of special convoy there would have been wrong.
 
 ## Reused from my first Makeathon project
 
